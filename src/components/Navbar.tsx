@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Menu, X, Sparkles, Shield, Zap, Info, Home } from 'lucide-react';
-import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetTitle, SheetDescription, SheetHeader } from '@/components/ui/sheet';
 import { useState } from 'react';
 
 export function Navbar() {
@@ -28,6 +28,11 @@ export function Navbar() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-[90%] bg-[#050505] border-r border-white/5 p-0 flex flex-col">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Navigation Menu</SheetTitle>
+              <SheetDescription>Explore HappyChat features, security, and assistant.</SheetDescription>
+            </SheetHeader>
+            
             <div className="p-6 border-b border-white/5 flex items-center justify-between">
               <Link href="/" onClick={() => setIsOpen(false)} className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center glow-green">
