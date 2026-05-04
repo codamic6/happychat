@@ -37,7 +37,7 @@ export default function ChatPage() {
             <Sparkles className="w-12 h-12 text-primary" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-black font-headline text-white uppercase italic tracking-tighter">Initializing Session</h2>
+            <h2 className="text-2xl font-black font-headline text-white italic tracking-tighter uppercase">Initializing Session</h2>
             <div className="flex items-center justify-center gap-2 text-primary text-xs font-bold uppercase tracking-widest">
               <Loader2 className="w-4 h-4 animate-spin" />
               Securing Connection
@@ -51,9 +51,12 @@ export default function ChatPage() {
   if (!user) return null;
 
   return (
-    <main className="min-h-screen bg-[#050505] flex flex-col">
-      <Navbar />
-      <div className="flex-1 pt-16">
+    <main className="min-h-screen bg-[#050505] flex flex-col h-screen overflow-hidden">
+      {/* Navbar only visible on mobile (md:hidden) */}
+      <div className="md:hidden">
+        <Navbar />
+      </div>
+      <div className="flex-1 overflow-hidden">
         <ChatView />
       </div>
     </main>
