@@ -1,7 +1,9 @@
+
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Shield, Phone, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import Link from 'next/link';
 
 export function Hero() {
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-chat');
@@ -29,9 +31,11 @@ export function Hero() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" className="h-14 px-8 text-lg font-bold glow-green hover:glow-green-bright transition-all">
-                Download Now
-              </Button>
+              <Link href="/get-started">
+                <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-lg font-bold glow-green hover:glow-green-bright transition-all">
+                  Get Started
+                </Button>
+              </Link>
               <Button size="lg" variant="outline" className="h-14 px-8 text-lg font-bold border-white/10 hover:bg-white/5 transition-all">
                 Live Demo
               </Button>

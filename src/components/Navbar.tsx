@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from 'next/link';
@@ -38,7 +39,9 @@ export function Navbar() {
 
       <div className="flex items-center gap-4">
         <Link href="/login" className="hidden md:block text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-white transition-colors px-4">Login</Link>
-        <Button className="hidden md:flex glow-green hover:glow-green-bright transition-all duration-300 font-black uppercase text-xs tracking-widest">Get Started</Button>
+        <Link href="/get-started" className="hidden md:block">
+          <Button className="glow-green hover:glow-green-bright transition-all duration-300 font-black uppercase text-xs tracking-widest">Get Started</Button>
+        </Link>
         
         {/* Mobile Menu Trigger - Now on the Right */}
         <div className="md:hidden">
@@ -88,7 +91,9 @@ export function Navbar() {
 
                 <div className="mt-12 space-y-4">
                   <p className="text-[10px] font-black text-muted-foreground tracking-widest uppercase mb-4">Account</p>
-                  <Button className="w-full h-14 text-lg font-black uppercase tracking-widest glow-green">Get Started</Button>
+                  <Link href="/get-started" onClick={() => setIsOpen(false)}>
+                    <Button className="w-full h-14 text-lg font-black uppercase tracking-widest glow-green">Get Started</Button>
+                  </Link>
                   <Link href="/login" onClick={() => setIsOpen(false)}>
                     <Button variant="outline" className="w-full h-14 text-lg font-black uppercase tracking-widest border-white/10">Login</Button>
                   </Link>

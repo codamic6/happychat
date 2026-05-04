@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,9 @@ export function Footer() {
             Start chatting for free today.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="h-16 px-10 text-xl font-black uppercase tracking-widest glow-green">Get Started Now</Button>
+            <Link href="/get-started">
+              <Button size="lg" className="h-16 px-10 text-xl font-black uppercase tracking-widest glow-green">Get Started Now</Button>
+            </Link>
             <Link href="/help">
               <Button size="lg" variant="outline" className="h-16 px-10 text-xl font-black uppercase tracking-widest">Learn More</Button>
             </Link>
