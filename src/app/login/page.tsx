@@ -1,0 +1,175 @@
+
+'use client';
+
+import { FloatingBackground } from '@/components/auth/FloatingBackground';
+import { AuthSidebar } from '@/components/auth/AuthSidebar';
+import { AuthInput } from '@/components/auth/AuthInput';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Zap, Mail, Lock, Chrome, Github, ArrowRight, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { useAuth } from '@/firebase';
+import { signInWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
+import { toast } from '@/hooks/use-toast';
+
+export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const auth = useAuth();
+  const router = useRouter();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push('/');
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in');
+      toast({
+        variant: "destructive",
+        title: "Security Alert",
+        description: "Authentication failed. Please verify your credentials."
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSocialLogin = async (providerName: 'google' | 'github') => {
+    setIsLoading(true);
+    const provider = providerName === 'google' ? new GoogleAuthProvider() : new GithubAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      router.push('/');
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Provider Error",
+        description: "Could not connect to social authentication provider."
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <main className="min-h-screen grid lg:grid-cols-2 relative overflow-hidden bg-[#050505]">
+      <FloatingBackground />
+      <AuthSidebar />
+
+      <div className="flex items-center justify-center p-6 sm:p-12 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md"
+        >
+          {/* Mobile Logo */}
+          <div className="lg:hidden flex justify-center mb-12">
+            <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center glow-green-bright">
+              <Zap className="text-primary-foreground h-10 w-10 fill-current" />
+            </div>
+          </div>
+
+          <div className="glass p-8 sm:p-12 rounded-[2.5rem] border border-white/5 space-y-8 relative overflow-hidden shadow-2xl">
+            {/* Holographic Reflection */}
+            <div className="absolute -top-[50%] -left-[50%] w-[200%] h-[200%] bg-gradient-to-br from-primary/5 via-transparent to-transparent rotate-12 pointer-events-none" />
+
+            <div className="text-center space-y-2 relative z-10">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em]"
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                Security Layer Active
+              </motion.div>
+              <h2 className="text-3xl font-black font-headline text-white italic tracking-tight">Access Hub</h2>
+              <p className="text-sm text-muted-foreground">Reconnect to your secure communication line.</p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-6 relative z-10">
+              <AuthInput
+                label="Identifier / Email"
+                icon={Mail}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                required
+              />
+              <div className="space-y-2">
+                <AuthInput
+                  label="Security Key / Password"
+                  icon={Lock}
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                />
+                <div className="flex justify-end">
+                  <Link href="/forgot-password" title="Forgot Password" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
+                    Lost Credentials?
+                  </Link>
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-full h-14 rounded-xl bg-primary hover:glow-green-bright transition-all duration-500 font-black uppercase tracking-[0.2em] text-xs shadow-[0_0_20px_rgba(0,200,83,0.3)] group"
+              >
+                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                  <>
+                    Initialize Session
+                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </Button>
+            </form>
+
+            <div className="relative py-4 z-10">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/5" />
+              </div>
+              <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
+                <span className="bg-[#0b0b0b] px-4 text-muted-foreground">Bridge Connection</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 relative z-10">
+              <Button 
+                onClick={() => handleSocialLogin('google')}
+                variant="outline" 
+                className="h-14 rounded-xl border-white/5 bg-white/5 hover:bg-white/10 text-white font-bold transition-all"
+              >
+                <Chrome className="w-5 h-5 mr-2" /> Google
+              </Button>
+              <Button 
+                onClick={() => handleSocialLogin('github')}
+                variant="outline" 
+                className="h-14 rounded-xl border-white/5 bg-white/5 hover:bg-white/10 text-white font-bold transition-all"
+              >
+                <Github className="w-5 h-5 mr-2" /> GitHub
+              </Button>
+            </div>
+
+            <p className="text-center text-xs text-muted-foreground relative z-10">
+              New to the future? {' '}
+              <Link href="/get-started" className="text-primary font-black uppercase tracking-widest hover:underline transition-all">
+                Create Identity
+              </Link>
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    </main>
+  );
+}
