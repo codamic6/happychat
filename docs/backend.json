@@ -1,0 +1,449 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user's profile and account information within the HappyChat application. Authentication details are managed by an external system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "username": {
+          "type": "string",
+          "description": "A unique, user-chosen handle for identification."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address, used for contact and potentially login (via external auth).",
+          "format": "email"
+        },
+        "fullName": {
+          "type": "string",
+          "description": "The user's full name, displayed in the application."
+        },
+        "profileImageUrl": {
+          "type": "string",
+          "description": "URL to the user's profile picture or avatar.",
+          "format": "uri"
+        },
+        "bio": {
+          "type": "string",
+          "description": "A short biographical text about the user."
+        },
+        "status": {
+          "type": "string",
+          "description": "The user's current online status (e.g., 'online', 'offline', 'away', 'busy')."
+        },
+        "lastActiveAt": {
+          "type": "string",
+          "description": "Timestamp of the user's last activity.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user profile was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email",
+        "fullName",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Conversation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Conversation",
+      "type": "object",
+      "description": "Represents a chat conversation, which can be a private chat between two users or a group chat.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Conversation entity."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of conversation (e.g., 'private' for 1-to-1 chats, 'group' for multi-user chats)."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the conversation, primarily used for group chats. This is optional for private chats."
+        },
+        "adminId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who is the administrator of a group conversation. (Relationship: UserProfile 1:N Conversation)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the conversation was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the conversation was last updated.",
+          "format": "date-time"
+        },
+        "participantIds": {
+          "type": "array",
+          "description": "References to UserProfile entities participating in this conversation. (Relationship: UserProfile N:N Conversation)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "createdAt",
+        "updatedAt",
+        "participantIds"
+      ]
+    },
+    "Message": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Message",
+      "type": "object",
+      "description": "Represents a single message sent within a conversation, including text, media references, and metadata.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Message entity."
+        },
+        "conversationId": {
+          "type": "string",
+          "description": "Reference to the Conversation this message belongs to. (Relationship: Conversation 1:N Message)"
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who sent this message. (Relationship: UserProfile 1:N Message)"
+        },
+        "content": {
+          "type": "string",
+          "description": "The textual content of the message."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of message (e.g., 'text', 'image', 'video', 'file', 'voice_note', 'ai_suggestion')."
+        },
+        "sentAt": {
+          "type": "string",
+          "description": "Timestamp when the message was sent.",
+          "format": "date-time"
+        },
+        "readByParticipantIds": {
+          "type": "array",
+          "description": "References to UserProfile entities who have read this message. (Relationship: UserProfile N:N Message)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mediaAttachmentIds": {
+          "type": "array",
+          "description": "References to MediaAttachment entities associated with this message. (Relationship: MediaAttachment 1:N Message, if a message can have multiple attachments).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parentMessageId": {
+          "type": "string",
+          "description": "Optional reference to a parent message if this message is a reply. (Relationship: Message 1:N Message)"
+        }
+      },
+      "required": [
+        "id",
+        "conversationId",
+        "senderId",
+        "content",
+        "type",
+        "sentAt"
+      ]
+    },
+    "MediaAttachment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MediaAttachment",
+      "type": "object",
+      "description": "Represents a file or media object shared within a message.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the MediaAttachment entity."
+        },
+        "messageId": {
+          "type": "string",
+          "description": "Reference to the Message this attachment belongs to. (Relationship: Message 1:N MediaAttachment)"
+        },
+        "uploaderId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who uploaded this attachment. (Relationship: UserProfile 1:N MediaAttachment)"
+        },
+        "filename": {
+          "type": "string",
+          "description": "The original filename of the attached media."
+        },
+        "fileType": {
+          "type": "string",
+          "description": "The MIME type of the attached file (e.g., 'image/jpeg', 'application/pdf')."
+        },
+        "fileSizeKB": {
+          "type": "number",
+          "description": "The size of the file in kilobytes."
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL where the media file is stored (e.g., in cloud storage).",
+          "format": "uri"
+        },
+        "thumbnailUrl": {
+          "type": "string",
+          "description": "Optional URL to a thumbnail image or video preview.",
+          "format": "uri"
+        },
+        "uploadedAt": {
+          "type": "string",
+          "description": "Timestamp when the media attachment was uploaded.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "messageId",
+        "uploaderId",
+        "filename",
+        "fileType",
+        "fileSizeKB",
+        "url",
+        "uploadedAt"
+      ]
+    },
+    "MessageReaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MessageReaction",
+      "type": "object",
+      "description": "Represents an emoji reaction added by a user to a specific message.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the MessageReaction entity."
+        },
+        "messageId": {
+          "type": "string",
+          "description": "Reference to the Message this reaction is associated with. (Relationship: Message 1:N MessageReaction)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who added this reaction. (Relationship: UserProfile 1:N MessageReaction)"
+        },
+        "emoji": {
+          "type": "string",
+          "description": "The Unicode character of the emoji used for the reaction (e.g., \"👍\", \"❤️\")."
+        },
+        "reactedAt": {
+          "type": "string",
+          "description": "Timestamp when the reaction was added.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "messageId",
+        "userId",
+        "emoji",
+        "reactedAt"
+      ]
+    },
+    "Call": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Call",
+      "type": "object",
+      "description": "Represents a voice or video call event, including its participants and duration.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Call entity."
+        },
+        "conversationId": {
+          "type": "string",
+          "description": "Optional reference to the Conversation from which this call was initiated. (Relationship: Conversation 1:N Call)"
+        },
+        "initiatorId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who initiated the call. (Relationship: UserProfile 1:N Call)"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of call (e.g., 'voice', 'video')."
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Timestamp when the call started or was initiated.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "Optional timestamp when the call ended.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the call (e.g., 'started', 'ended', 'missed', 'declined', 'ringing')."
+        },
+        "durationSeconds": {
+          "type": "number",
+          "description": "The duration of the call in seconds, if completed."
+        },
+        "participantIds": {
+          "type": "array",
+          "description": "References to UserProfile entities who participated in or were invited to the call. (Relationship: UserProfile N:N Call)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "initiatorId",
+        "type",
+        "startTime",
+        "status",
+        "participantIds"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores individual user profiles. The document ID (`userId`) matches the Firebase Authentication `uid`. This collection uses path-based ownership; `request.auth.uid` must match `userId` for full write access. Specific public fields may be readable by other authenticated users.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user profile, corresponding to the user's Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/conversations/{conversationId}",
+        "definition": {
+          "entityName": "Conversation",
+          "schema": {
+            "$ref": "#/backend/entities/Conversation"
+          },
+          "description": "Stores chat conversations (private or group). Includes a denormalized 'participantIds' array and 'adminId' for group chats, which are critical for authorization independence and QAPs. Users can only access conversations if their `uid` is in `participantIds`.",
+          "params": [
+            {
+              "name": "conversationId",
+              "description": "The unique identifier for the conversation."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/conversations/{conversationId}/messages/{messageId}",
+        "definition": {
+          "entityName": "Message",
+          "schema": {
+            "$ref": "#/backend/entities/Message"
+          },
+          "description": "Stores individual messages within a conversation. Each message document includes denormalized 'conversationParticipantIds' and 'conversationAdminId' (copied from the parent conversation) to ensure authorization independence without requiring `get()` calls to the parent document.",
+          "params": [
+            {
+              "name": "conversationId",
+              "description": "The unique identifier of the parent conversation."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier for the message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/conversations/{conversationId}/messages/{messageId}/mediaAttachments/{attachmentId}",
+        "definition": {
+          "entityName": "MediaAttachment",
+          "schema": {
+            "$ref": "#/backend/entities/MediaAttachment"
+          },
+          "description": "Stores media attachments for a specific message. Each attachment document includes denormalized 'conversationParticipantIds' and 'conversationAdminId' (copied from the parent conversation) for authorization independence.",
+          "params": [
+            {
+              "name": "conversationId",
+              "description": "The unique identifier of the parent conversation."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier of the parent message."
+            },
+            {
+              "name": "attachmentId",
+              "description": "The unique identifier for the media attachment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/conversations/{conversationId}/messages/{messageId}/reactions/{reactionId}",
+        "definition": {
+          "entityName": "MessageReaction",
+          "schema": {
+            "$ref": "#/backend/entities/MessageReaction"
+          },
+          "description": "Stores emoji reactions to a specific message. Each reaction document includes denormalized 'conversationParticipantIds' and 'conversationAdminId' (copied from the parent conversation) for authorization independence.",
+          "params": [
+            {
+              "name": "conversationId",
+              "description": "The unique identifier of the parent conversation."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier of the parent message."
+            },
+            {
+              "name": "reactionId",
+              "description": "The unique identifier for the message reaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/calls/{callId}",
+        "definition": {
+          "entityName": "Call",
+          "schema": {
+            "$ref": "#/backend/entities/Call"
+          },
+          "description": "Stores information about voice or video calls. Authorization is handled by the 'participantIds' array within the Call document itself, ensuring independence and supporting QAPs for listing a user's calls.",
+          "params": [
+            {
+              "name": "callId",
+              "description": "The unique identifier for the call."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure for HappyChat prioritizes Authorization Independence and Query-Accurate Projections (QAPs) by heavily utilizing denormalization and structural segregation. Each collection is designed to support direct, non-hierarchical authorization checks using only the `request.auth.uid` and the document's own fields, thus eliminating expensive and brittle `get()` calls within security rules.\n\n1.  **User Profiles (`/users/{userId}`):** User profiles are stored in a top-level collection. Each document's ID (`userId`) is directly tied to the Firebase Authentication `uid` of the owner. This ensures path-based ownership, making rules for creating, reading, updating, and deleting profiles straightforward (`request.auth.uid == userId`). For QAPs, users can list their own profile by path. For other users, specific fields like `username`, `profileImageUrl`, and `status` can be made publicly readable to authenticated users for displaying participant lists or user lookups without exposing sensitive data, while full profile writes are restricted to the owner.\n\n2.  **Conversations (`/conversations/{conversationId}`):** Conversations are stored in a top-level collection. Authorization relies on the `participantIds` array (a list of all user UIDs involved in the conversation) directly present within each `Conversation` document. This denormalized field is critical for both authorization independence and QAPs. A user can securely list all their conversations by performing a query like `db.collection('conversations').where('participantIds', 'array-contains', request.auth.uid)`. Access rules for read/write on a conversation document will simply check if `request.auth.uid` is present in `resource.data.participantIds`.\n\n3.  **Messages, Media Attachments, and Reactions (Nested under Conversations):** To maintain Authorization Independence for subcollections like Messages (`/conversations/{conversationId}/messages/{messageId}`), Media Attachments (`/conversations/{conversationId}/messages/{messageId}/mediaAttachments/{attachmentId}`), and Message Reactions (`/conversations/{conversationId}/messages/{messageId}/reactions/{reactionId}`), the crucial `participantIds` and `adminId` from the parent `Conversation` MUST be denormalized and copied into every document within these subcollections. For instance, each `Message` document will include `conversationParticipantIds` and `conversationAdminId`. This allows security rules for these subcollections to evaluate access rights (e.g., `request.auth.uid in resource.data.conversationParticipantIds`) without needing to perform a `get()` call to the parent `Conversation` document. This directly supports QAPs as a user can query for messages within a specific conversation (`/conversations/{conversationId}/messages`) and the rules will efficiently filter based on the message's own denormalized fields, assuming the `conversationId` itself is known to be accessible by the user.\n\n4.  **Calls (`/calls/{callId}`):** Calls are stored in a top-level collection. Similar to conversations, access control is managed by the `participantIds` array within the `Call` document itself. This allows for independent authorization checks and enables QAPs for listing a user's calls (`db.collection('calls').where('participantIds', 'array-contains', request.auth.uid)`).\n\nThis design ensures that all authorization decisions are atomic and self-contained within the document being accessed or its immediate request data, thereby fulfilling the CRITICAL mandate of Authorization Independence and facilitating robust, debuggable security rules and efficient queries."
+  }
+}
