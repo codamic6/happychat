@@ -1,52 +1,53 @@
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
-import { Card } from '@/components/ui/card';
-import { Code, Terminal, Zap, Lock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Terminal, Code, Cpu, Sparkles } from 'lucide-react';
 
 export default function ApiPortalPage() {
   return (
     <main className="min-h-screen bg-[#050505]">
       <Navbar />
-      <div className="pt-32 pb-20 container mx-auto px-6">
-        <div className="max-w-4xl mx-auto mb-16">
-          <h1 className="text-4xl md:text-6xl font-black font-headline mb-6 text-gradient">Developer API</h1>
-          <p className="text-xl text-muted-foreground">Build the next generation of secure communication apps using our robust, developer-friendly API.</p>
+      <div className="pt-32 pb-20 container mx-auto px-6 flex flex-col items-center justify-center min-h-[70vh]">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-black tracking-widest uppercase mb-8 animate-pulse">
+          <Terminal className="w-4 h-4" /> API Access
+        </div>
+        
+        <div className="max-w-3xl text-center space-y-6 mb-12">
+          <h1 className="text-5xl md:text-8xl font-black font-headline text-gradient">Coming <br /><span className="text-primary">Soon.</span></h1>
+          <p className="text-xl text-muted-foreground leading-relaxed">
+            We're building the most powerful, secure communication API ever designed. 
+            Stay tuned for the developer SDK, real-time webhooks, and AI endpoints.
+          </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 mb-16">
-          <Card className="glass p-8 border-white/10">
-            <Terminal className="w-10 h-10 text-primary mb-6" />
-            <h3 className="text-2xl font-bold mb-4">Quick Integration</h3>
-            <p className="text-muted-foreground mb-4">Start sending your first secure message in under 5 minutes with our lightweight SDKs.</p>
-            <div className="bg-black/50 p-4 rounded-lg font-mono text-xs text-primary border border-white/5">
-              npm install @happychat/sdk
-            </div>
-          </Card>
-          <Card className="glass p-8 border-white/10">
-            <Lock className="w-10 h-10 text-primary mb-6" />
-            <h3 className="text-2xl font-bold mb-4">E2E Native</h3>
-            <p className="text-muted-foreground">Encryption is built-in. Your app users get the same world-class security as our official clients.</p>
-          </Card>
+        <div className="glass p-8 rounded-3xl border border-white/10 max-w-lg w-full space-y-6">
+          <div className="space-y-2">
+            <h3 className="text-lg font-bold text-white">Get Notified</h3>
+            <p className="text-sm text-muted-foreground">Join the waitlist to get early access to our private beta.</p>
+          </div>
+          <div className="flex gap-2">
+            <Input placeholder="developer@example.com" className="bg-white/5 border-white/10" />
+            <Button className="glow-green font-bold">Join Waitlist</Button>
+          </div>
         </div>
 
-        <div className="glass p-12 rounded-3xl border border-white/10">
-          <h2 className="text-3xl font-bold mb-8 text-center">API Capabilities</h2>
-          <div className="grid md:grid-cols-3 gap-12 text-center">
-            <div className="space-y-4">
-              <Zap className="w-8 h-8 text-primary mx-auto" />
-              <h4 className="font-bold">Real-time Webhooks</h4>
-              <p className="text-sm text-muted-foreground">Get instant notifications for messages, calls, and user status changes.</p>
-            </div>
-            <div className="space-y-4">
-              <Code className="w-8 h-8 text-primary mx-auto" />
-              <h4 className="font-bold">Rich Media Support</h4>
-              <p className="text-sm text-muted-foreground">Seamlessly handle images, video, and large file attachments.</p>
-            </div>
-            <div className="space-y-4">
-              <Terminal className="w-8 h-8 text-primary mx-auto" />
-              <h4 className="font-bold">AI Endpoints</h4>
-              <p className="text-sm text-muted-foreground">Access our summarization and suggestion engines via API.</p>
-            </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-24 w-full max-w-4xl opacity-50">
+          <div className="flex flex-col items-center gap-3">
+            <Code className="w-6 h-6 text-primary" />
+            <span className="text-xs font-bold uppercase tracking-tighter">TypeScript SDK</span>
+          </div>
+          <div className="flex flex-col items-center gap-3">
+            <Cpu className="w-6 h-6 text-primary" />
+            <span className="text-xs font-bold uppercase tracking-tighter">Edge Logic</span>
+          </div>
+          <div className="flex flex-col items-center gap-3">
+            <Sparkles className="w-6 h-6 text-primary" />
+            <span className="text-xs font-bold uppercase tracking-tighter">AI Ready</span>
+          </div>
+          <div className="flex flex-col items-center gap-3">
+            <Terminal className="w-6 h-6 text-primary" />
+            <span className="text-xs font-bold uppercase tracking-tighter">Rest API</span>
           </div>
         </div>
       </div>
