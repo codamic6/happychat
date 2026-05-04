@@ -100,7 +100,7 @@ export default function LoginPage() {
                   required
                 />
                 <div className="flex justify-end">
-                  <Link href="/forgot-password" pull-right className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
+                  <Link href="/forgot-password" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
                     Forgot Password?
                   </Link>
                 </div>
@@ -135,14 +135,20 @@ export default function LoginPage() {
                 variant="outline" 
                 className="h-14 rounded-xl border-white/5 bg-white/5 hover:bg-white/10 text-white font-bold transition-all"
               >
-                <Chrome className="w-5 h-5 mr-2" /> Google
+                <Avatar className="w-5 h-5 mr-2">
+                   <Chrome className="w-5 h-5" />
+                </Avatar>
+                Google
               </Button>
               <Button 
                 onClick={() => handleSocialLogin('github')}
                 variant="outline" 
                 className="h-14 rounded-xl border-white/5 bg-white/5 hover:bg-white/10 text-white font-bold transition-all"
               >
-                <Github className="w-5 h-5 mr-2" /> GitHub
+                <Avatar className="w-5 h-5 mr-2">
+                  <Github className="w-5 h-5" />
+                </Avatar>
+                GitHub
               </Button>
             </div>
 

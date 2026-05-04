@@ -26,14 +26,14 @@ export default function ForgotPasswordPage() {
       await sendPasswordResetEmail(auth, email);
       setSent(true);
       toast({
-        title: "Transmission Sent",
-        description: "Recovery instructions dispatched to your communication node."
+        title: "Reset Link Sent",
+        description: "Check your email for instructions to reset your password."
       });
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Transmission Failed",
-        description: "Could not locate node in the network."
+        title: "Error",
+        description: "Could not find an account with that email."
       });
     } finally {
       setIsLoading(false);
@@ -54,19 +54,19 @@ export default function ForgotPasswordPage() {
         >
           <div className="glass p-8 sm:p-12 rounded-[2.5rem] border border-white/5 space-y-8 relative overflow-hidden shadow-2xl">
             <div className="text-center space-y-2 relative z-10">
-              <h2 className="text-3xl font-black font-headline text-white italic tracking-tight uppercase">Node Recovery</h2>
-              <p className="text-sm text-muted-foreground">Restore your access to the secure network.</p>
+              <h2 className="text-3xl font-black font-headline text-white italic tracking-tight uppercase">Reset Password</h2>
+              <p className="text-sm text-muted-foreground">Enter your email to receive a recovery link.</p>
             </div>
 
             {!sent ? (
               <form onSubmit={handleReset} className="space-y-6 relative z-10">
                 <AuthInput
-                  label="Communication Node / Email"
+                  label="Email Address"
                   icon={Mail}
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your registered email"
+                  placeholder="Enter your email"
                   required
                 />
 
@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
                 >
                   {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                     <>
-                      Send Recovery Link
+                      Send Reset Link
                       <Send className="w-4 h-4 ml-2 group-hover:translate-y-[-2px] group-hover:translate-x-[2px] transition-transform" />
                     </>
                   )}
@@ -89,15 +89,15 @@ export default function ForgotPasswordPage() {
                   <Mail className="w-10 h-10 text-primary" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-white uppercase italic">Signal Dispatched</h3>
-                  <p className="text-sm text-muted-foreground">Check your node for recovery instructions.</p>
+                  <h3 className="text-xl font-bold text-white uppercase italic">Email Sent</h3>
+                  <p className="text-sm text-muted-foreground">Check your inbox for password recovery instructions.</p>
                 </div>
               </div>
             )}
 
             <div className="relative z-10 flex justify-center">
               <Link href="/login" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-white transition-colors">
-                <ArrowLeft className="w-4 h-4" /> Return to Access Hub
+                <ArrowLeft className="w-4 h-4" /> Back to Login
               </Link>
             </div>
           </div>
