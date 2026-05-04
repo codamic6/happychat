@@ -1,3 +1,4 @@
+
 'use client';
 
 import { FloatingBackground } from '@/components/auth/FloatingBackground';
@@ -6,7 +7,7 @@ import { AuthInput } from '@/components/auth/AuthInput';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Zap, Mail, Lock, User, AtSign, ArrowRight, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
+import { Zap, Mail, Lock, User, AtSign, Phone, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -17,6 +18,7 @@ import { toast } from '@/hooks/use-toast';
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -31,27 +33,27 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Create user profile in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         id: user.uid,
         fullName,
         username: username.toLowerCase(),
         email: email.toLowerCase(),
+        phoneNumber,
         profileImageUrl: `https://picsum.photos/seed/${user.uid}/200/200`,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
       toast({
-        title: "Identity Created",
-        description: "Welcome to the next generation of communication."
+        title: "Account Created",
+        description: "Welcome to HappyChat!"
       });
-      router.push('/');
+      router.push('/chat');
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Registration Error",
-        description: err.message || "Failed to create identity."
+        title: "Error",
+        description: err.message || "Failed to create account."
       });
     } finally {
       setIsLoading(false);
@@ -70,7 +72,6 @@ export default function RegisterPage() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-lg"
         >
-          {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-12">
             <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center glow-green-bright">
               <Zap className="text-primary-foreground h-10 w-10 fill-current" />
@@ -84,62 +85,65 @@ export default function RegisterPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em]"
               >
-                <Sparkles className="w-3 h-3" /> New Identity protocol
+                <Sparkles className="w-3 h-3" /> Join the community
               </motion.div>
-              <h2 className="text-3xl font-black font-headline text-white italic tracking-tight uppercase">Forge Account</h2>
-              <p className="text-sm text-muted-foreground">Join the elite network of HappyChat creators.</p>
+              <h2 className="text-3xl font-black font-headline text-white italic tracking-tight uppercase">Create Account</h2>
+              <p className="text-sm text-muted-foreground">Sign up to start chatting securely.</p>
             </div>
 
             <form onSubmit={handleRegister} className="grid sm:grid-cols-2 gap-4 relative z-10">
               <div className="sm:col-span-2">
                 <AuthInput
-                  label="Full Legal Name"
+                  label="Full Name"
                   icon={User}
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="John Doe"
+                  placeholder="e.g. John Doe"
                   required
                 />
               </div>
               <AuthInput
-                label="Public Handle"
+                label="Username"
                 icon={AtSign}
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="johndoe_99"
+                placeholder="e.g. johndoe"
                 required
               />
               <AuthInput
-                label="Communication Node"
-                icon={Mail}
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@node.com"
-                required
+                label="Phone Number"
+                icon={Phone}
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="e.g. +1 234 567 890"
               />
               <div className="sm:col-span-2">
                 <AuthInput
-                  label="Security Matrix / Password"
+                  label="Email Address"
+                  icon={Mail}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. name@email.com"
+                  required
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <AuthInput
+                  label="Password"
                   icon={Lock}
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min. 8 characters"
+                  placeholder="Minimum 8 characters"
                   required
                 />
               </div>
 
               <div className="sm:col-span-2 space-y-4 pt-4">
-                <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/10">
-                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    By initializing this identity, you agree to the <span className="text-white font-bold">Protocol Terms</span> and <span className="text-white font-bold">Privacy Matrix</span>.
-                  </p>
-                </div>
-
                 <Button 
                   type="submit" 
                   disabled={isLoading}
@@ -147,7 +151,7 @@ export default function RegisterPage() {
                 >
                   {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                     <>
-                      Begin Initialization
+                      Create Identity
                       <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}
@@ -156,9 +160,9 @@ export default function RegisterPage() {
             </form>
 
             <p className="text-center text-xs text-muted-foreground relative z-10">
-              Already registered in the system? {' '}
+              Already have an account? {' '}
               <Link href="/login" className="text-primary font-black uppercase tracking-widest hover:underline transition-all">
-                Access Hub
+                Login
               </Link>
             </p>
           </div>

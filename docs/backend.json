@@ -24,6 +24,10 @@
           "type": "string",
           "description": "The user's full name."
         },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The user's contact phone number."
+        },
         "profileImageUrl": {
           "type": "string",
           "description": "URL to the user's profile picture.",

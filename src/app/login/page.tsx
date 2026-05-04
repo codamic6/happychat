@@ -4,7 +4,7 @@
 import { FloatingBackground } from '@/components/auth/FloatingBackground';
 import { AuthSidebar } from '@/components/auth/AuthSidebar';
 import { AuthInput } from '@/components/auth/AuthInput';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Zap, Mail, Lock, Chrome, Github, ArrowRight, Loader2 } from 'lucide-react';
@@ -18,23 +18,20 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const auth = useAuth();
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push('/');
+      router.push('/chat');
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in');
       toast({
         variant: "destructive",
-        title: "Security Alert",
-        description: "Authentication failed. Please verify your credentials."
+        title: "Login Failed",
+        description: "Please check your email and password."
       });
     } finally {
       setIsLoading(false);
@@ -46,12 +43,12 @@ export default function LoginPage() {
     const provider = providerName === 'google' ? new GoogleAuthProvider() : new GithubAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      router.push('/');
+      router.push('/chat');
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Provider Error",
-        description: "Could not connect to social authentication provider."
+        title: "Connection Error",
+        description: "Could not sign in with this provider."
       });
     } finally {
       setIsLoading(false);
@@ -70,7 +67,6 @@ export default function LoginPage() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
-          {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-12">
             <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center glow-green-bright">
               <Zap className="text-primary-foreground h-10 w-10 fill-current" />
@@ -78,25 +74,14 @@ export default function LoginPage() {
           </div>
 
           <div className="glass p-8 sm:p-12 rounded-[2.5rem] border border-white/5 space-y-8 relative overflow-hidden shadow-2xl">
-            {/* Holographic Reflection */}
-            <div className="absolute -top-[50%] -left-[50%] w-[200%] h-[200%] bg-gradient-to-br from-primary/5 via-transparent to-transparent rotate-12 pointer-events-none" />
-
             <div className="text-center space-y-2 relative z-10">
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em]"
-              >
-                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                Security Layer Active
-              </motion.div>
-              <h2 className="text-3xl font-black font-headline text-white italic tracking-tight">Access Hub</h2>
-              <p className="text-sm text-muted-foreground">Reconnect to your secure communication line.</p>
+              <h2 className="text-3xl font-black font-headline text-white italic tracking-tight uppercase">Login</h2>
+              <p className="text-sm text-muted-foreground">Welcome back! Please enter your details.</p>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-6 relative z-10">
               <AuthInput
-                label="Identifier / Email"
+                label="Email Address"
                 icon={Mail}
                 type="email"
                 value={email}
@@ -106,7 +91,7 @@ export default function LoginPage() {
               />
               <div className="space-y-2">
                 <AuthInput
-                  label="Security Key / Password"
+                  label="Password"
                   icon={Lock}
                   type="password"
                   value={password}
@@ -115,8 +100,8 @@ export default function LoginPage() {
                   required
                 />
                 <div className="flex justify-end">
-                  <Link href="/forgot-password" title="Forgot Password" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
-                    Lost Credentials?
+                  <Link href="/forgot-password" pull-right className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
+                    Forgot Password?
                   </Link>
                 </div>
               </div>
@@ -128,7 +113,7 @@ export default function LoginPage() {
               >
                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                   <>
-                    Initialize Session
+                    Sign In
                     <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                   </>
                 )}
@@ -140,7 +125,7 @@ export default function LoginPage() {
                 <div className="w-full border-t border-white/5" />
               </div>
               <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
-                <span className="bg-[#0b0b0b] px-4 text-muted-foreground">Bridge Connection</span>
+                <span className="bg-[#0b0b0b] px-4 text-muted-foreground">Or continue with</span>
               </div>
             </div>
 
@@ -162,9 +147,9 @@ export default function LoginPage() {
             </div>
 
             <p className="text-center text-xs text-muted-foreground relative z-10">
-              New to the future? {' '}
+              Don't have an account? {' '}
               <Link href="/get-started" className="text-primary font-black uppercase tracking-widest hover:underline transition-all">
-                Create Identity
+                Sign Up
               </Link>
             </p>
           </div>
