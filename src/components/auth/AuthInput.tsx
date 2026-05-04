@@ -54,13 +54,14 @@ export function AuthInput({ label, icon: Icon, error, className, ...props }: Aut
             initial={false}
             animate={{
               top: isFloating ? -10 : "50%",
+              y: "-50%", // Force vertical centering in resting state
               scale: isFloating ? 0.85 : 1,
               left: isFloating ? (Icon ? 36 : 12) : (Icon ? 48 : 16),
               opacity: isFloating ? 1 : 0.5,
               color: error ? "var(--destructive)" : (isFocused ? "var(--primary)" : "var(--muted-foreground)")
             }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="absolute pointer-events-none font-bold uppercase tracking-widest text-[10px] -translate-y-1/2 z-20 px-2"
+            className="absolute pointer-events-none font-bold uppercase tracking-widest text-[10px] z-20 px-2"
             style={{ 
               backgroundColor: isFloating ? '#050505' : 'transparent',
             }}
