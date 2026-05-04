@@ -1,4 +1,3 @@
-
 'use client';
 
 import { FloatingBackground } from '@/components/auth/FloatingBackground';
@@ -7,7 +6,7 @@ import { AuthInput } from '@/components/auth/AuthInput';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Zap, Mail, Lock, User, AtSign, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
+import { Zap, Mail, Lock, User, AtSign, ArrowRight, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
