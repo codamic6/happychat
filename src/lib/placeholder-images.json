@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-chat",
+      "description": "A futuristic dark chat interface mockup",
+      "imageUrl": "https://picsum.photos/seed/chat1/1200/800",
+      "imageHint": "chat interface"
+    },
+    {
+      "id": "avatar-1",
+      "description": "User avatar",
+      "imageUrl": "https://picsum.photos/seed/user1/100/100",
+      "imageHint": "profile avatar"
+    },
+    {
+      "id": "avatar-2",
+      "description": "User avatar",
+      "imageUrl": "https://picsum.photos/seed/user2/100/100",
+      "imageHint": "profile avatar"
+    },
+    {
+      "id": "media-preview",
+      "description": "Shared media image",
+      "imageUrl": "https://picsum.photos/seed/media1/400/300",
+      "imageHint": "modern landscape"
+    }
+  ]
 }
