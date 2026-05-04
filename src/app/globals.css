@@ -42,6 +42,11 @@
   body {
     @apply bg-background text-foreground;
     background-color: #050505;
+    /* Disable selection and copying */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
   }
 }
 
