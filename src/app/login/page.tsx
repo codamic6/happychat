@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Zap, Mail, Lock, Chrome, Github, ArrowRight, Loader2 } from 'lucide-react';
+import { Avatar } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { useAuth } from '@/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup } from 'firebase/auth';
