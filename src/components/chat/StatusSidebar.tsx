@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Loader2, Search, Clock } from 'lucide-react';
+import { Plus, Loader2, Search, Clock, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -39,6 +39,7 @@ export function StatusSidebar() {
   const pathname = usePathname();
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile>>({});
   const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // 1. Fetch user's contacts first
   const contactsQuery = useMemoFirebase(() => {
@@ -76,7 +77,6 @@ export function StatusSidebar() {
     const groups: Record<string, StatusUpdate[]> = {};
     
     rawStatuses.forEach(s => {
-      // Only include if in contacts or self
       if (contactIds.includes(s.userId)) {
         if (!groups[s.userId]) groups[s.userId] = [];
         groups[s.userId].push(s);
@@ -116,11 +116,29 @@ export function StatusSidebar() {
   const myStatusGroup = groupedStatuses.find(([uid]) => uid === user?.uid);
   const otherStatusGroups = groupedStatuses.filter(([uid]) => uid !== user?.uid);
 
+  const filteredGroups = useMemo(() => {
+    if (!searchQuery.trim()) return otherStatusGroups;
+    return otherStatusGroups.filter(([uid]) => {
+      const p = userProfiles[uid];
+      const name = p?.displayName || p?.fullName || '';
+      return name.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+  }, [otherStatusGroups, searchQuery, userProfiles]);
+
   return (
     <div className="flex flex-col h-full bg-[#0d0d0d]">
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase">Updates</h2>
+          <div className="flex items-center gap-3">
+             <Button 
+                variant="ghost" size="icon" 
+                onClick={() => router.push('/chat')}
+                className="md:hidden text-muted-foreground"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <h2 className="text-xl md:text-2xl font-bold font-headline text-white tracking-tighter uppercase">Updates</h2>
+          </div>
           <Dialog open={isComposerOpen} onOpenChange={setIsComposerOpen}>
             <DialogTrigger asChild>
               <Button size="icon" variant="ghost" className="rounded-full bg-primary/10 text-primary hover:bg-primary/20 glow-green">
@@ -134,6 +152,8 @@ export function StatusSidebar() {
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search updates..." 
             className="bg-white/5 border-white/10 pl-12 h-12 text-sm rounded-full focus-visible:ring-primary"
           />
@@ -141,7 +161,7 @@ export function StatusSidebar() {
       </div>
 
       <ScrollArea className="flex-1 px-3">
-        <div className="space-y-6 pb-24">
+        <div className="space-y-6 pb-32">
           <div className="space-y-4 px-3">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">My Status</h3>
             <button 
@@ -174,7 +194,7 @@ export function StatusSidebar() {
           <div className="space-y-4 px-3">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Recent Updates</h3>
             <div className="space-y-1">
-              {otherStatusGroups.map(([uid, items]) => {
+              {filteredGroups.map(([uid, items]) => {
                 const profile = userProfiles[uid];
                 if (!profile) return null;
                 const name = profile.displayName || profile.fullName || 'User';
@@ -191,7 +211,7 @@ export function StatusSidebar() {
                         <div className="w-full h-full rounded-full bg-[#111] overflow-hidden flex items-center justify-center border-2 border-[#0d0d0d]">
                           <Avatar className="w-full h-full">
                             <AvatarImage src={`/api/avatar/${uid}`} />
-                            <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+                            <AvatarFallback className="bg-primary/20 text-primary">{name.charAt(0)}</AvatarFallback>
                           </Avatar>
                         </div>
                       </div>
@@ -206,7 +226,7 @@ export function StatusSidebar() {
                 );
               })}
 
-              {otherStatusGroups.length === 0 && (
+              {filteredGroups.length === 0 && (
                 <div className="py-12 text-center space-y-3 opacity-20">
                   <Clock className="w-10 h-10 mx-auto text-muted-foreground" />
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em]">No new updates</p>
