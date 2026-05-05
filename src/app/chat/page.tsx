@@ -1,63 +1,27 @@
+
 'use client';
 
-import { useUser } from '@/firebase';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { ChatView } from '@/components/ChatView';
-import { Navbar } from '@/components/Navbar';
-import { Loader2, Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { MessageSquare, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-export default function ChatPage() {
-  const { user, isUserLoading } = useUser();
-  const router = useRouter();
-  const [showTransition, setShowTransition] = useState(true);
-
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-    
-    const timer = setTimeout(() => setShowTransition(false), 1500);
-    return () => clearTimeout(timer);
-  }, [user, isUserLoading, router]);
-
-  if (isUserLoading || showTransition) {
-    return (
-      <main className="min-h-screen bg-[#050505] flex items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent opacity-50" />
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 1.1 }}
-          className="relative z-10 text-center space-y-6"
-        >
-          <div className="w-24 h-24 bg-primary/20 rounded-3xl flex items-center justify-center mx-auto glow-green animate-pulse">
-            <Sparkles className="w-12 h-12 text-primary" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-black font-headline text-white italic tracking-tighter uppercase">Initializing Session</h2>
-            <div className="flex items-center justify-center gap-2 text-primary text-xs font-bold uppercase tracking-widest">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Securing Connection
-            </div>
-          </div>
-        </motion.div>
-      </main>
-    );
-  }
-
-  if (!user) return null;
-
+export default function ChatEmptyPage() {
   return (
-    <main className="min-h-screen bg-[#050505] flex flex-col h-screen overflow-hidden">
-      {/* Navbar only visible on mobile (md:hidden) */}
-      <div className="md:hidden">
-        <Navbar />
+    <div className="flex-1 flex flex-col items-center justify-center space-y-6 opacity-30 p-12 text-center h-full">
+      <motion.div 
+        animate={{ y: [0, -10, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center glow-green border border-primary/20"
+      >
+        <MessageSquare className="w-12 h-12 text-primary" />
+      </motion.div>
+      <div className="space-y-2">
+        <h3 className="text-sm font-black uppercase tracking-[0.4em] italic text-white font-headline">Select a Conversation</h3>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Secure Signal Protocol Phase II Active</p>
       </div>
-      <div className="flex-1 overflow-hidden">
-        <ChatView />
+      <div className="pt-8 flex items-center gap-2 text-primary/40 text-[10px] font-black uppercase tracking-widest">
+        <Sparkles className="w-3 h-3" />
+        AI Neural Copilot Ready
       </div>
-    </main>
+    </div>
   );
 }

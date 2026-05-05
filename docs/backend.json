@@ -33,6 +33,10 @@
           "description": "URL to the user's profile picture.",
           "format": "uri"
         },
+        "about": {
+          "type": "string",
+          "description": "A short bio for the user."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time"
@@ -70,6 +74,28 @@
         "userId",
         "addedAt"
       ]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "participantIds": { "type": "array", "items": { "type": "string" } },
+        "lastMessage": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "adminId": { "type": "string" }
+      }
+    },
+    "Message": {
+      "title": "Message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "senderId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "conversationParticipantIds": { "type": "array", "items": { "type": "string" } }
+      }
     }
   },
   "auth": {
@@ -86,9 +112,7 @@
         "path": "/users/{userId}",
         "definition": {
           "entityName": "UserProfile",
-          "schema": {
-            "$ref": "#/backend/entities/UserProfile"
-          },
+          "schema": { "$ref": "#/backend/entities/UserProfile" },
           "description": "Stores individual user profiles."
         }
       },
@@ -96,10 +120,24 @@
         "path": "/users/{userId}/contacts/{contactId}",
         "definition": {
           "entityName": "Contact",
-          "schema": {
-            "$ref": "#/backend/entities/Contact"
-          },
+          "schema": { "$ref": "#/backend/entities/Contact" },
           "description": "Stores a user's personal contact list."
+        }
+      },
+      {
+        "path": "/conversations/{conversationId}",
+        "definition": {
+          "entityName": "Conversation",
+          "schema": { "$ref": "#/backend/entities/Conversation" },
+          "description": "Stores shared chat sessions."
+        }
+      },
+      {
+        "path": "/conversations/{conversationId}/messages/{messageId}",
+        "definition": {
+          "entityName": "Message",
+          "schema": { "$ref": "#/backend/entities/Message" },
+          "description": "Stores individual messages within a conversation."
         }
       }
     ]
