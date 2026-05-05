@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, MoreVertical, Loader2, Send } from 'lucide-react';
+import { Plus, MoreVertical, Loader2, Send, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
