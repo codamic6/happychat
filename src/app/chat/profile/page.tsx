@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -104,7 +105,7 @@ export default function ProfilePage() {
       const result = await uploadProfileImageToMega(megaFormData);
       
       if ('url' in result) {
-        addLog(`SUCCESS: Public Link -> ${result.url.substring(0, 30)}...`);
+        addLog(`SUCCESS: Public Link Generated`);
         const userDocRef = doc(db, 'users', user.uid);
         
         addLog('FIRESTORE: Updating Identity Record...');
@@ -120,7 +121,7 @@ export default function ProfilePage() {
         toast({ 
           variant: "destructive", 
           title: "Cloud Error", 
-          description: result.error || "MEGA upload failed. Check environment variables." 
+          description: result.error || "MEGA upload failed." 
         });
       }
     } catch (err: any) {
@@ -168,6 +169,9 @@ export default function ProfilePage() {
     );
   }
 
+  // Use the proxy URL for rendering
+  const avatarSrc = profile?.id ? `/api/avatar/${profile.id}?t=${Date.now()}` : '';
+
   return (
     <div className="flex-1 overflow-y-auto bg-[#050505] relative custom-scrollbar">
       <div className="max-w-4xl mx-auto px-6 py-12 md:py-20 space-y-12 pb-32">
@@ -187,9 +191,9 @@ export default function ProfilePage() {
             <Card className="glass p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2.5rem] relative overflow-hidden group">
               <div className="relative">
                 <div className="w-40 h-40 md:w-48 md:h-48 rounded-full border-4 border-primary/20 shadow-2xl bg-[#0d0d0d] overflow-hidden">
-                  {profile?.profileImageUrl ? (
+                  {profile?.id ? (
                     <img 
-                      src={`${profile.profileImageUrl}${profile.profileImageUrl.includes('?') ? '&' : '?'}t=${Date.now()}`} 
+                      src={avatarSrc} 
                       alt="Avatar" 
                       className="w-full h-full object-cover"
                     />

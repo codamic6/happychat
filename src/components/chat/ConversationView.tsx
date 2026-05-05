@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -173,7 +174,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   }
 
   const otherName = otherProfile.displayName || otherProfile.fullName || 'Anonymous';
-  const otherAvatar = otherProfile.profileImageUrl;
+  const otherAvatar = `/api/avatar/${otherProfile.id}?t=${Date.now()}`;
 
   return (
     <div className="flex-1 flex overflow-hidden h-full flex-col relative bg-[#050505]">
