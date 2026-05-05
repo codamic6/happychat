@@ -60,7 +60,7 @@ export default function ProfilePage() {
 
   const addLog = (msg: string) => {
     console.log(`[PROFILE DEBUG] ${msg}`);
-    setDebugLogs(prev => [...prev.slice(-6), `> ${msg}`]);
+    setDebugLogs(prev => [...prev.slice(-10), `> ${msg}`]);
   };
 
   useEffect(() => {
@@ -94,35 +94,34 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file || !user || !db) return;
 
-    addLog(`INIT: Uploading ${file.name} (${file.size} bytes)`);
+    addLog(`INIT: Preparing upload for "${file.name}"`);
     setIsUploading(true);
     const megaFormData = new FormData();
     megaFormData.append('file', file);
 
     try {
-      addLog('ACTION: Calling Secure Server Action...');
+      addLog('ACTION: Calling MEGA Secure Sync...');
       const result = await uploadProfileImageToMega(megaFormData);
       
       if ('url' in result) {
-        addLog(`SUCCESS: URL Generated - ${result.url.substring(0, 40)}...`);
+        addLog(`SUCCESS: Public Link -> ${result.url.substring(0, 30)}...`);
         const userDocRef = doc(db, 'users', user.uid);
         
-        addLog('FIRESTORE: Synchronizing Identity...');
+        addLog('FIRESTORE: Updating Identity Record...');
         await updateDoc(userDocRef, {
           profileImageUrl: result.url,
           updatedAt: serverTimestamp()
         });
 
-        // Verification Read to ensure cache consistency
-        const verifySnap = await getDoc(userDocRef);
-        if (verifySnap.exists() && verifySnap.data().profileImageUrl === result.url) {
-          addLog('SYNC: Cloud Identity Verified ✅');
-        }
-        
-        toast({ title: "Identity Synced", description: "Your new avatar is live across the network." });
+        addLog('SYNC: Identity Synchronized ✅');
+        toast({ title: "Identity Updated", description: "Profile photo is now live globally." });
       } else {
-        addLog(`ERROR: ${result.error}`);
-        toast({ variant: "destructive", title: "Cloud Error", description: result.error });
+        addLog(`CRITICAL ERROR: ${result.error}`);
+        toast({ 
+          variant: "destructive", 
+          title: "Cloud Error", 
+          description: result.error || "MEGA upload failed. Check environment variables." 
+        });
       }
     } catch (err: any) {
       addLog(`FATAL: ${err.message}`);
@@ -190,7 +189,7 @@ export default function ProfilePage() {
                 <div className="w-40 h-40 md:w-48 md:h-48 rounded-full border-4 border-primary/20 shadow-2xl bg-[#0d0d0d] overflow-hidden">
                   {profile?.profileImageUrl ? (
                     <img 
-                      src={`${profile.profileImageUrl}?t=${Date.now()}`} 
+                      src={`${profile.profileImageUrl}${profile.profileImageUrl.includes('?') ? '&' : '?'}t=${Date.now()}`} 
                       alt="Avatar" 
                       className="w-full h-full object-cover"
                     />
@@ -227,7 +226,7 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-2 text-[8px] font-black text-muted-foreground uppercase">
                   <Terminal className="w-3 h-3 text-primary" /> Sync Pipeline Output
                 </div>
-                <div className="space-y-1 max-h-[100px] overflow-y-auto no-scrollbar">
+                <div className="space-y-1 max-h-[120px] overflow-y-auto no-scrollbar">
                   {debugLogs.length === 0 && <p className="text-[8px] text-muted-foreground italic">System Idle</p>}
                   {debugLogs.map((log, i) => (
                     <p key={i} className="text-[8px] font-code text-primary leading-tight truncate">{log}</p>
