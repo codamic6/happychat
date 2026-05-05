@@ -42,6 +42,16 @@ function formatShortTime(date: Date) {
   return format(date, 'dd/MM/yy');
 }
 
+/**
+ * Manually truncates a string to 12 characters followed by dots.
+ * This is used to guarantee no overflow in the sidebar.
+ */
+function manualTruncate(text: string, limit: number = 12) {
+  if (!text) return '';
+  if (text.length <= limit) return text;
+  return text.substring(0, limit) + '...';
+}
+
 export function ChatSidebar() {
   const { user } = useUser();
   const db = useFirestore();
@@ -115,7 +125,7 @@ export function ChatSidebar() {
   }, [conversations, searchQuery, chatProfiles, user]);
 
   return (
-    <div className="flex flex-col h-full bg-[#0d0d0d] w-full overflow-hidden">
+    <div className="flex flex-col h-full bg-[#0d0d0d] w-full overflow-hidden border-r border-white/5">
       <div className="p-4 md:p-6 space-y-6 flex-none">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -148,6 +158,11 @@ export function ChatSidebar() {
             const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
             const name = profile.displayName || profile.fullName || 'User';
             const initials = (profile.displayName || profile.fullName || 'U').charAt(0).toUpperCase();
+            
+            // Manual truncation logic as requested
+            const messagePreview = conv.lastMessage 
+              ? manualTruncate(conv.lastMessage, 12) 
+              : 'Secure chat...';
 
             const avatarSrc = profile.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${profile.id}?t=${Date.now()}` : null;
 
@@ -188,7 +203,7 @@ export function ChatSidebar() {
                   <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
                 </div>
                 
-                <div className="flex-1 flex flex-col min-w-0 overflow-hidden text-left pr-2">
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden text-left pr-4">
                   <div className="flex items-center justify-between gap-2 min-w-0 w-full mb-1">
                     <span className="font-bold text-sm text-white truncate min-w-0 flex-1 overflow-hidden">
                       {name}
@@ -200,10 +215,10 @@ export function ChatSidebar() {
                   
                   <div className="flex items-center justify-between gap-3 min-w-0 w-full">
                     <p className={cn(
-                      "text-[11px] truncate min-w-0 flex-1 overflow-hidden whitespace-nowrap",
+                      "text-[11px] min-w-0 flex-1 overflow-hidden whitespace-nowrap",
                       unreadCount > 0 ? "text-white font-bold" : "text-muted-foreground"
                     )}>
-                      {conv.lastMessage || `Secure conversation`}
+                      {messagePreview}
                     </p>
                     {unreadCount > 0 && (
                       <Badge className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center shrink-0">
