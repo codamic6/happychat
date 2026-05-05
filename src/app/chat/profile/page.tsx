@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -242,24 +243,24 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
-                    <Input 
+                    <input 
                       value={formData.displayName}
                       onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
-                      className="h-14 bg-white/5 border-white/5 rounded-xl focus-visible:ring-primary"
+                      className="h-14 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
 
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Username</Label>
                     <div className="relative">
-                      <Input 
+                      <input 
                         value={formData.username}
                         onChange={(e) => {
                           const val = e.target.value;
                           setFormData(prev => ({ ...prev, username: val }));
                           handleCheckUsername(val);
                         }}
-                        className={cn("h-14 bg-white/5 border-white/5 rounded-xl", usernameStatus === 'taken' && "border-destructive")}
+                        className={cn("h-14 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white focus:outline-none focus:ring-1 focus:ring-primary", usernameStatus === 'taken' && "border-destructive")}
                       />
                       <div className="absolute right-4 top-1/2 -translate-y-1/2">
                         {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
@@ -271,16 +272,16 @@ export default function ProfilePage() {
 
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Phone Number</Label>
-                    <Input 
+                    <input 
                       value={formData.phoneNumber}
                       onChange={(e) => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                      className="h-14 bg-white/5 border-white/5 rounded-xl"
+                      className="h-14 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
 
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Email Address</Label>
-                    <Input value={profile?.email || ''} readOnly className="h-14 bg-white/5 border-white/5 rounded-xl opacity-50 cursor-not-allowed" />
+                    <input value={profile?.email || ''} readOnly className="h-14 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white opacity-50 cursor-not-allowed" />
                   </div>
                 </div>
 
