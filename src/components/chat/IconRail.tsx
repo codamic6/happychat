@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -23,10 +22,10 @@ export function IconRail() {
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
 
   const navItems = [
-    { id: 'chats', icon: MessageSquare, label: 'Recent Chats', path: '/chat' },
-    { id: 'status', icon: Globe, label: 'Status Updates', path: '/chat' },
+    { id: 'chats', icon: MessageSquare, label: 'Chats', path: '/chat' },
+    { id: 'status', icon: Globe, label: 'Status', path: '/chat' },
     { id: 'contacts', icon: Users, label: 'Contacts', path: '/chat' },
-    { id: 'ai', icon: Sparkles, label: 'HappyAI', path: '/ai-assistant' },
+    { id: 'ai', icon: Sparkles, label: 'AI Assistant', path: '/ai-assistant' },
   ];
 
   const handleSignOut = async () => {
@@ -115,7 +114,7 @@ export function IconRail() {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right" className="bg-[#111] border-white/10 text-xs font-bold uppercase tracking-widest text-primary">
-              My Profile
+              Profile
             </TooltipContent>
           </Tooltip>
 

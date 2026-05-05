@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -168,19 +167,14 @@ export function ConversationView({ conversationId }: { conversationId: string })
   if (!otherProfile) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[#050505]">
-        <div className="relative">
-          <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        </div>
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
       </div>
     );
   }
 
-  const otherName = otherProfile.displayName || otherProfile.fullName || 'Anonymous';
-  const initials = (otherProfile.displayName || otherProfile.fullName || 'A').charAt(0).toUpperCase();
-  
-  // Real image logic only
-  const hasRealImage = otherProfile.profileImageUrl && otherProfile.profileImageUrl.includes('mega.nz');
-  const otherAvatar = hasRealImage ? `/api/avatar/${otherProfile.id}?t=${Date.now()}` : null;
+  const otherName = otherProfile.displayName || otherProfile.fullName || 'User';
+  const initials = (otherProfile.displayName || otherProfile.fullName || 'U').charAt(0).toUpperCase();
+  const otherAvatar = otherProfile.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${otherProfile.id}?t=${Date.now()}` : null;
 
   return (
     <div className="flex-1 flex overflow-hidden h-full flex-col relative bg-[#050505]">
@@ -201,14 +195,14 @@ export function ConversationView({ conversationId }: { conversationId: string })
                       const parent = (e.target as HTMLImageElement).parentElement;
                       if (parent) {
                         const fallback = document.createElement('div');
-                        fallback.className = "w-full h-full flex items-center justify-center text-sm font-black text-primary";
+                        fallback.className = "w-full h-full flex items-center justify-center text-sm font-bold text-primary";
                         fallback.innerText = initials;
                         parent.appendChild(fallback);
                       }
                     }}
                   />
                ) : (
-                 <div className="text-sm font-black text-primary">{initials}</div>
+                 <div className="text-sm font-bold text-primary">{initials}</div>
                )}
             </div>
             <div className="min-w-0">
@@ -217,7 +211,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
               </h3>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                <span className="text-[8px] md:text-[10px] text-primary uppercase font-black tracking-widest">Signal Active</span>
+                <span className="text-[8px] md:text-[10px] text-primary uppercase font-bold tracking-widest">Online</span>
               </div>
             </div>
           </div>
@@ -229,7 +223,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
             <DropdownMenuTrigger asChild>
               <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 bg-[#0d0d0d] border-white/10 text-white rounded-2xl overflow-hidden p-1 shadow-2xl">
+            <DropdownMenuContent align="end" className="w-48 bg-[#0d0d0d] border-white/10 text-white rounded-2xl p-1 shadow-2xl">
               <DropdownMenuItem onClick={() => setShowProfile(true)} className="flex items-center gap-3 p-3 cursor-pointer hover:bg-white/5 rounded-xl">
                 <Info className="w-4 h-4 text-primary" /> <span className="text-xs font-bold uppercase tracking-widest">Profile</span>
               </DropdownMenuItem>
@@ -246,7 +240,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 opacity-30 space-y-6">
               <ShieldCheck className="w-16 h-16 text-primary/50 animate-pulse" />
-              <p className="text-sm font-black uppercase tracking-widest italic text-center">Start a secure conversation with {otherName.split(' ')[0]}</p>
+              <p className="text-sm font-bold uppercase tracking-widest text-center">Chatting with {otherName.split(' ')[0]}</p>
             </div>
           )}
           {messages.map((msg) => {
@@ -258,7 +252,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                     {msg.text}
                   </div>
                   <div className={cn("flex items-center gap-2 px-1 opacity-0 group-hover:opacity-100 transition-opacity", isOwn ? "flex-row-reverse" : "flex-row")}>
-                    <span className="text-[9px] font-black text-muted-foreground uppercase">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase">
                       {msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'HH:mm') : '...'}
                     </span>
                     {isOwn && <UserCheck className="w-3 h-3 text-primary" />}
@@ -281,7 +275,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder={`Write to @${otherProfile.username}...`}
+              placeholder={`Write a message...`}
               className="bg-white/5 border-white/10 h-12 md:h-14 pl-5 pr-14 rounded-2xl focus-visible:ring-primary focus-visible:ring-offset-0 text-sm md:text-base"
             />
             <Button size="icon" variant="ghost" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary">
@@ -316,40 +310,40 @@ export function ConversationView({ conversationId }: { conversationId: string })
                           const parent = (e.target as HTMLImageElement).parentElement;
                           if (parent) {
                             const fallback = document.createElement('div');
-                            fallback.className = "w-full h-full flex items-center justify-center text-5xl font-black text-primary";
+                            fallback.className = "w-full h-full flex items-center justify-center text-5xl font-bold text-primary";
                             fallback.innerText = initials;
                             parent.appendChild(fallback);
                           }
                         }}
                       />
                     ) : (
-                      <div className="text-5xl font-black text-primary">{initials}</div>
+                      <div className="text-5xl font-bold text-primary">{initials}</div>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <h2 className="text-3xl md:text-4xl font-black font-headline italic tracking-tighter uppercase text-gradient">{otherName}</h2>
-                    <p className="text-primary text-[10px] font-black uppercase tracking-[0.5em]">Neural Verified</p>
+                    <h2 className="text-3xl md:text-4xl font-bold font-headline tracking-tighter text-gradient">{otherName}</h2>
+                    <p className="text-primary text-[10px] font-bold uppercase tracking-widest">Verified User</p>
                   </div>
                   <Card className="w-full bg-white/5 border-white/10 p-6 space-y-6 text-left rounded-3xl backdrop-blur-xl">
                     <div className="space-y-6">
                       <div className="flex items-center gap-5">
                         <Info className="w-5 h-5 text-primary" />
                         <div className="min-w-0">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">About</p>
-                          <p className="text-sm text-white italic">{otherProfile.about || "Digital creator using HappyChat."}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">About</p>
+                          <p className="text-sm text-white italic">{otherProfile.about || "Digital creator."}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-5">
                         <Phone className="w-5 h-5 text-primary" />
                         <div className="min-w-0">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Secure Line</p>
-                          <p className="text-sm text-white">{otherProfile.phoneNumber || "ID: Protected"}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Phone</p>
+                          <p className="text-sm text-white">{otherProfile.phoneNumber || "Hidden"}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-5">
                         <Mail className="w-5 h-5 text-primary" />
                         <div className="min-w-0">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Email</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Email</p>
                           <p className="text-sm text-white truncate">{otherProfile.email}</p>
                         </div>
                       </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -11,7 +10,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebas
 import { collection, query, getDocs, where } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { formatDistanceToNow } from 'date-fns';
+import { format, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 
 type UserProfile = {
@@ -30,6 +29,18 @@ type Conversation = {
   updatedAt: any;
   unreadCount?: Record<string, number>;
 };
+
+function formatShortTime(date: Date) {
+  const now = new Date();
+  const diffMin = differenceInMinutes(now, date);
+  const diffHour = differenceInHours(now, date);
+  const diffDay = differenceInDays(now, date);
+
+  if (diffMin < 1) return 'now';
+  if (diffMin < 60) return `${diffMin}min`;
+  if (diffHour < 24) return `${diffHour}h`;
+  return format(date, 'dd/MM/yy');
+}
 
 export function ChatSidebar() {
   const { user } = useUser();
@@ -108,7 +119,7 @@ export function ChatSidebar() {
       <div className="p-4 md:p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-xl md:text-2xl font-black font-headline text-white italic tracking-tighter uppercase">HappyChat</h2>
+            <h2 className="text-xl md:text-2xl font-bold font-headline text-white tracking-tighter uppercase">Chats</h2>
           </div>
           <Button size="icon" variant="ghost" className="rounded-xl hover:bg-white/5 text-muted-foreground">
             <MoreVertical className="w-5 h-5" />
@@ -120,7 +131,7 @@ export function ChatSidebar() {
           <Input 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search chats..." 
+            placeholder="Search..." 
             className="bg-white/5 border-white/10 pl-12 h-12 text-sm rounded-full focus-visible:ring-primary"
           />
         </div>
@@ -138,9 +149,7 @@ export function ChatSidebar() {
             const name = profile.displayName || profile.fullName || 'User';
             const initials = (profile.displayName || profile.fullName || 'U').charAt(0).toUpperCase();
 
-            // Real image logic only
-            const hasRealImage = profile.profileImageUrl && profile.profileImageUrl.includes('mega.nz');
-            const avatarSrc = hasRealImage ? `/api/avatar/${profile.id}?t=${Date.now()}` : null;
+            const avatarSrc = profile.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${profile.id}?t=${Date.now()}` : null;
 
             return (
               <button 
@@ -166,14 +175,14 @@ export function ChatSidebar() {
                           const parent = (e.target as HTMLImageElement).parentElement;
                           if (parent) {
                             const fallback = document.createElement('div');
-                            fallback.className = "w-full h-full flex items-center justify-center text-xl font-black text-primary";
+                            fallback.className = "w-full h-full flex items-center justify-center text-xl font-bold text-primary";
                             fallback.innerText = initials;
                             parent.appendChild(fallback);
                           }
                         }}
                       />
                     ) : (
-                      <div className="text-xl font-black text-primary">{initials}</div>
+                      <div className="text-xl font-bold text-primary">{initials}</div>
                     )}
                   </div>
                   <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
@@ -181,19 +190,19 @@ export function ChatSidebar() {
                 <div className="flex-1 text-left min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-sm text-white truncate">{name}</span>
-                    <span className="text-[9px] uppercase font-black tracking-tighter text-muted-foreground">
-                      {conv.updatedAt?.toDate ? formatDistanceToNow(conv.updatedAt.toDate(), { addSuffix: false }) : ''}
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">
+                      {conv.updatedAt?.toDate ? formatShortTime(conv.updatedAt.toDate()) : ''}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <p className={cn(
-                      "text-[11px] truncate italic max-w-[80%]",
+                      "text-[11px] truncate max-w-[80%]",
                       unreadCount > 0 ? "text-white font-bold" : "text-muted-foreground"
                     )}>
-                      {conv.lastMessage || `Encrypted link active`}
+                      {conv.lastMessage || `Encrypted chat`}
                     </p>
                     {unreadCount > 0 && (
-                      <Badge className="bg-primary text-primary-foreground text-[10px] font-black rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center">
+                      <Badge className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center">
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </Badge>
                     )}

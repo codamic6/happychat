@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Camera, Loader2, LogOut, Settings, UserCircle, Save, CheckCircle2,
-  Terminal, ShieldCheck
+  ShieldCheck, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -100,16 +100,16 @@ export default function ProfilePage() {
           profileImageUrl: result.url,
           updatedAt: serverTimestamp()
         });
-        toast({ title: "Identity Updated", description: "Profile photo is now live globally." });
+        toast({ title: "Photo Updated", description: "Your profile photo has been saved." });
       } else {
         toast({ 
           variant: "destructive", 
-          title: "Cloud Error", 
-          description: result.error || "MEGA upload failed." 
+          title: "Error", 
+          description: result.error || "Failed to upload photo." 
         });
       }
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Pipeline Error", description: "Communication with MEGA failed." });
+      toast({ variant: "destructive", title: "Error", description: "Could not connect to storage." });
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -121,7 +121,7 @@ export default function ProfilePage() {
     if (!user || isSaving || !db) return;
 
     if (usernameStatus === 'taken') {
-      toast({ variant: "destructive", title: "ID Conflict", description: "Username already claimed." });
+      toast({ variant: "destructive", title: "Wait", description: "That username is already taken." });
       return;
     }
 
@@ -136,9 +136,9 @@ export default function ProfilePage() {
         isOnline: formData.isOnline,
         updatedAt: serverTimestamp()
       });
-      toast({ title: "Protocol Updated", description: "Digital identity synchronized." });
+      toast({ title: "Saved", description: "Your profile has been updated." });
     } catch (err) {
-      toast({ variant: "destructive", title: "Update Failed", description: "Could not sync identity data." });
+      toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
     } finally {
       setIsSaving(false);
     }
@@ -152,8 +152,7 @@ export default function ProfilePage() {
     );
   }
 
-  const hasRealImage = profile?.profileImageUrl && profile.profileImageUrl.includes('mega.nz');
-  const avatarSrc = hasRealImage ? `/api/avatar/${profile?.id}?t=${Date.now()}` : null;
+  const avatarSrc = profile?.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${profile?.id}?t=${Date.now()}` : null;
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#050505] relative custom-scrollbar overflow-x-hidden">
@@ -162,17 +161,16 @@ export default function ProfilePage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em]"
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest"
           >
-            <Settings className="w-3 h-3" /> Identity Management
+            <Settings className="w-3 h-3" /> Account Settings
           </motion.div>
-          <h1 className="text-4xl md:text-6xl font-bold font-headline tracking-tighter uppercase text-gradient">My Profile</h1>
+          <h1 className="text-4xl md:text-6xl font-bold font-headline tracking-tighter text-gradient">My Profile</h1>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8 items-start">
-          {/* Profile Card Sidebar */}
           <div className="lg:col-span-1 w-full">
-            <Card className="glass p-6 md:p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2rem] md:rounded-[2.5rem] relative overflow-hidden group">
+            <Card className="glass p-6 md:p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2rem] relative overflow-hidden group">
               <div className="relative">
                 <div className="w-32 h-32 md:w-48 md:h-48 rounded-full border-4 border-primary/20 shadow-2xl bg-[#0d0d0d] overflow-hidden flex items-center justify-center">
                   {avatarSrc ? (
@@ -185,14 +183,14 @@ export default function ProfilePage() {
                         const parent = (e.target as HTMLImageElement).parentElement;
                         if (parent) {
                           const fallback = document.createElement('div');
-                          fallback.className = "w-full h-full flex items-center justify-center text-5xl font-black bg-white/5 text-primary";
+                          fallback.className = "w-full h-full flex items-center justify-center text-5xl font-bold bg-white/5 text-primary";
                           fallback.innerText = profile?.displayName?.[0] || 'U';
                           parent.appendChild(fallback);
                         }
                       }}
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-5xl font-black bg-white/5 text-primary">
+                    <div className="w-full h-full flex items-center justify-center text-5xl font-bold bg-white/5 text-primary">
                       {profile?.displayName?.[0] || profile?.fullName?.[0] || 'U'}
                     </div>
                   )}
@@ -215,13 +213,13 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-xl font-bold font-headline uppercase text-white">{formData.displayName || 'Unnamed User'}</h3>
-                <p className="text-primary text-[10px] font-black uppercase tracking-widest">@{formData.username || 'username'}</p>
+                <h3 className="text-xl font-bold font-headline text-white">{formData.displayName || 'Unnamed User'}</h3>
+                <p className="text-primary text-[10px] font-bold uppercase tracking-widest">@{formData.username || 'username'}</p>
               </div>
 
               <div className="w-full pt-4 space-y-4">
                 <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white">Presence</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white">Show Online</span>
                   <Switch 
                     checked={formData.isOnline} 
                     onCheckedChange={(val) => setFormData(prev => ({ ...prev, isOnline: val }))}
@@ -230,21 +228,20 @@ export default function ProfilePage() {
                 <Button 
                   variant="ghost" 
                   onClick={() => { signOut(auth); router.push('/login'); }}
-                  className="w-full h-12 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 font-black uppercase text-[10px] tracking-widest"
+                  className="w-full h-12 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 font-bold uppercase text-[10px] tracking-widest"
                 >
-                  <LogOut className="w-4 h-4 mr-2" /> End Neural Link
+                  <LogOut className="w-4 h-4 mr-2" /> Logout
                 </Button>
               </div>
             </Card>
           </div>
 
-          {/* Form Content */}
           <div className="lg:col-span-2 w-full">
             <form onSubmit={handleSave} className="space-y-6">
-              <Card className="glass p-6 md:p-10 border-white/5 rounded-[2rem] md:rounded-[2.5rem] space-y-6 md:space-y-8">
+              <Card className="glass p-6 md:p-10 border-white/5 rounded-[2rem] space-y-6 md:space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Display Name</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
                     <Input 
                       value={formData.displayName}
                       onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
@@ -253,7 +250,7 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Username</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Username</Label>
                     <div className="relative">
                       <Input 
                         value={formData.username}
@@ -267,13 +264,13 @@ export default function ProfilePage() {
                       <div className="absolute right-4 top-1/2 -translate-y-1/2">
                         {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
                         {usernameStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-primary" />}
-                        {usernameStatus === 'taken' && <span className="text-[8px] font-bold text-destructive">Claimed</span>}
+                        {usernameStatus === 'taken' && <span className="text-[8px] font-bold text-destructive">Taken</span>}
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Secure Line (Phone)</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Phone Number</Label>
                     <Input 
                       value={formData.phoneNumber}
                       onChange={(e) => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
@@ -282,17 +279,18 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Account Email</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Email Address</Label>
                     <Input value={profile?.email || ''} readOnly className="h-14 bg-white/5 border-white/5 rounded-xl opacity-50 cursor-not-allowed" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Bio / Objective</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">About Me</Label>
                   <Textarea 
                     value={formData.about}
                     onChange={(e) => setFormData(prev => ({ ...prev, about: e.target.value }))}
                     className="min-h-[120px] bg-white/5 border-white/10 rounded-xl resize-none"
+                    placeholder="Tell us about yourself..."
                   />
                 </div>
 
@@ -300,9 +298,9 @@ export default function ProfilePage() {
                   <Button 
                     type="submit"
                     disabled={isSaving || usernameStatus === 'taken'}
-                    className="w-full h-16 bg-primary hover:glow-green-bright text-primary-foreground font-black uppercase text-sm tracking-[0.3em] rounded-2xl transition-all"
+                    className="w-full h-16 bg-primary hover:glow-green-bright text-primary-foreground font-bold uppercase text-sm tracking-widest rounded-2xl transition-all"
                   >
-                    {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sync Global Identity'}
+                    {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Changes'}
                   </Button>
                 </div>
               </Card>
