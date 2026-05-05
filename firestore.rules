@@ -20,17 +20,16 @@ service cloud.firestore {
     // --- Conversations ---
     match /conversations/{conversationId} {
       // Allow read/write if user is in participantIds array
-      // Handles both existing docs (resource) and new docs (request.resource)
       allow read, write: if isSignedIn() && (
-        (resource != null && request.auth.uid in resource.data.participantIds) ||
-        (resource == null && request.auth.uid in request.resource.data.participantIds)
+        request.auth.uid in resource.data.participantIds ||
+        request.auth.uid in request.resource.data.participantIds
       );
 
       // --- Messages ---
       match /messages/{messageId} {
         allow read, write: if isSignedIn() && (
-          (resource != null && request.auth.uid in resource.data.conversationParticipantIds) ||
-          (resource == null && request.auth.uid in request.resource.data.conversationParticipantIds)
+          request.auth.uid in resource.data.conversationParticipantIds ||
+          request.auth.uid in request.resource.data.conversationParticipantIds
         );
       }
     }

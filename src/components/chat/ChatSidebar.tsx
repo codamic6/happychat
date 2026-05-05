@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, limit, getDocs, where } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, where } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
 
 type UserProfile = {
   id: string;
@@ -26,6 +27,7 @@ type Conversation = {
   participantIds: string[];
   lastMessage?: string;
   updatedAt: any;
+  unreadCount?: Record<string, number>;
 };
 
 export function ChatSidebar() {
@@ -40,7 +42,7 @@ export function ChatSidebar() {
     return query(
       collection(db, 'conversations'),
       where('participantIds', 'array-contains', user.uid),
-      limit(50)
+      orderBy('updatedAt', 'desc')
     );
   }, [db, user]);
 
@@ -75,18 +77,11 @@ export function ChatSidebar() {
     fetchOtherParticipantProfiles();
   }, [conversations, db, user]);
 
-  const sortedConversations = useMemo(() => {
-    if (!conversations) return [];
-    return [...conversations].sort((a, b) => {
-      const timeA = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : 0;
-      const timeB = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : 0;
-      return timeB - timeA;
-    });
-  }, [conversations]);
-
   const filteredConversations = useMemo(() => {
-    if (!searchQuery.trim()) return sortedConversations;
-    return sortedConversations.filter(conv => {
+    if (!conversations) return [];
+    if (!searchQuery.trim()) return conversations;
+    
+    return conversations.filter(conv => {
       const otherId = conv.participantIds.find(id => id !== user?.uid);
       const profile = otherId ? chatProfiles[otherId] : null;
       return (
@@ -95,11 +90,10 @@ export function ChatSidebar() {
         conv.lastMessage?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     });
-  }, [sortedConversations, searchQuery, chatProfiles, user]);
+  }, [conversations, searchQuery, chatProfiles, user]);
 
   return (
     <div className="flex flex-col h-full bg-[#0d0d0d]">
-      {/* Header Area */}
       <div className="p-4 md:p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -108,14 +102,9 @@ export function ChatSidebar() {
             </div>
             <h2 className="text-xl md:text-2xl font-black font-headline text-white italic tracking-tighter uppercase">HappyChat</h2>
           </div>
-          <div className="flex items-center gap-2">
-            <Button size="icon" variant="ghost" className="rounded-xl hover:bg-white/5 text-muted-foreground md:hidden">
-              <Plus className="w-5 h-5" />
-            </Button>
-            <Button size="icon" variant="ghost" className="rounded-xl hover:bg-white/5 text-muted-foreground">
-              <MoreVertical className="w-5 h-5" />
-            </Button>
-          </div>
+          <Button size="icon" variant="ghost" className="rounded-xl hover:bg-white/5 text-muted-foreground">
+            <MoreVertical className="w-5 h-5" />
+          </Button>
         </div>
 
         <div className="relative group">
@@ -125,12 +114,11 @@ export function ChatSidebar() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search chats, contacts..." 
-            className="bg-white/5 border-white/10 pl-12 h-12 text-sm rounded-full focus-visible:ring-primary focus-visible:ring-offset-0 transition-all placeholder:text-muted-foreground/50"
+            className="bg-white/5 border-white/10 pl-12 h-12 text-sm rounded-full focus-visible:ring-primary focus-visible:ring-offset-0 transition-all"
           />
         </div>
       </div>
 
-      {/* Conversations List */}
       <ScrollArea className="flex-1">
         <div className="px-3 pb-24 md:pb-6 space-y-1">
           {filteredConversations.map((conv) => {
@@ -139,6 +127,7 @@ export function ChatSidebar() {
             if (!profile) return null;
 
             const isSelected = pathname === `/chat/${conv.id}`;
+            const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
 
             return (
               <button 
@@ -152,7 +141,7 @@ export function ChatSidebar() {
                 )}
               >
                 <div className="relative shrink-0">
-                  <Avatar className="w-14 h-14 border border-white/10 shadow-lg">
+                  <Avatar className="w-14 h-14 border border-white/10">
                     <AvatarImage src={profile.profileImageUrl} />
                     <AvatarFallback className="bg-white/5 text-white font-black">{profile.fullName[0]}</AvatarFallback>
                   </Avatar>
@@ -161,15 +150,25 @@ export function ChatSidebar() {
                 <div className="flex-1 text-left min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-sm text-white truncate">{profile.fullName}</span>
-                    <span className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter">
+                    <span className={cn(
+                      "text-[9px] uppercase font-black tracking-tighter",
+                      unreadCount > 0 ? "text-primary" : "text-muted-foreground"
+                    )}>
                       {conv.updatedAt?.toDate ? formatDistanceToNow(conv.updatedAt.toDate(), { addSuffix: false }) : ''}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className="text-[11px] text-muted-foreground truncate italic max-w-[80%]">
-                      {conv.lastMessage || `Secure line established with @${profile.username}`}
+                    <p className={cn(
+                      "text-[11px] truncate italic max-w-[80%]",
+                      unreadCount > 0 ? "text-white font-bold" : "text-muted-foreground"
+                    )}>
+                      {conv.lastMessage || `Encrypted link active`}
                     </p>
-                    {/* Placeholder for unread badge if needed */}
+                    {unreadCount > 0 && (
+                      <Badge className="bg-primary text-primary-foreground text-[10px] font-black rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center glow-green">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </button>
@@ -179,10 +178,7 @@ export function ChatSidebar() {
           {filteredConversations.length === 0 && (
             <div className="p-20 text-center space-y-4 opacity-20">
               <MessageSquare className="w-12 h-12 mx-auto text-primary" />
-              <div className="space-y-1">
-                <p className="text-xs font-black uppercase tracking-[0.3em] italic">No active sessions</p>
-                <p className="text-[10px] uppercase tracking-widest">Protocol status: idle</p>
-              </div>
+              <p className="text-xs font-black uppercase tracking-[0.3em] italic">Inbox Empty</p>
             </div>
           )}
         </div>
