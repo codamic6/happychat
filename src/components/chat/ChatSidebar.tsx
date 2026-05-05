@@ -107,9 +107,6 @@ export function ChatSidebar() {
       <div className="p-4 md:p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center glow-green md:hidden">
-              <Zap className="text-primary-foreground h-5 w-5 fill-current" />
-            </div>
             <h2 className="text-xl md:text-2xl font-black font-headline text-white italic tracking-tighter uppercase">HappyChat</h2>
           </div>
           <Button size="icon" variant="ghost" className="rounded-xl hover:bg-white/5 text-muted-foreground">
@@ -118,13 +115,12 @@ export function ChatSidebar() {
         </div>
 
         <div className="relative group">
-          <div className="absolute inset-0 bg-primary/10 rounded-full blur-md opacity-0 group-focus-within:opacity-100 transition-opacity" />
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search chats..." 
-            className="bg-white/5 border-white/10 pl-12 h-12 text-sm rounded-full focus-visible:ring-primary focus-visible:ring-offset-0 transition-all"
+            className="bg-white/5 border-white/10 pl-12 h-12 text-sm rounded-full focus-visible:ring-primary"
           />
         </div>
       </div>
@@ -139,7 +135,6 @@ export function ChatSidebar() {
             const isSelected = pathname === `/chat/${conv.id}`;
             const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
             const name = profile.displayName || profile.fullName || 'User';
-            const avatar = profile.profileImageUrl;
 
             return (
               <button 
@@ -153,19 +148,25 @@ export function ChatSidebar() {
                 )}
               >
                 <div className="relative shrink-0">
-                  <Avatar className="w-14 h-14 border border-white/10">
-                    <AvatarImage src={avatar} className="object-cover" />
-                    <AvatarFallback className="bg-white/5 text-white font-black">{name[0]}</AvatarFallback>
-                  </Avatar>
+                  <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden bg-[#111]">
+                    {profile.profileImageUrl ? (
+                      <img 
+                        src={`${profile.profileImageUrl}?t=${Date.now()}`} 
+                        alt={name} 
+                        className="w-full h-full object-cover" 
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white font-black">
+                        {name[0]}
+                      </div>
+                    )}
+                  </div>
                   <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
                 </div>
                 <div className="flex-1 text-left min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-sm text-white truncate">{name}</span>
-                    <span className={cn(
-                      "text-[9px] uppercase font-black tracking-tighter",
-                      unreadCount > 0 ? "text-primary" : "text-muted-foreground"
-                    )}>
+                    <span className="text-[9px] uppercase font-black tracking-tighter text-muted-foreground">
                       {conv.updatedAt?.toDate ? formatDistanceToNow(conv.updatedAt.toDate(), { addSuffix: false }) : ''}
                     </span>
                   </div>
@@ -177,7 +178,7 @@ export function ChatSidebar() {
                       {conv.lastMessage || `Encrypted link active`}
                     </p>
                     {unreadCount > 0 && (
-                      <Badge className="bg-primary text-primary-foreground text-[10px] font-black rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center glow-green">
+                      <Badge className="bg-primary text-primary-foreground text-[10px] font-black rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center">
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </Badge>
                     )}
@@ -186,13 +187,6 @@ export function ChatSidebar() {
               </button>
             );
           })}
-
-          {filteredConversations.length === 0 && (
-            <div className="p-20 text-center space-y-4 opacity-20">
-              <MessageSquare className="w-12 h-12 mx-auto text-primary" />
-              <p className="text-xs font-black uppercase tracking-[0.3em] italic">Inbox Empty</p>
-            </div>
-          )}
         </div>
       </ScrollArea>
     </div>
