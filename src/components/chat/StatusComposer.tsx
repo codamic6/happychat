@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -14,6 +13,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { uploadProfileImageToMega } from '@/app/actions/profile';
 import { toast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 export function StatusComposer({ onSuccess }: { onSuccess: () => void }) {
   const { user } = useUser();
@@ -168,11 +168,13 @@ export function StatusComposer({ onSuccess }: { onSuccess: () => void }) {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full w-full relative">
                 <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4">
-                  <Button 
-                    size="icon" 
-                    onClick={handleCapture}
-                    className="h-16 w-16 rounded-full bg-white border-4 border-primary shadow-2xl hover:scale-110 transition-transform active:scale-90"
-                  />
+                  <div className="relative">
+                     <Button 
+                      size="icon" 
+                      onClick={handleCapture}
+                      className="h-16 w-16 rounded-full bg-white border-4 border-primary shadow-2xl hover:scale-110 transition-transform active:scale-90"
+                    />
+                  </div>
                   <Button 
                     size="icon" variant="ghost" 
                     onClick={() => fileInputRef.current?.click()}
