@@ -3,8 +3,7 @@
 import { Storage } from 'megajs';
 
 /**
- * Initializes and returns a ready MEGA storage instance.
- * Credentials are fetched from environment variables.
+ * Initializes and returns a ready MEGA storage instance using a Promise.
  */
 async function getMegaStorage(): Promise<Storage> {
   const email = process.env.MEGA_EMAIL;
@@ -14,19 +13,20 @@ async function getMegaStorage(): Promise<Storage> {
     throw new Error('MEGA_EMAIL or MEGA_PASSWORD environment variables are missing.');
   }
 
-  console.log('[DEBUG] MEGA: Initializing Storage for:', email);
+  console.log('[DEBUG] MEGA: Attempting authentication for:', email);
 
   return new Promise((resolve, reject) => {
     const storage = new Storage({ 
       email, 
       password,
-      userAgent: 'HappyChat/2.5'
+      userAgent: 'HappyChat/2.5',
+      keepalive: true
     }, (err) => {
       if (err) {
-        console.error('[DEBUG] MEGA: Auth Error:', err);
+        console.error('[DEBUG] MEGA: Authentication failed:', err.message);
         reject(err);
       } else {
-        console.log('[DEBUG] MEGA: Auth Success');
+        console.log('[DEBUG] MEGA: Authentication successful and ready');
         resolve(storage);
       }
     });
@@ -35,60 +35,65 @@ async function getMegaStorage(): Promise<Storage> {
 
 /**
  * Uploads a profile image to MEGA storage and returns a permanent public link.
+ * Uses .complete to ensure the file is committed to the cloud drive.
  */
 export async function uploadProfileImageToMega(formData: FormData): Promise<{ url: string } | { error: string }> {
   const file = formData.get('file') as File;
   if (!file) return { error: 'No file provided' };
 
-  console.log('[DEBUG] MEGA UPLOAD PIPELINE START');
-  console.log('[DEBUG] File Name:', file.name);
-  console.log('[DEBUG] File Size:', file.size);
+  console.log(`[DEBUG] UPLOAD: Received "${file.name}" - size: ${file.size} bytes`);
 
   try {
     // 1. Initialize Storage
     const storage = await getMegaStorage();
 
-    // 2. Prepare File Data
+    // 2. Prepare Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-
-    console.log('[DEBUG] MEGA: Starting upload stream...');
-
-    // 3. Perform Upload
-    // .complete is a promise that resolves to the File object once finished
-    const uploadStream = storage.upload({
-      name: fileName,
-      size: buffer.length
-    }, buffer);
-
-    const uploadedFile = await uploadStream.complete;
-    console.log('[DEBUG] MEGA: Upload completed successfully');
-
-    // 4. Generate Permanent Public Link
-    // .link(true) returns a link that includes the decryption key
-    const publicUrl = await uploadedFile.link(true);
     
-    if (!publicUrl) {
-      console.error('[DEBUG] MEGA: Failed to generate public link');
-      throw new Error('Upload successful but failed to generate public access link.');
+    if (buffer.length === 0) {
+      throw new Error('Received an empty file buffer.');
     }
 
-    console.log('[DEBUG] MEGA: Public Link Generated:', publicUrl);
-    console.log('[DEBUG] MEGA UPLOAD PIPELINE SUCCESS');
+    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+    console.log(`[DEBUG] UPLOAD: Starting upload for ${fileName}...`);
+
+    // 3. Perform Upload and wait for COMPLETION
+    // .complete is a promise that resolves only after the file is committed
+    const uploadedFile = await storage.upload({
+      name: fileName,
+      size: buffer.length
+    }, buffer).complete;
+
+    console.log('[DEBUG] UPLOAD: Successfully committed to MEGA drive');
+
+    // 4. Generate Permanent Public Link (with decryption key)
+    // We wrap .link in a promise to ensure it resolves correctly across different SDK versions
+    const publicUrl = await new Promise<string>((resolve, reject) => {
+      uploadedFile.link(true, (err, link) => {
+        if (err) reject(err);
+        else resolve(link);
+      });
+    });
+    
+    if (!publicUrl) {
+      throw new Error('Upload succeeded but failed to generate a public link.');
+    }
+
+    console.log('[DEBUG] UPLOAD: Generated Public Link:', publicUrl);
 
     return { url: publicUrl };
   } catch (error: any) {
-    console.error('[DEBUG] MEGA CORE FAILURE:', error);
+    console.error('[DEBUG] UPLOAD FAILURE:', error.message);
     
     // Fallback for development if credentials are valid but connection fails
     if (process.env.NODE_ENV === 'development') {
-      console.warn('[DEBUG] Using development placeholder due to error');
+      console.warn('[DEBUG] Dev Fallback: Using picsum placeholder');
       return { url: `https://picsum.photos/seed/${Date.now()}/400/400` };
     }
 
     return { 
-      error: `MEGA Sync Failed: ${error.message || 'Internal connection error'}` 
+      error: `Cloud Sync Error: ${error.message || 'Check MEGA credentials and connectivity'}` 
     };
   }
 }

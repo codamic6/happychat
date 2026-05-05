@@ -59,8 +59,8 @@ export default function ProfilePage() {
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
   const addLog = (msg: string) => {
-    console.log(`[FRONTEND DEBUG] ${msg}`);
-    setDebugLogs(prev => [...prev.slice(-4), `> ${msg}`]);
+    console.log(`[PROFILE DEBUG] ${msg}`);
+    setDebugLogs(prev => [...prev.slice(-6), `> ${msg}`]);
   };
 
   useEffect(() => {
@@ -94,41 +94,39 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file || !user || !db) return;
 
-    addLog('Starting Image Upload Pipeline...');
+    addLog(`INIT: Uploading ${file.name} (${file.size} bytes)`);
     setIsUploading(true);
     const megaFormData = new FormData();
     megaFormData.append('file', file);
 
     try {
-      addLog('Calling MEGA Server Action...');
+      addLog('ACTION: Calling Secure Server Action...');
       const result = await uploadProfileImageToMega(megaFormData);
       
       if ('url' in result) {
-        addLog(`Public Link Received: ${result.url.substring(0, 30)}...`);
+        addLog(`SUCCESS: URL Generated - ${result.url.substring(0, 40)}...`);
         const userDocRef = doc(db, 'users', user.uid);
         
-        addLog('Updating Firestore User Doc...');
+        addLog('FIRESTORE: Synchronizing Identity...');
         await updateDoc(userDocRef, {
           profileImageUrl: result.url,
           updatedAt: serverTimestamp()
         });
 
-        // Verification Read
+        // Verification Read to ensure cache consistency
         const verifySnap = await getDoc(userDocRef);
         if (verifySnap.exists() && verifySnap.data().profileImageUrl === result.url) {
-          addLog('Firestore Sync Verified ✅');
-        } else {
-          addLog('Firestore Sync Mismatch ⚠️');
+          addLog('SYNC: Cloud Identity Verified ✅');
         }
         
-        toast({ title: "Identity Synced", description: "Avatar updated via MEGA cloud link." });
+        toast({ title: "Identity Synced", description: "Your new avatar is live across the network." });
       } else {
-        addLog(`MEGA Failure: ${result.error}`);
+        addLog(`ERROR: ${result.error}`);
         toast({ variant: "destructive", title: "Cloud Error", description: result.error });
       }
     } catch (err: any) {
-      addLog(`Pipeline Exception: ${err.message}`);
-      toast({ variant: "destructive", title: "Pipeline Break", description: "Link terminated unexpectedly." });
+      addLog(`FATAL: ${err.message}`);
+      toast({ variant: "destructive", title: "Pipeline Error", description: "Communication with MEGA failed." });
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -224,13 +222,13 @@ export default function ProfilePage() {
                 <p className="text-primary text-[10px] font-black uppercase tracking-widest">@{formData.username || 'username'}</p>
               </div>
 
-              {/* Debug Console */}
+              {/* Enhanced Debug Console */}
               <div className="w-full p-4 bg-black/40 border border-white/5 rounded-2xl text-left space-y-2">
                 <div className="flex items-center gap-2 text-[8px] font-black text-muted-foreground uppercase">
-                  <Terminal className="w-3 h-3" /> System Debug Output
+                  <Terminal className="w-3 h-3 text-primary" /> Sync Pipeline Output
                 </div>
-                <div className="space-y-1">
-                  {debugLogs.length === 0 && <p className="text-[8px] text-muted-foreground italic">Idle</p>}
+                <div className="space-y-1 max-h-[100px] overflow-y-auto no-scrollbar">
+                  {debugLogs.length === 0 && <p className="text-[8px] text-muted-foreground italic">System Idle</p>}
                   {debugLogs.map((log, i) => (
                     <p key={i} className="text-[8px] font-code text-primary leading-tight truncate">{log}</p>
                   ))}
