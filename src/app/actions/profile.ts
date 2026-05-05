@@ -13,37 +13,55 @@ export async function uploadProfileImageToMega(formData: FormData): Promise<{ ur
   const email = process.env.MEGA_EMAIL;
   const password = process.env.MEGA_PASSWORD;
 
-  // Fallback for prototyping if credentials are not yet configured
-  if (!email || !password || email === 'your-email@example.com') {
-    console.warn('MEGA credentials missing. Using placeholder fallback for demo.');
+  // Fallback for prototyping if credentials are not yet configured or are placeholders
+  if (!email || !password || email === 'your-email@example.com' || email.trim() === '') {
+    console.warn('MEGA credentials missing or default. Using Picsum fallback for development.');
     // Return a random high-quality placeholder URL from Picsum
-    return { url: `https://picsum.photos/seed/${Date.now()}/400/400` };
+    // We use the timestamp and a random number to ensure a fresh "upload-like" behavior
+    const randomSeed = Math.floor(Math.random() * 1000);
+    return { url: `https://picsum.photos/seed/${randomSeed}/400/400` };
   }
 
   try {
     // 1. Authenticate with MEGA
-    const storage = await new Storage({ 
-      email, 
-      password,
-      userAgent: 'HappyChat/2.0'
-    }).ready;
+    // We wrap this in a promise to handle the 'ready' state properly
+    const storage = await new Promise<Storage>((resolve, reject) => {
+      const s = new Storage({ 
+        email, 
+        password,
+        userAgent: 'HappyChat/2.0'
+      }, (err) => {
+        if (err) reject(err);
+        else resolve(s);
+      });
+    });
 
     // 2. Prepare file data
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     
     // 3. Upload to MEGA
-    const uploadedFile = await storage.upload({
-      name: `${Date.now()}-${file.name}`,
+    // The upload method returns a stream-like object with a .complete promise in newer versions
+    const uploadOptions = {
+      name: `${Date.now()}-${file.name.replace(/\s+/g, '_')}`,
       size: buffer.length
-    }, buffer).complete;
+    };
+
+    const uploadedFile = await storage.upload(uploadOptions, buffer).complete;
 
     // 4. Generate public link
+    // Note: Link generation might take a moment to be available on some MEGA nodes
     const publicUrl = await uploadedFile.link();
+
+    if (!publicUrl) {
+      throw new Error('Failed to generate a public link for the uploaded file.');
+    }
 
     return { url: publicUrl };
   } catch (error: any) {
-    console.error('MEGA Upload Error:', error);
-    return { error: `MEGA Upload Failed: ${error.message || 'Check your credentials in .env'}` };
+    console.error('MEGA Upload Error Detailed:', error);
+    return { 
+      error: `MEGA Storage Error: ${error.message || 'Connection failed'}. Please verify MEGA_EMAIL and MEGA_PASSWORD.` 
+    };
   }
 }

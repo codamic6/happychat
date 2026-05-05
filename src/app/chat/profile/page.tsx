@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -77,9 +76,14 @@ export default function ProfilePage() {
       return;
     }
     setUsernameStatus('checking');
-    const q = query(collection(db, 'users'), where('username', '==', val.toLowerCase().trim()));
-    const snap = await getDocs(q);
-    setUsernameStatus(snap.empty ? 'available' : 'taken');
+    try {
+      const q = query(collection(db, 'users'), where('username', '==', val.toLowerCase().trim()));
+      const snap = await getDocs(q);
+      setUsernameStatus(snap.empty ? 'available' : 'taken');
+    } catch (e) {
+      console.error("Username check failed", e);
+      setUsernameStatus('idle');
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,14 +101,16 @@ export default function ProfilePage() {
           profileImageUrl: result.url,
           updatedAt: serverTimestamp()
         });
-        toast({ title: "Profile Image Updated", description: "Synced with MEGA storage successfully." });
+        toast({ title: "Profile Image Updated", description: "Identity image synced successfully." });
       } else {
         toast({ variant: "destructive", title: "Upload Failed", description: result.error });
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred during upload." });
+      toast({ variant: "destructive", title: "Error", description: "An unexpected network error occurred." });
     } finally {
       setIsUploading(false);
+      // Reset input so the same file can be uploaded again if needed
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -113,7 +119,7 @@ export default function ProfilePage() {
     if (!user || isSaving) return;
 
     if (usernameStatus === 'taken') {
-      toast({ variant: "destructive", title: "Username Taken", description: "Please choose another handle." });
+      toast({ variant: "destructive", title: "Username Taken", description: "Please choose another unique handle." });
       return;
     }
 
@@ -150,8 +156,7 @@ export default function ProfilePage() {
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#050505] relative custom-scrollbar">
-      <div className="max-w-4xl mx-auto px-6 py-12 md:py-20 space-y-12">
-        {/* Header Section */}
+      <div className="max-w-4xl mx-auto px-6 py-12 md:py-20 space-y-12 pb-32">
         <div className="space-y-4 text-center md:text-left">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -165,20 +170,19 @@ export default function ProfilePage() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Column: Avatar & Status */}
           <div className="lg:col-span-1 space-y-6">
             <Card className="glass p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2.5rem] relative overflow-hidden group">
               <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="relative z-10">
                 <div className="relative">
-                  <Avatar className="w-40 h-40 md:w-48 md:h-48 border-4 border-primary/20 shadow-2xl transition-transform group-hover:scale-105 duration-500">
-                    <AvatarImage src={profile?.profileImageUrl} />
+                  <Avatar className="w-40 h-40 md:w-48 md:h-48 border-4 border-primary/20 shadow-2xl transition-transform group-hover:scale-105 duration-500 bg-[#0d0d0d]">
+                    <AvatarImage src={profile?.profileImageUrl} className="object-cover" />
                     <AvatarFallback className="bg-white/5 text-5xl font-black">{profile?.displayName?.[0] || 'U'}</AvatarFallback>
                   </Avatar>
                   <button 
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
-                    className="absolute bottom-2 right-2 w-12 h-12 bg-primary rounded-full border-4 border-[#0a0a0a] glow-green flex items-center justify-center text-primary-foreground hover:scale-110 transition-transform active:scale-95"
+                    className="absolute bottom-2 right-2 w-12 h-12 bg-primary rounded-full border-4 border-[#0a0a0a] glow-green flex items-center justify-center text-primary-foreground hover:scale-110 transition-transform active:scale-95 disabled:opacity-50"
                   >
                     {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
                   </button>
@@ -224,11 +228,10 @@ export default function ProfilePage() {
                 <ShieldCheck className="w-4 h-4" />
                 <span className="text-[10px] font-black uppercase tracking-widest">Security Status</span>
               </div>
-              <p className="text-xs text-muted-foreground italic leading-relaxed">Your account is secured with E2E Neural Encryption. Recovery keys are managed by your device.</p>
+              <p className="text-xs text-muted-foreground italic leading-relaxed">Your account is secured with E2E Neural Encryption. All identity data is synced across your authorized devices.</p>
             </Card>
           </div>
 
-          {/* Right Column: Edit Form */}
           <div className="lg:col-span-2">
             <form onSubmit={handleSave} className="space-y-6">
               <Card className="glass p-8 md:p-10 border-white/5 rounded-[2.5rem] space-y-8">
@@ -272,7 +275,7 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Email (Immutable)</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Email (Account ID)</Label>
                     <div className="relative opacity-50">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input 
