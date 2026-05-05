@@ -1,333 +1,257 @@
 
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Activity, ShieldCheck, Globe, Zap, Cpu, 
-  Terminal, BarChart3, Clock, AlertCircle, 
-  CheckCircle2, ArrowUpRight, Search, Filter,
-  ChevronDown, MessageSquare
-} from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card } from '@/components/ui/card';
+import { 
+  X, ChevronLeft, ChevronRight, Play, Pause, 
+  MessageSquare, Send, ArrowLeft, Loader2,
+  Maximize2, Volume2
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer 
-} from 'recharts';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
-// Simulated latency data
-const generateData = () => Array.from({ length: 20 }, (_, i) => ({
-  time: i,
-  latency: Math.floor(Math.random() * 40) + 10,
-}));
-
-type Service = {
+type StatusUpdate = {
   id: string;
-  name: string;
-  status: 'online' | 'degraded' | 'offline';
-  uptime: string;
-  latency: string;
-  icon: any;
-  description: string;
+  userId: string;
+  content: string;
+  type: 'text' | 'image';
+  createdAt: any;
+  expiresAt: any;
 };
 
-const SERVICES: Service[] = [
-  { id: 'protocol', name: 'Signal Protocol', status: 'online', uptime: '99.99%', latency: '12ms', icon: ShieldCheck, description: 'End-to-end encryption layer' },
-  { id: 'ai', name: 'AI Neural Link', status: 'online', uptime: '99.95%', latency: '45ms', icon: Cpu, description: 'Genkit cognitive processing' },
-  { id: 'storage', name: 'MEGA Cloud', status: 'online', uptime: '99.90%', latency: '120ms', icon: Globe, description: 'Encrypted object storage' },
-  { id: 'routing', name: 'Edge Routing', status: 'online', uptime: '100%', latency: '8ms', icon: Zap, description: 'Global low-latency delivery' },
-];
+export default function StatusImmersivePage() {
+  const { user } = useUser();
+  const db = useFirestore();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedUid = searchParams.get('uid');
 
-type Incident = {
-  id: string;
-  type: 'security' | 'system' | 'ai';
-  message: string;
-  time: string;
-  severity: 'low' | 'medium' | 'high';
-};
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [replyText, setReplyText] = useState('');
 
-const INITIAL_INCIDENTS: Incident[] = [
-  { id: '1', type: 'security', message: 'RSA-4096 Key Rotation successful on Node-04', time: '2m ago', severity: 'low' },
-  { id: '2', type: 'system', message: 'Automatic scaling: 12 new Edge nodes deployed', time: '5m ago', severity: 'low' },
-  { id: '3', type: 'ai', message: 'Context window expanded for premium clusters', time: '12m ago', severity: 'low' },
-];
+  // Fetch all active statuses
+  const now = new Date();
+  const statusQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(
+      collection(db, 'statuses'),
+      where('expiresAt', '>', now),
+      orderBy('expiresAt', 'asc')
+    );
+  }, [db]);
 
-export default function StatusDashboard() {
-  const [incidents, setIncidents] = useState<Incident[]>(INITIAL_INCIDENTS);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [latencyData, setLatencyData] = useState(generateData());
+  const { data: allStatuses, isLoading } = useCollection<StatusUpdate>(statusQuery);
 
-  // Simulation: Update latency and incidents periodically
+  // Group by user and filter for the selected user
+  const userStatuses = useMemo(() => {
+    if (!allStatuses || !selectedUid) return [];
+    return allStatuses.filter(s => s.userId === selectedUid);
+  }, [allStatuses, selectedUid]);
+
+  const currentStatus = userStatuses[currentIndex];
+
+  // Auto-advance logic
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLatencyData(generateData());
-      
-      if (Math.random() > 0.7) {
-        const newIncident: Incident = {
-          id: Math.random().toString(),
-          type: Math.random() > 0.5 ? 'system' : 'security',
-          message: `Scheduled performance audit completed on Cluster-${Math.floor(Math.random() * 10)}`,
-          time: 'now',
-          severity: 'low'
-        };
-        setIncidents(prev => [newIncident, ...prev].slice(0, 10));
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!currentStatus || isPaused) return;
 
-  const systemMetrics = [
-    { label: 'Global Uptime', value: '99.998%', icon: Activity, trend: '+0.001%' },
-    { label: 'Active Nodes', value: '4,208', icon: Globe, trend: '+12 today' },
-    { label: 'System Load', value: '22%', icon: BarChart3, trend: 'Optimal' },
-  ];
+    const duration = 5000; // 5 seconds per story
+    const interval = 50; // Update every 50ms
+    const step = (interval / duration) * 100;
+
+    const timer = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          handleNext();
+          return 0;
+        }
+        return prev + step;
+      });
+    }, interval);
+
+    return () => clearInterval(timer);
+  }, [currentStatus, currentIndex, isPaused]);
+
+  // Reset index when user changes
+  useEffect(() => {
+    setCurrentIndex(0);
+    setProgress(0);
+  }, [selectedUid]);
+
+  const handleNext = () => {
+    if (currentIndex < userStatuses.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+      setProgress(0);
+    } else {
+      router.push('/chat/status');
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1);
+      setProgress(0);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-black">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (!selectedUid || !currentStatus) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#050505] p-12 text-center space-y-6 opacity-30">
+        <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center glow-green border border-primary/20">
+          <Play className="w-12 h-12 text-primary" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-sm font-black uppercase tracking-[0.4em] italic text-white font-headline">Select a Moment</h3>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Encrypted Social Layer Phase I Active</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex-1 bg-[#050505] overflow-y-auto custom-scrollbar overflow-x-hidden">
-      <div className="max-w-7xl mx-auto px-4 py-8 md:py-12 space-y-12 pb-32">
-        
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="space-y-2">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest"
-            >
-              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> Live System Intelligence
-            </motion.div>
-            <h1 className="text-4xl md:text-6xl font-black font-headline tracking-tighter text-gradient uppercase">Network Status</h1>
-          </div>
-          <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-            <Clock className="w-3 h-3" /> Last check: Just now
-          </div>
-        </div>
+    <div className="flex-1 bg-black relative flex flex-col items-center justify-center overflow-hidden h-full">
+      {/* Background Blur */}
+      <div className="absolute inset-0 z-0 opacity-40 blur-3xl scale-150">
+        {currentStatus.type === 'image' ? (
+          <img src={currentStatus.content} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-primary/30 to-emerald-900/30" />
+        )}
+      </div>
 
-        {/* Global Summary Panel */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {systemMetrics.map((metric, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-            >
-              <Card className="glass p-6 border-white/5 hover:border-primary/20 transition-colors group relative overflow-hidden rounded-[2rem]">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-[50px] -translate-y-1/2 translate-x-1/2 group-hover:bg-primary/10 transition-colors" />
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                    <metric.icon className="w-5 h-5" />
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{metric.label}</span>
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-black font-headline text-white tracking-tighter">{metric.value}</span>
-                  <span className="text-primary text-[10px] font-bold">{metric.trend}</span>
-                </div>
-              </Card>
-            </motion.div>
+      <div className="w-full max-w-lg h-full max-h-[90vh] md:aspect-[9/16] relative z-10 bg-[#0d0d0d] md:rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col">
+        {/* Progress Bars */}
+        <div className="absolute top-6 inset-x-4 flex gap-1 z-50">
+          {userStatuses.map((_, i) => (
+            <div key={i} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-white transition-all duration-75"
+                style={{ 
+                  width: i < currentIndex ? '100%' : i === currentIndex ? `${progress}%` : '0%' 
+                }}
+              />
+            </div>
           ))}
         </div>
 
-        {/* Service Grid - Desktop (Interactive) / Mobile (Accordion) */}
-        <div className="space-y-6">
-          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-            <Activity className="w-3 h-3 text-primary" /> Service Integrity
-          </h3>
-          
-          {/* Desktop Grid */}
-          <div className="hidden lg:grid grid-cols-4 gap-6">
-            {SERVICES.map((service, i) => (
-              <motion.div
-                key={service.id}
-                whileHover={{ y: -5 }}
-                className="group relative h-[320px]"
-              >
-                <Card className="glass h-full p-6 border-white/5 flex flex-col justify-between rounded-[2rem] transition-all duration-500 hover:border-primary/40 group-hover:shadow-[0_0_40px_rgba(0,200,83,0.1)]">
-                  <div>
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-primary/20 group-hover:text-primary transition-colors">
-                        <service.icon className="w-6 h-6" />
-                      </div>
-                      <Badge variant="outline" className="border-primary/20 text-primary text-[8px] uppercase font-black tracking-widest bg-primary/5">
-                        {service.status}
-                      </Badge>
-                    </div>
-                    <h4 className="text-lg font-bold font-headline mb-1">{service.name}</h4>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-6">{service.description}</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
-                      <span className="text-muted-foreground">Latency</span>
-                      <span className="text-primary">{service.latency}</span>
-                    </div>
-                    <div className="h-16 w-full opacity-50 group-hover:opacity-100 transition-opacity">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={latencyData}>
-                          <Area type="monotone" dataKey="latency" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.1} strokeWidth={2} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
+        {/* Header */}
+        <div className="absolute top-12 inset-x-4 flex items-center justify-between z-50">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" size="icon" 
+              onClick={() => router.push('/chat/status')}
+              className="text-white md:hidden"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </Button>
+            <Avatar className="w-10 h-10 border border-white/20">
+              <AvatarImage src={`/api/avatar/${currentStatus.userId}`} />
+              <AvatarFallback className="bg-primary/20 text-primary">U</AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="text-sm font-bold text-white uppercase tracking-tight">Viewing Moment</p>
+              <p className="text-[10px] text-primary font-black uppercase tracking-widest">Live Sync</p>
+            </div>
           </div>
-
-          {/* Mobile Accordion */}
-          <div className="lg:hidden space-y-4">
-            <Accordion type="single" collapsible className="space-y-4">
-              {SERVICES.map((service) => (
-                <AccordionItem key={service.id} value={service.id} className="border-none">
-                  <Card className="glass border-white/5 rounded-[2rem] overflow-hidden">
-                    <AccordionTrigger className="px-6 py-6 hover:no-underline">
-                      <div className="flex items-center gap-4 text-left">
-                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
-                          <service.icon className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold font-headline">{service.name}</h4>
-                          <span className={cn(
-                            "text-[8px] font-black uppercase tracking-widest",
-                            service.status === 'online' ? "text-primary" : "text-destructive"
-                          )}>{service.status}</span>
-                        </div>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-6 pb-6">
-                      <div className="space-y-6 pt-4 border-t border-white/5">
-                        <p className="text-[10px] text-muted-foreground leading-relaxed">{service.description}</p>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                            <span className="block text-[8px] font-black uppercase text-muted-foreground mb-1">Uptime</span>
-                            <span className="text-sm font-bold">{service.uptime}</span>
-                          </div>
-                          <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                            <span className="block text-[8px] font-black uppercase text-muted-foreground mb-1">Latency</span>
-                            <span className="text-sm font-bold text-primary">{service.latency}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </AccordionContent>
-                  </Card>
-                </AccordionItem>
-              ))}
-            </Accordion>
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="ghost" size="icon" 
+              onClick={() => setIsPaused(!isPaused)}
+              className="text-white/60 hover:text-white"
+            >
+              {isPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
+            </Button>
+            <Button 
+              variant="ghost" size="icon" 
+              onClick={() => router.push('/chat/status')}
+              className="text-white/60 hover:text-white"
+            >
+              <X className="w-6 h-6" />
+            </Button>
           </div>
         </div>
 
-        {/* Incident Stream & Live Feed */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Live Incident Stream */}
-          <div className="space-y-6">
-            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
-              <Terminal className="w-3 h-3 text-primary" /> Live Event Feed
-            </h3>
-            <Card className="glass border-white/5 rounded-[2.5rem] p-6 space-y-2 max-h-[400px] overflow-y-auto no-scrollbar relative">
-              <div className="absolute top-0 left-0 right-0 h-12 bg-gradient-to-b from-[#0a0a0a] to-transparent z-10 pointer-events-none" />
-              <div className="pt-4 space-y-2">
-                <AnimatePresence initial={false}>
-                  {incidents.map((incident) => (
-                    <motion.div
-                      key={incident.id}
-                      initial={{ opacity: 0, x: -20, height: 0 }}
-                      animate={{ opacity: 1, x: 0, height: 'auto' }}
-                      exit={{ opacity: 0, x: 20 }}
-                      className="p-4 bg-white/5 border border-white/5 rounded-2xl flex items-start gap-4 hover:bg-white/10 transition-colors"
-                    >
-                      <div className={cn(
-                        "w-2 h-2 rounded-full shrink-0 mt-1.5",
-                        incident.severity === 'high' ? "bg-destructive animate-pulse" : "bg-primary"
-                      )} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-white/90 leading-relaxed font-medium">
-                          <span className="text-[10px] font-bold uppercase text-primary mr-2">[{incident.type}]</span>
-                          {incident.message}
-                        </p>
-                        <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mt-2 block">{incident.time}</span>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#0a0a0a] to-transparent z-10 pointer-events-none" />
-            </Card>
-          </div>
-
-          {/* System Diagnostics Filtering */}
-          <div className="space-y-6">
-            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
-              <Filter className="w-3 h-3 text-primary" /> Advanced Diagnostics
-            </h3>
-            <Card className="glass border-white/5 rounded-[2.5rem] p-8 space-y-8">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search logs..." 
-                    className="bg-white/5 border-white/10 pl-10 h-12 rounded-xl text-xs"
-                  />
+        {/* Content Area */}
+        <div className="flex-1 flex flex-col items-center justify-center relative group p-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentStatus.id}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              className="w-full h-full flex flex-col items-center justify-center"
+            >
+              {currentStatus.type === 'image' ? (
+                <img 
+                  src={currentStatus.content} 
+                  className="w-full h-full object-contain md:rounded-2xl" 
+                  alt="Status"
+                />
+              ) : (
+                <div className="text-center space-y-6 px-4">
+                  <p className="text-3xl md:text-4xl font-black font-headline text-white leading-tight italic tracking-tighter">
+                    "{currentStatus.content}"
+                  </p>
                 </div>
-                <Button variant="outline" className="h-12 border-white/10 rounded-xl gap-2 text-xs font-bold uppercase tracking-widest">
-                  Severity <ChevronDown className="w-4 h-4" />
-                </Button>
-              </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
 
-              <div className="space-y-4">
-                {[
-                  { service: 'Protocol', msg: 'Key handshake successful', time: '14:22:01', status: 'pass' },
-                  { service: 'AI Link', msg: 'Prompt token optimization', time: '14:21:44', status: 'pass' },
-                  { service: 'Network', msg: 'Node switching: Sydney -> Tokyo', time: '14:20:12', status: 'warn' },
-                ].map((log, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-primary/20 transition-all cursor-pointer">
-                    <div className="flex items-center gap-4">
-                      <div className={cn(
-                        "w-2 h-2 rounded-full",
-                        log.status === 'pass' ? "bg-primary" : "bg-yellow-500"
-                      )} />
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-bold text-white uppercase tracking-tight">{log.service}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{log.msg}</p>
-                      </div>
-                    </div>
-                    <span className="text-[8px] font-black text-muted-foreground font-mono">{log.time}</span>
-                  </div>
-                ))}
-              </div>
+          {/* Navigation Tap Zones */}
+          <div className="absolute inset-y-24 left-0 w-1/3 z-20" onClick={handlePrev} />
+          <div className="absolute inset-y-24 right-0 w-1/3 z-20" onClick={handleNext} />
+        </div>
 
-              <Button className="w-full h-14 bg-white/5 border border-white/10 hover:bg-primary hover:text-primary-foreground font-black uppercase tracking-widest text-[10px] rounded-xl transition-all">
-                Export Full System Report <ArrowUpRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Card>
+        {/* Footer / Reply */}
+        <div className="p-6 bg-gradient-to-t from-black/80 to-transparent relative z-30">
+          <div className="flex gap-2 max-w-md mx-auto">
+            <Input 
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Send a reply..."
+              className="bg-white/10 border-white/20 rounded-full h-12 text-sm text-white placeholder:text-white/40 focus-visible:ring-primary"
+            />
+            <Button size="icon" className="h-12 w-12 rounded-full bg-primary hover:glow-green text-primary-foreground shrink-0">
+              <Send className="w-5 h-5" />
+            </Button>
           </div>
         </div>
+      </div>
 
-        {/* Footer Integrity Quote */}
-        <div className="pt-12 text-center space-y-4">
-           <div className="flex items-center justify-center gap-2 text-primary/40 text-[10px] font-black uppercase tracking-[0.4em]">
-             <ShieldCheck className="w-4 h-4" /> End-To-End Security Active
-           </div>
-           <p className="text-[10px] text-muted-foreground uppercase tracking-widest max-w-lg mx-auto leading-relaxed">
-             HappyChat Network integrity is verified by distributed zero-trust architecture. 
-             Status metrics are updated every 500ms via Edge Logic.
-           </p>
-        </div>
-
+      {/* Desktop Quick Nav */}
+      <div className="hidden lg:block absolute left-12 top-1/2 -translate-y-1/2 space-y-4">
+        <Button 
+          variant="outline" size="icon" 
+          onClick={handlePrev}
+          className="h-12 w-12 rounded-full border-white/10 bg-black/40 text-white hover:bg-primary hover:text-primary-foreground"
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </Button>
+      </div>
+      <div className="hidden lg:block absolute right-12 top-1/2 -translate-y-1/2 space-y-4">
+        <Button 
+          variant="outline" size="icon" 
+          onClick={handleNext}
+          className="h-12 w-12 rounded-full border-white/10 bg-black/40 text-white hover:bg-primary hover:text-primary-foreground"
+        >
+          <ChevronRight className="w-6 h-6" />
+        </Button>
       </div>
     </div>
   );
 }
-

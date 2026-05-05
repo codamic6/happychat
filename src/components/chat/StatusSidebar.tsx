@@ -1,16 +1,19 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, MoreVertical, Loader2, Send, Globe } from 'lucide-react';
+import { Plus, Camera, Type, Loader2, Search, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit, addDoc, serverTimestamp, where, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, where, getDocs } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { toast } from '@/hooks/use-toast';
+import { useRouter, usePathname } from 'next/navigation';
+import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import { StatusComposer } from '@/components/chat/StatusComposer';
 
 type UserProfile = {
   id: string;
@@ -24,28 +27,55 @@ type StatusUpdate = {
   id: string;
   userId: string;
   content: string;
+  type: 'text' | 'image';
   createdAt: any;
+  expiresAt: any;
 };
 
 export function StatusSidebar() {
   const { user } = useUser();
   const db = useFirestore();
-  const [newStatus, setNewStatus] = useState('');
-  const [isPosting, setIsPosting] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile>>({});
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
 
+  // Only show statuses that haven't expired
+  const now = new Date();
   const statusQuery = useMemoFirebase(() => {
     if (!db) return null;
-    return query(collection(db, 'statuses'), orderBy('createdAt', 'desc'), limit(50));
+    return query(
+      collection(db, 'statuses'),
+      where('expiresAt', '>', now),
+      orderBy('expiresAt', 'asc'),
+      limit(100)
+    );
   }, [db]);
 
-  const { data: statuses } = useCollection<StatusUpdate>(statusQuery);
+  const { data: rawStatuses } = useCollection<StatusUpdate>(statusQuery);
+
+  // Group statuses by user
+  const groupedStatuses = useMemo(() => {
+    if (!rawStatuses) return [];
+    const groups: Record<string, StatusUpdate[]> = {};
+    rawStatuses.forEach(s => {
+      if (!groups[s.userId]) groups[s.userId] = [];
+      groups[s.userId].push(s);
+    });
+    
+    // Sort groups so "My Status" is first, then others by latest update
+    return Object.entries(groups).sort(([uidA], [uidB]) => {
+      if (uidA === user?.uid) return -1;
+      if (uidB === user?.uid) return 1;
+      return 0;
+    });
+  }, [rawStatuses, user?.uid]);
 
   useEffect(() => {
-    if (!statuses || !db) return;
+    if (!rawStatuses || !db) return;
 
     const fetchProfiles = async () => {
-      const uids = Array.from(new Set(statuses.map(s => s.userId)));
+      const uids = Array.from(new Set(rawStatuses.map(s => s.userId)));
       const missingUids = uids.filter(uid => !userProfiles[uid]);
 
       if (missingUids.length > 0) {
@@ -62,114 +92,117 @@ export function StatusSidebar() {
     };
 
     fetchProfiles();
-  }, [statuses, db]);
+  }, [rawStatuses, db]);
 
-  const handlePostStatus = async () => {
-    if (!newStatus.trim() || !user || !db) return;
-    setIsPosting(true);
-    try {
-      await addDoc(collection(db, 'statuses'), {
-        userId: user.uid,
-        content: newStatus,
-        createdAt: serverTimestamp(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h
-      });
-      setNewStatus('');
-      toast({ title: "Status Updated", description: "Your update is now visible to contacts." });
-    } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Could not post update." });
-    } finally {
-      setIsPosting(false);
-    }
-  };
+  const myStatusGroup = groupedStatuses.find(([uid]) => uid === user?.uid);
+  const otherStatusGroups = groupedStatuses.filter(([uid]) => uid !== user?.uid);
 
   return (
     <div className="flex flex-col h-full bg-[#0d0d0d]">
-      <div className="p-4 md:p-6 space-y-6">
+      <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl md:text-2xl font-bold font-headline text-white tracking-tighter uppercase">Updates</h2>
-          <Button size="icon" variant="ghost" className="rounded-xl hover:bg-white/5 text-muted-foreground">
-            <MoreVertical className="w-5 h-5" />
-          </Button>
+          <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase">Updates</h2>
+          <Dialog open={isComposerOpen} onOpenChange={setIsComposerOpen}>
+            <DialogTrigger asChild>
+              <Button size="icon" variant="ghost" className="rounded-full bg-primary/10 text-primary hover:bg-primary/20 glow-green">
+                <Plus className="w-6 h-6" />
+              </Button>
+            </DialogTrigger>
+            <StatusComposer onSuccess={() => setIsComposerOpen(false)} />
+          </Dialog>
         </div>
 
-        <div className="glass p-4 rounded-3xl border border-white/5 space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center glow-green shrink-0">
-              <Plus className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 text-left">
-              <p className="text-xs font-bold text-white uppercase tracking-widest">My Update</p>
-              <p className="text-[10px] text-muted-foreground">Share what's on your mind</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Input 
-              value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value)}
-              placeholder="What's happening?"
-              className="bg-white/5 border-white/10 h-10 text-xs rounded-full focus-visible:ring-primary"
-            />
-            <Button 
-              size="icon" 
-              onClick={handlePostStatus}
-              disabled={isPosting || !newStatus.trim()}
-              className="rounded-full h-10 w-10 shrink-0"
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search updates..." 
+            className="bg-white/5 border-white/10 pl-12 h-12 text-sm rounded-full focus-visible:ring-primary"
+          />
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1 px-3">
+        <div className="space-y-6 pb-24">
+          {/* My Status Section */}
+          <div className="space-y-4 px-3">
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">My Status</h3>
+            <button 
+              onClick={() => myStatusGroup && router.push(`/chat/status?uid=${user?.uid}`)}
+              className="w-full flex items-center gap-4 p-2 rounded-2xl hover:bg-white/5 transition-all text-left group"
             >
-              {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-6 pb-2">
-        <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-4">Recent Updates</h3>
-      </div>
-
-      <ScrollArea className="flex-1">
-        <div className="px-3 pb-24 md:pb-6 space-y-1">
-          {statuses?.map((status) => {
-            const profile = userProfiles[status.userId];
-            if (!profile) return null;
-
-            const name = profile.displayName || profile.fullName || 'User';
-            const initials = name.charAt(0).toUpperCase();
-            const avatarSrc = profile.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${profile.id}?t=${Date.now()}` : null;
-
-            return (
-              <div key={status.id} className="w-full p-4 rounded-3xl flex items-center gap-4 hover:bg-white/5 transition-all group border border-transparent">
-                <div className="relative shrink-0">
-                  <div className="w-12 h-12 rounded-full border-2 border-primary/40 p-0.5 glow-green">
-                    <div className="w-full h-full rounded-full border border-white/10 overflow-hidden bg-[#111] flex items-center justify-center">
-                      {avatarSrc ? (
-                        <img src={avatarSrc} alt={name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="text-sm font-bold text-primary">{initials}</div>
-                      )}
-                    </div>
+              <div className="relative shrink-0">
+                <div className={cn(
+                  "w-14 h-14 rounded-full p-1 transition-all",
+                  myStatusGroup ? "bg-gradient-to-tr from-primary to-emerald-400 p-[2px] glow-green" : "border-2 border-dashed border-white/10"
+                )}>
+                  <div className="w-full h-full rounded-full bg-[#111] overflow-hidden flex items-center justify-center">
+                    {user?.photoURL ? (
+                      <img src={user.photoURL} className="w-full h-full object-cover" />
+                    ) : (
+                      <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                    )}
                   </div>
-                </div>
-                <div className="flex-1 text-left min-w-0">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className="font-bold text-sm text-white truncate">{name}</span>
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">
-                      {status.createdAt?.toDate ? formatDistanceToNow(status.createdAt.toDate(), { addSuffix: true }) : ''}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground italic truncate">
-                    {status.content}
-                  </p>
                 </div>
               </div>
-            );
-          })}
+              <div>
+                <p className="font-bold text-sm text-white">My Status</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
+                  {myStatusGroup ? 'Tap to view' : 'Share a moment'}
+                </p>
+              </div>
+            </button>
+          </div>
 
-          {(!statuses || statuses.length === 0) && (
-            <div className="p-12 text-center space-y-4 opacity-30">
-              <Globe className="w-12 h-12 mx-auto" />
-              <p className="text-[10px] font-bold uppercase tracking-widest">No recent updates</p>
+          {/* Contacts' Status Section */}
+          <div className="space-y-4 px-3">
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Recent Updates</h3>
+            <div className="space-y-1">
+              {otherStatusGroups.map(([uid, items]) => {
+                const profile = userProfiles[uid];
+                if (!profile) return null;
+                const name = profile.displayName || profile.fullName || 'User';
+                const latest = items[items.length - 1];
+                const isSelected = pathname.includes(`/chat/status`) && new URLSearchParams(window.location.search).get('uid') === uid;
+
+                return (
+                  <button 
+                    key={uid}
+                    onClick={() => router.push(`/chat/status?uid=${uid}`)}
+                    className={cn(
+                      "w-full p-3 rounded-2xl flex items-center gap-4 transition-all hover:bg-white/5 text-left",
+                      isSelected && "bg-white/5"
+                    )}
+                  >
+                    <div className="relative shrink-0">
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-primary to-emerald-400 p-[2px] glow-green">
+                        <div className="w-full h-full rounded-full bg-[#111] overflow-hidden flex items-center justify-center border-2 border-[#0d0d0d]">
+                          {profile.profileImageUrl?.includes('mega.nz') ? (
+                            <img src={`/api/avatar/${uid}`} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="text-xl font-bold text-primary">{(profile.displayName || profile.fullName || 'U').charAt(0)}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-white truncate">{name}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                        {latest.createdAt?.toDate ? formatDistanceToNow(latest.createdAt.toDate(), { addSuffix: true }) : ''}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+
+              {otherStatusGroups.length === 0 && (
+                <div className="py-12 text-center space-y-3 opacity-20">
+                  <Clock className="w-10 h-10 mx-auto text-muted-foreground" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em]">No new updates</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </ScrollArea>
     </div>
