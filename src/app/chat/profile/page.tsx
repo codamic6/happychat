@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Camera, Loader2, LogOut, Settings, Save, CheckCircle2,
+  Camera, Loader2, LogOut, Settings, Save, CheckCircle2, ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -155,19 +155,28 @@ export default function ProfilePage() {
   return (
     <div className="flex-1 overflow-y-auto bg-[#050505] custom-scrollbar overflow-x-hidden">
       <div className="max-w-4xl mx-auto px-4 py-8 md:py-20 space-y-8 pb-32">
-        <div className="space-y-2 text-center md:text-left">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest"
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => router.push('/chat')}
+            className="md:hidden self-start text-muted-foreground hover:text-white mb-2"
           >
-            <Settings className="w-3 h-3" /> Profile Settings
-          </motion.div>
-          <h1 className="text-3xl md:text-6xl font-bold font-headline tracking-tighter text-gradient">My Account</h1>
+            <ArrowLeft className="w-6 h-6" />
+          </Button>
+          <div className="space-y-2">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest"
+            >
+              <Settings className="w-3 h-3" /> Account Settings
+            </motion.div>
+            <h1 className="text-3xl md:text-6xl font-bold font-headline tracking-tighter text-gradient">My Profile</h1>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Avatar Section */}
           <div className="lg:col-span-1">
             <Card className="glass p-6 md:p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2rem]">
               <div className="relative">
@@ -235,7 +244,6 @@ export default function ProfilePage() {
             </Card>
           </div>
 
-          {/* Form Section */}
           <div className="lg:col-span-2">
             <form onSubmit={handleSave} className="space-y-6">
               <Card className="glass p-6 md:p-8 border-white/5 rounded-[2rem] space-y-6">

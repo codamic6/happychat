@@ -177,8 +177,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   return (
     <div className="flex flex-col h-full relative bg-[#050505] overflow-hidden">
-      {/* Fixed Header - Always visible */}
-      <header className="flex-none h-16 px-4 md:px-6 border-b border-white/5 flex items-center justify-between bg-black/80 backdrop-blur-3xl z-40">
+      {/* Fixed Header */}
+      <header className="flex-none h-16 px-4 md:px-6 border-b border-white/5 flex items-center justify-between bg-black/80 backdrop-blur-3xl z-40 sticky top-0">
         <div className="flex items-center gap-3 overflow-hidden flex-1">
           <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground hover:text-white">
             <ArrowLeft className="w-6 h-6" />
@@ -205,7 +205,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                  <div className="text-sm font-bold text-primary">{initials}</div>
                )}
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 text-left">
               <h3 className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors">
                 {otherName}
               </h3>
@@ -265,8 +265,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
         </div>
       </div>
 
-      {/* Fixed Footer - Message input always visible */}
-      <footer className="flex-none p-4 bg-[#0a0a0a] border-t border-white/5 z-40">
+      {/* Fixed Footer */}
+      <footer className="flex-none p-4 bg-[#0a0a0a] border-t border-white/5 z-40 sticky bottom-0">
         <div className="flex items-center gap-3 max-w-5xl mx-auto">
           <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-white shrink-0 bg-white/5 rounded-xl h-11 w-11">
             <Paperclip className="w-5 h-5" />

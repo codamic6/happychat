@@ -41,10 +41,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             <Sparkles className="w-12 h-12 text-primary" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase">Loading App</h2>
+            <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase">HappyChat</h2>
             <div className="flex items-center justify-center gap-2 text-primary text-xs font-bold uppercase tracking-widest">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Secure Connection
+              Connecting...
             </div>
           </div>
         </motion.div>
@@ -56,8 +56,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
   const mobileTabs = [
     { label: 'Chats', icon: MessageSquare, href: '/chat' },
-    { label: 'Status', icon: Globe, href: '/chat' },
-    { label: 'AI Assistant', icon: Sparkles, href: '/ai-assistant' },
+    { label: 'Explore', icon: Globe, href: '/chat' },
+    { label: 'Assistant', icon: Sparkles, href: '/ai-assistant' },
     { label: 'Contacts', icon: Users, href: '/chat' },
     { label: 'Profile', icon: UserCircle, href: '/chat/profile' },
   ];
@@ -90,7 +90,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         <div className="flex flex-1 overflow-hidden h-full relative">
-          {/* Chat Sidebar / List View - Hide on mobile if in chat */}
+          {/* Chat Sidebar / List View - Hide on mobile if in chat or profile */}
           <aside className={cn(
             "w-full md:w-80 border-r border-white/5 bg-[#0d0d0d] flex flex-col shrink-0 h-full transition-all duration-300",
             (isAtConversation || isProfilePage) && "hidden md:flex lg:flex",
@@ -109,7 +109,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         </div>
       </div>
 
-      {/* Mobile Bottom Navigation - Hide during active chat to prioritize chat input */}
+      {/* Mobile Bottom Navigation - Hide only when in an active chat */}
       <nav className={cn(
         "md:hidden h-20 bg-[#0d0d0d] border-t border-white/5 flex items-center justify-around px-4 pb-safe shrink-0 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]",
         isAtConversation && "hidden"
