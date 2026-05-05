@@ -90,9 +90,8 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file || !user || !db) return;
 
-    // Client side size check
     if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: "destructive", title: "File Too Large", description: "Please upload an image smaller than 5MB." });
+      toast({ variant: "destructive", title: "File Too Large", description: "Limit is 5MB." });
       return;
     }
 
@@ -104,7 +103,7 @@ export default function ProfilePage() {
       const result = await uploadProfileImageToMega(megaFormData);
       
       if ('url' in result) {
-        // Update Firestore user document with the new public URL
+        // Critical: Update Firestore with the permanent public URL
         const userDocRef = doc(db, 'users', user.uid);
         await updateDoc(userDocRef, {
           profileImageUrl: result.url,
@@ -112,21 +111,21 @@ export default function ProfilePage() {
         });
         
         toast({ 
-          title: "Identity Verified", 
-          description: "Your profile photo has been synced with MEGA cloud storage." 
+          title: "Identity Synced", 
+          description: "Your cloud avatar has been updated across the network." 
         });
       } else {
         toast({ 
           variant: "destructive", 
-          title: "Protocol Error", 
-          description: result.error || "Failed to establish storage link." 
+          title: "Storage Error", 
+          description: result.error || "Failed to sync with MEGA storage." 
         });
       }
     } catch (err: any) {
       toast({ 
         variant: "destructive", 
-        title: "Connection Lost", 
-        description: "An unexpected network error occurred during sync." 
+        title: "Connection Failed", 
+        description: "Network timeout during identity sync." 
       });
     } finally {
       setIsUploading(false);
@@ -139,7 +138,7 @@ export default function ProfilePage() {
     if (!user || isSaving || !db) return;
 
     if (usernameStatus === 'taken') {
-      toast({ variant: "destructive", title: "ID Conflict", description: "This username is already claimed in the network." });
+      toast({ variant: "destructive", title: "ID Conflict", description: "Username already claimed." });
       return;
     }
 
@@ -154,9 +153,9 @@ export default function ProfilePage() {
         isOnline: formData.isOnline,
         updatedAt: serverTimestamp()
       });
-      toast({ title: "Neural Sync Complete", description: "Your digital identity has been updated across the network." });
+      toast({ title: "Profile Updated", description: "Your digital identity has been synchronized." });
     } catch (err) {
-      toast({ variant: "destructive", title: "Sync Failed", description: "Could not update identity parameters." });
+      toast({ variant: "destructive", title: "Update Failed", description: "Could not sync identity data." });
     } finally {
       setIsSaving(false);
     }
@@ -184,10 +183,10 @@ export default function ProfilePage() {
             animate={{ opacity: 1, y: 0 }}
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em]"
           >
-            <Settings className="w-3 h-3" /> Identity Control Panel
+            <Settings className="w-3 h-3" /> Identity Management
           </motion.div>
           <h1 className="text-4xl md:text-6xl font-black font-headline italic tracking-tighter uppercase text-gradient">My Profile</h1>
-          <p className="text-muted-foreground text-sm uppercase font-bold tracking-[0.3em]">Manage your neural identity across HappyChat</p>
+          <p className="text-muted-foreground text-sm uppercase font-bold tracking-[0.3em]">Configure your global neural signature</p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -227,7 +226,7 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
                   <div className="flex items-center gap-3">
                     <div className={cn("w-2 h-2 rounded-full", formData.isOnline ? "bg-primary glow-green" : "bg-muted-foreground")} />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white">Online Status</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white">Online Presence</span>
                   </div>
                   <Switch 
                     checked={formData.isOnline} 
@@ -240,7 +239,7 @@ export default function ProfilePage() {
                   onClick={handleSignOut}
                   className="w-full h-12 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 font-black uppercase text-[10px] tracking-widest border border-transparent hover:border-destructive/20"
                 >
-                  <LogOut className="w-4 h-4 mr-2" /> Sign Out Session
+                  <LogOut className="w-4 h-4 mr-2" /> End Neural Link
                 </Button>
               </div>
             </Card>
@@ -248,9 +247,9 @@ export default function ProfilePage() {
             <Card className="glass p-6 border-white/5 rounded-[2rem] space-y-4">
               <div className="flex items-center gap-2 text-primary">
                 <ShieldCheck className="w-4 h-4" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Security Status</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">Cloud Security</span>
               </div>
-              <p className="text-xs text-muted-foreground italic leading-relaxed">Your account is secured with E2E Neural Encryption. All identity data is synced across your authorized devices and stored securely in MEGA cloud.</p>
+              <p className="text-xs text-muted-foreground italic leading-relaxed">Identity assets are stored in encrypted MEGA cloud silos. Only public neural links are stored in the primary network ledger.</p>
             </Card>
           </div>
 
@@ -266,7 +265,7 @@ export default function ProfilePage() {
                         value={formData.displayName}
                         onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
                         className="h-14 bg-white/5 border-white/5 pl-12 rounded-xl focus-visible:ring-primary focus-visible:ring-offset-0 transition-all"
-                        placeholder="e.g. John Doe"
+                        placeholder="Neural ID"
                       />
                     </div>
                   </div>
@@ -286,18 +285,18 @@ export default function ProfilePage() {
                           "h-14 bg-white/5 border-white/5 pl-12 rounded-xl focus-visible:ring-primary focus-visible:ring-offset-0 transition-all",
                           usernameStatus === 'taken' && "border-destructive focus-visible:ring-destructive"
                         )}
-                        placeholder="e.g. johndoe"
+                        placeholder="Network Handle"
                       />
                       <div className="absolute right-4 top-1/2 -translate-y-1/2">
                         {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
                         {usernameStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-primary" />}
-                        {usernameStatus === 'taken' && <span className="text-[8px] font-bold text-destructive">TAKEN</span>}
+                        {usernameStatus === 'taken' && <span className="text-[8px] font-bold text-destructive uppercase">Claimed</span>}
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Email (Account ID)</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Account Email</Label>
                     <div className="relative opacity-50">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input 
@@ -309,28 +308,28 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Secure Line (Phone)</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Secure Comms (Phone)</Label>
                     <div className="relative group">
                       <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                       <Input 
                         value={formData.phoneNumber}
                         onChange={(e) => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
                         className="h-14 bg-white/5 border-white/5 pl-12 rounded-xl focus-visible:ring-primary focus-visible:ring-offset-0 transition-all"
-                        placeholder="+1 234 567 890"
+                        placeholder="+1 XXX XXX XXXX"
                       />
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">About / Bio</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Identity Status / Bio</Label>
                   <div className="relative group">
                     <Info className="absolute left-4 top-5 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                     <Textarea 
                       value={formData.about}
                       onChange={(e) => setFormData(prev => ({ ...prev, about: e.target.value }))}
                       className="min-h-[120px] bg-white/5 border-white/10 pl-12 pt-4 rounded-xl focus-visible:ring-primary focus-visible:ring-offset-0 transition-all resize-none"
-                      placeholder="Tell the world about yourself..."
+                      placeholder="What is your current objective?"
                     />
                   </div>
                 </div>
@@ -343,7 +342,7 @@ export default function ProfilePage() {
                   >
                     {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                       <>
-                        <Save className="w-5 h-5" /> Sync Profile Changes
+                        <Save className="w-5 h-5" /> Sync Global Identity
                       </>
                     )}
                   </Button>
@@ -351,10 +350,10 @@ export default function ProfilePage() {
               </Card>
 
               <div className="flex items-center justify-between px-4 opacity-50">
-                <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Version 2.0.9-Stable</p>
+                <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">HC Protocol v2.1-Stable</p>
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-3 h-3 text-primary" />
-                  <span className="text-[8px] font-black uppercase tracking-widest text-primary">AI Neural Sync Active</span>
+                  <span className="text-[8px] font-black uppercase tracking-widest text-primary">MEGA Cloud Sync Active</span>
                 </div>
               </div>
             </form>

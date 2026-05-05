@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -20,7 +19,6 @@ type UserProfile = {
   fullName?: string;
   username: string;
   email: string;
-  profileImage?: string;
   profileImageUrl?: string;
 };
 
@@ -125,7 +123,7 @@ export function ChatSidebar() {
           <Input 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search chats, contacts..." 
+            placeholder="Search chats..." 
             className="bg-white/5 border-white/10 pl-12 h-12 text-sm rounded-full focus-visible:ring-primary focus-visible:ring-offset-0 transition-all"
           />
         </div>
@@ -141,7 +139,7 @@ export function ChatSidebar() {
             const isSelected = pathname === `/chat/${conv.id}`;
             const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
             const name = profile.displayName || profile.fullName || 'User';
-            const avatar = profile.profileImage || profile.profileImageUrl;
+            const avatar = profile.profileImageUrl;
 
             return (
               <button 
@@ -156,7 +154,7 @@ export function ChatSidebar() {
               >
                 <div className="relative shrink-0">
                   <Avatar className="w-14 h-14 border border-white/10">
-                    <AvatarImage src={avatar} />
+                    <AvatarImage src={avatar} className="object-cover" />
                     <AvatarFallback className="bg-white/5 text-white font-black">{name[0]}</AvatarFallback>
                   </Avatar>
                   <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />

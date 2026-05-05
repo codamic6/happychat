@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -43,7 +42,6 @@ type UserProfile = {
   username: string;
   email: string;
   phoneNumber?: string;
-  profileImage?: string;
   profileImageUrl?: string;
   about?: string;
 };
@@ -175,7 +173,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   }
 
   const otherName = otherProfile.displayName || otherProfile.fullName || 'Anonymous';
-  const otherAvatar = otherProfile.profileImage || otherProfile.profileImageUrl;
+  const otherAvatar = otherProfile.profileImageUrl;
 
   return (
     <div className="flex-1 flex overflow-hidden h-full flex-col relative bg-[#050505]">
@@ -186,7 +184,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
           </Button>
           <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
             <Avatar className="w-10 h-10 border border-primary/20 shadow-lg">
-              <AvatarImage src={otherAvatar} />
+              <AvatarImage src={otherAvatar} className="object-cover" />
               <AvatarFallback className="bg-white/5 font-black">{otherName[0]}</AvatarFallback>
             </Avatar>
             <div className="min-w-0">
@@ -221,12 +219,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
       <ScrollArea className="flex-1 relative bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-fixed opacity-[0.98]">
         <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6 pb-24 md:pb-32">
-          <div className="flex justify-center py-4">
-             <div className="px-5 py-2 rounded-full glass border border-primary/20 text-[9px] font-black uppercase tracking-[0.2em] text-primary glow-green">
-               E2E Neural Encryption Enabled
-             </div>
-          </div>
-
           {messages.map((msg) => {
             const isOwn = msg.senderId === user?.uid;
             return (
@@ -245,12 +237,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
               </motion.div>
             );
           })}
-          {messages.length === 0 && !isNewChat && (
-            <div className="flex flex-col items-center justify-center h-full opacity-20 pt-20">
-              <ShieldCheck className="w-16 h-16 text-primary mb-4" />
-              <p className="text-xs font-black uppercase tracking-widest">Secure session established</p>
-            </div>
-          )}
           <div ref={scrollRef} />
         </div>
       </ScrollArea>
@@ -289,9 +275,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
                   <Button size="icon" variant="ghost" onClick={() => setShowProfile(false)} className="h-10 w-10 rounded-full"><X className="w-6 h-6" /></Button>
                 </div>
                 <div className="flex flex-col items-center text-center space-y-8">
-                  <Avatar className="w-40 h-40 md:w-48 md:h-48 border-4 border-primary/20 shadow-2xl relative z-10">
-                    <AvatarImage src={otherAvatar} />
-                    <AvatarFallback className="text-6xl font-black bg-[#111]">{otherName[0]}</AvatarFallback>
+                  <Avatar className="w-40 h-40 md:w-48 md:h-48 border-4 border-primary/20 shadow-2xl relative z-10 bg-[#111]">
+                    <AvatarImage src={otherAvatar} className="object-cover" />
+                    <AvatarFallback className="text-6xl font-black">{otherName[0]}</AvatarFallback>
                   </Avatar>
                   <div className="space-y-2">
                     <h2 className="text-3xl md:text-4xl font-black font-headline italic tracking-tighter uppercase text-gradient">{otherName}</h2>

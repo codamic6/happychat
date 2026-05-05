@@ -22,6 +22,7 @@ export async function uploadProfileImageToMega(formData: FormData): Promise<{ ur
 
   try {
     // 1. Authenticate with MEGA
+    // Wrapping in a promise for better async handling with megajs v1
     const storage = await new Promise<Storage>((resolve, reject) => {
       const s = new Storage({ 
         email, 
@@ -38,7 +39,6 @@ export async function uploadProfileImageToMega(formData: FormData): Promise<{ ur
     const buffer = Buffer.from(arrayBuffer);
     
     // 3. Upload to MEGA
-    // We create a unique name to avoid collisions
     const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
     const uploadOptions = {
       name: fileName,
@@ -49,15 +49,13 @@ export async function uploadProfileImageToMega(formData: FormData): Promise<{ ur
     const uploadedFile = await storage.upload(uploadOptions, buffer).complete;
 
     // 4. Generate permanent public link
-    // Note: link(true) usually generates the key-included link needed for public access
+    // Note: link(true) is critical for public access
     const publicUrl = await uploadedFile.link();
 
     if (!publicUrl) {
       throw new Error('Upload succeeded but failed to generate a public link.');
     }
 
-    // MEGA links are usually formatted for the webapp, but we need the direct file or 
-    // a format that Next.js Image can handle. Public links often look like mega.nz/file/...
     return { url: publicUrl };
   } catch (error: any) {
     console.error('MEGA Upload Critical Error:', error);
