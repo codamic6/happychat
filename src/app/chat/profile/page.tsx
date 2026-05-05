@@ -91,7 +91,7 @@ export default function ProfilePage() {
     if (!file || !user || !db) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: "destructive", title: "File Too Large", description: "Limit is 5MB." });
+      toast({ variant: "destructive", title: "Identity Asset Too Large", description: "Limit is 5MB for neural sync." });
       return;
     }
 
@@ -103,7 +103,6 @@ export default function ProfilePage() {
       const result = await uploadProfileImageToMega(megaFormData);
       
       if ('url' in result) {
-        // Critical: Update Firestore with the permanent public URL
         const userDocRef = doc(db, 'users', user.uid);
         await updateDoc(userDocRef, {
           profileImageUrl: result.url,
@@ -117,15 +116,15 @@ export default function ProfilePage() {
       } else {
         toast({ 
           variant: "destructive", 
-          title: "Storage Error", 
-          description: result.error || "Failed to sync with MEGA storage." 
+          title: "Cloud Sync Error", 
+          description: result.error || "Failed to communicate with MEGA storage." 
         });
       }
     } catch (err: any) {
       toast({ 
         variant: "destructive", 
-        title: "Connection Failed", 
-        description: "Network timeout during identity sync." 
+        title: "Link Terminated", 
+        description: "Network timeout during identity synchronization." 
       });
     } finally {
       setIsUploading(false);
@@ -153,9 +152,9 @@ export default function ProfilePage() {
         isOnline: formData.isOnline,
         updatedAt: serverTimestamp()
       });
-      toast({ title: "Profile Updated", description: "Your digital identity has been synchronized." });
+      toast({ title: "Protocol Updated", description: "Your digital identity has been synchronized." });
     } catch (err) {
-      toast({ variant: "destructive", title: "Update Failed", description: "Could not sync identity data." });
+      toast({ variant: "destructive", title: "Update Failed", description: "Could not sync identity data to the ledger." });
     } finally {
       setIsSaving(false);
     }

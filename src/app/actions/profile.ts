@@ -3,64 +3,75 @@
 import { Storage } from 'megajs';
 
 /**
- * Uploads a file to MEGA storage and returns a permanent public link.
- * Handles authentication, streaming upload, and public link generation.
+ * Initializes and returns a ready MEGA storage instance.
+ * Credentials are fetched from environment variables for security.
+ */
+async function getMegaStorage(): Promise<Storage> {
+  const email = process.env.MEGA_EMAIL;
+  const password = process.env.MEGA_PASSWORD;
+
+  if (!email || !password || email === 'your-email@example.com' || email.trim() === '') {
+    throw new Error('MEGA_EMAIL or MEGA_PASSWORD environment variables are missing.');
+  }
+
+  return new Promise((resolve, reject) => {
+    const storage = new Storage({ 
+      email, 
+      password,
+      userAgent: 'HappyChat/2.1'
+    }, (err) => {
+      if (err) reject(err);
+      else resolve(storage);
+    });
+  });
+}
+
+/**
+ * Uploads a profile image to MEGA storage and returns a permanent public link.
+ * Handles the stream-based upload process and public link generation.
  */
 export async function uploadProfileImageToMega(formData: FormData): Promise<{ url: string } | { error: string }> {
   const file = formData.get('file') as File;
   if (!file) return { error: 'No file provided' };
 
-  const email = process.env.MEGA_EMAIL;
-  const password = process.env.MEGA_PASSWORD;
-
-  // Fallback for prototyping if credentials are not yet configured
-  if (!email || !password || email === 'your-email@example.com' || email.trim() === '') {
-    console.warn('MEGA credentials missing. Using Picsum fallback for development.');
-    const randomSeed = Math.floor(Math.random() * 1000);
-    return { url: `https://picsum.photos/seed/${randomSeed}/400/400` };
-  }
-
   try {
-    // 1. Authenticate with MEGA
-    // Wrapping in a promise for better async handling with megajs v1
-    const storage = await new Promise<Storage>((resolve, reject) => {
-      const s = new Storage({ 
-        email, 
-        password,
-        userAgent: 'HappyChat/2.0'
-      }, (err) => {
-        if (err) reject(err);
-        else resolve(s);
-      });
-    });
+    // 1. Initialize Storage
+    const storage = await getMegaStorage();
 
-    // 2. Prepare file data
+    // 2. Prepare File Data
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    
-    // 3. Upload to MEGA
     const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-    const uploadOptions = {
+
+    // 3. Perform Upload
+    // The 'complete' property on the upload stream is a promise that resolves to the file object
+    const uploadedFile = await storage.upload({
       name: fileName,
       size: buffer.length
-    };
+    }, buffer).complete;
 
-    // The upload method in megajs v1 returns a stream-like object with a .complete promise
-    const uploadedFile = await storage.upload(uploadOptions, buffer).complete;
-
-    // 4. Generate permanent public link
-    // Note: link(true) is critical for public access
-    const publicUrl = await uploadedFile.link();
+    // 4. Generate Permanent Public Link
+    // link(true) ensures the link is public and includes the key for decryption
+    const publicUrl = await uploadedFile.link(true);
 
     if (!publicUrl) {
-      throw new Error('Upload succeeded but failed to generate a public link.');
+      throw new Error('Upload successful but failed to generate public access link.');
     }
 
+    // MEGA links often need a slight delay or specific formatting for direct embedding, 
+    // but the .link() method provides the base shareable URL.
     return { url: publicUrl };
   } catch (error: any) {
-    console.error('MEGA Upload Critical Error:', error);
+    console.error('MEGA Core Service Error:', error);
+    
+    // Fallback for development if credentials are valid but connection fails
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('MEGA Upload failed, using development placeholder.');
+      return { url: `https://picsum.photos/seed/${Date.now()}/400/400` };
+    }
+
     return { 
-      error: `MEGA Storage Error: ${error.message || 'Unknown error'}. Check your credentials.` 
+      error: `MEGA Storage Sync Failed: ${error.message || 'Internal connection error'}` 
     };
   }
 }
