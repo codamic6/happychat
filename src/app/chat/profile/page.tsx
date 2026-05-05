@@ -1,13 +1,10 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Camera, Loader2, LogOut, Settings, UserCircle, Save, CheckCircle2,
-  ShieldCheck, User
+  Camera, Loader2, LogOut, Settings, Save, CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -95,18 +92,18 @@ export default function ProfilePage() {
     try {
       const result = await uploadProfileImageToMega(megaFormData);
       
-      if ('url' in result) {
+      if (result && 'url' in result) {
         const userDocRef = doc(db, 'users', user.uid);
         await updateDoc(userDocRef, {
           profileImageUrl: result.url,
           updatedAt: serverTimestamp()
         });
-        toast({ title: "Photo Updated", description: "Your profile photo has been saved." });
+        toast({ title: "Photo Updated", description: "Your photo has been saved." });
       } else {
         toast({ 
           variant: "destructive", 
           title: "Error", 
-          description: result.error || "Failed to upload photo." 
+          description: "Failed to upload photo. Check your account settings." 
         });
       }
     } catch (err: any) {
@@ -156,24 +153,25 @@ export default function ProfilePage() {
   const avatarSrc = profile?.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${profile?.id}?t=${Date.now()}` : null;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#050505] relative custom-scrollbar overflow-x-hidden">
-      <div className="max-w-4xl mx-auto px-4 py-8 md:py-20 space-y-8 md:space-y-12 pb-32">
-        <div className="space-y-4 text-center lg:text-left">
+    <div className="flex-1 overflow-y-auto bg-[#050505] custom-scrollbar overflow-x-hidden">
+      <div className="max-w-4xl mx-auto px-4 py-8 md:py-20 space-y-8 pb-32">
+        <div className="space-y-2 text-center md:text-left">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest"
           >
-            <Settings className="w-3 h-3" /> Account Settings
+            <Settings className="w-3 h-3" /> Profile Settings
           </motion.div>
-          <h1 className="text-4xl md:text-6xl font-bold font-headline tracking-tighter text-gradient">My Profile</h1>
+          <h1 className="text-3xl md:text-6xl font-bold font-headline tracking-tighter text-gradient">My Account</h1>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8 items-start">
-          <div className="lg:col-span-1 w-full">
-            <Card className="glass p-6 md:p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2rem] relative overflow-hidden group">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Avatar Section */}
+          <div className="lg:col-span-1">
+            <Card className="glass p-6 md:p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2rem]">
               <div className="relative">
-                <div className="w-32 h-32 md:w-48 md:h-48 rounded-full border-4 border-primary/20 shadow-2xl bg-[#0d0d0d] overflow-hidden flex items-center justify-center">
+                <div className="w-32 h-32 md:w-44 md:h-44 rounded-full border-4 border-primary/20 shadow-2xl bg-[#0d0d0d] overflow-hidden flex items-center justify-center">
                   {avatarSrc ? (
                     <img 
                       src={avatarSrc} 
@@ -200,7 +198,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="absolute bottom-1 right-1 md:bottom-2 md:right-2 w-10 h-10 md:w-12 md:h-12 bg-primary rounded-full border-4 border-[#0a0a0a] glow-green flex items-center justify-center text-primary-foreground hover:scale-110 transition-transform active:scale-95 disabled:opacity-50"
+                  className="absolute bottom-1 right-1 w-10 h-10 bg-primary rounded-full border-4 border-[#0a0a0a] glow-green flex items-center justify-center text-primary-foreground hover:scale-110 transition-transform active:scale-95 disabled:opacity-50"
                 >
                   {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
                 </button>
@@ -214,13 +212,13 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-xl font-bold font-headline text-white">{formData.displayName || 'Unnamed User'}</h3>
+                <h3 className="text-lg font-bold font-headline text-white">{formData.displayName || 'User'}</h3>
                 <p className="text-primary text-[10px] font-bold uppercase tracking-widest">@{formData.username || 'username'}</p>
               </div>
 
-              <div className="w-full pt-4 space-y-4">
+              <div className="w-full pt-4 space-y-3">
                 <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white">Show Online</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white">Online Status</span>
                   <Switch 
                     checked={formData.isOnline} 
                     onCheckedChange={(val) => setFormData(prev => ({ ...prev, isOnline: val }))}
@@ -237,16 +235,17 @@ export default function ProfilePage() {
             </Card>
           </div>
 
-          <div className="lg:col-span-2 w-full">
+          {/* Form Section */}
+          <div className="lg:col-span-2">
             <form onSubmit={handleSave} className="space-y-6">
-              <Card className="glass p-6 md:p-10 border-white/5 rounded-[2rem] space-y-6 md:space-y-8">
+              <Card className="glass p-6 md:p-8 border-white/5 rounded-[2rem] space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
                     <input 
                       value={formData.displayName}
                       onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
-                      className="h-14 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="h-12 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white focus:outline-none focus:ring-1 focus:ring-primary text-sm"
                     />
                   </div>
 
@@ -260,7 +259,7 @@ export default function ProfilePage() {
                           setFormData(prev => ({ ...prev, username: val }));
                           handleCheckUsername(val);
                         }}
-                        className={cn("h-14 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white focus:outline-none focus:ring-1 focus:ring-primary", usernameStatus === 'taken' && "border-destructive")}
+                        className={cn("h-12 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white focus:outline-none focus:ring-1 focus:ring-primary text-sm", usernameStatus === 'taken' && "border-destructive")}
                       />
                       <div className="absolute right-4 top-1/2 -translate-y-1/2">
                         {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
@@ -275,13 +274,13 @@ export default function ProfilePage() {
                     <input 
                       value={formData.phoneNumber}
                       onChange={(e) => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                      className="h-14 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="h-12 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white focus:outline-none focus:ring-1 focus:ring-primary text-sm"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Email Address</Label>
-                    <input value={profile?.email || ''} readOnly className="h-14 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white opacity-50 cursor-not-allowed" />
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Email</Label>
+                    <input value={profile?.email || ''} readOnly className="h-12 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white opacity-50 cursor-not-allowed text-sm" />
                   </div>
                 </div>
 
@@ -290,20 +289,18 @@ export default function ProfilePage() {
                   <Textarea 
                     value={formData.about}
                     onChange={(e) => setFormData(prev => ({ ...prev, about: e.target.value }))}
-                    className="min-h-[120px] bg-white/5 border-white/10 rounded-xl resize-none"
+                    className="min-h-[100px] bg-white/5 border-white/10 rounded-xl resize-none text-sm"
                     placeholder="Tell us about yourself..."
                   />
                 </div>
 
-                <div className="pt-4">
-                  <Button 
-                    type="submit"
-                    disabled={isSaving || usernameStatus === 'taken'}
-                    className="w-full h-16 bg-primary hover:glow-green-bright text-primary-foreground font-bold uppercase text-sm tracking-widest rounded-2xl transition-all"
-                  >
-                    {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Changes'}
-                  </Button>
-                </div>
+                <Button 
+                  type="submit"
+                  disabled={isSaving || usernameStatus === 'taken'}
+                  className="w-full h-14 bg-primary hover:glow-green-bright text-primary-foreground font-bold uppercase text-xs tracking-widest rounded-xl transition-all"
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Profile'}
+                </Button>
               </Card>
             </form>
           </div>
