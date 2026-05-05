@@ -4,8 +4,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   User, AtSign, Mail, Phone, Info, Camera, Loader2, 
-  Save, CheckCircle2, ShieldCheck, LogOut, ChevronRight, 
-  Sparkles, Globe, Settings, Eye, EyeOff
+  Save, CheckCircle2, ShieldCheck, LogOut, Settings, 
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,15 +22,17 @@ import { uploadProfileImageToMega } from '@/app/actions/profile';
 import { signOut } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 type UserProfile = {
   id: string;
+  fullName: string;
   displayName: string;
   username: string;
   email: string;
   phoneNumber: string;
   about: string;
-  profileImage: string;
+  profileImageUrl: string;
   isOnline: boolean;
   updatedAt: any;
 };
@@ -92,7 +94,7 @@ export default function ProfilePage() {
       const result = await uploadProfileImageToMega(megaFormData);
       if ('url' in result) {
         await updateDoc(doc(db, 'users', user.uid), {
-          profileImage: result.url,
+          profileImageUrl: result.url,
           updatedAt: serverTimestamp()
         });
         toast({ title: "Profile Image Updated", description: "Synced with MEGA storage successfully." });
@@ -170,7 +172,7 @@ export default function ProfilePage() {
               <div className="relative z-10">
                 <div className="relative">
                   <Avatar className="w-40 h-40 md:w-48 md:h-48 border-4 border-primary/20 shadow-2xl transition-transform group-hover:scale-105 duration-500">
-                    <AvatarImage src={profile?.profileImage || profile?.profileImageUrl} />
+                    <AvatarImage src={profile?.profileImageUrl} />
                     <AvatarFallback className="bg-white/5 text-5xl font-black">{profile?.displayName?.[0] || 'U'}</AvatarFallback>
                   </Avatar>
                   <button 
@@ -336,8 +338,4 @@ export default function ProfilePage() {
       </div>
     </div>
   );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
 }
