@@ -1,11 +1,9 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  User, AtSign, Mail, Phone, Info, Camera, Loader2, 
-  Save, CheckCircle2, ShieldCheck, LogOut, Settings, 
-  Sparkles, Terminal
+  Camera, Loader2, LogOut, Settings, UserCircle, Save, CheckCircle2,
+  Terminal, ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,12 +55,6 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
-
-  const addLog = (msg: string) => {
-    console.log(`[PROFILE DEBUG] ${msg}`);
-    setDebugLogs(prev => [...prev.slice(-10), `> ${msg}`]);
-  };
 
   useEffect(() => {
     if (profile) {
@@ -95,29 +87,21 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file || !user || !db) return;
 
-    addLog(`INIT: Preparing upload for "${file.name}"`);
     setIsUploading(true);
     const megaFormData = new FormData();
     megaFormData.append('file', file);
 
     try {
-      addLog('ACTION: Calling MEGA Secure Sync...');
       const result = await uploadProfileImageToMega(megaFormData);
       
       if ('url' in result) {
-        addLog(`SUCCESS: Identity Link Generated`);
         const userDocRef = doc(db, 'users', user.uid);
-        
-        addLog('FIRESTORE: Updating Identity Record...');
         await updateDoc(userDocRef, {
           profileImageUrl: result.url,
           updatedAt: serverTimestamp()
         });
-
-        addLog('SYNC: Identity Synchronized ✅');
         toast({ title: "Identity Updated", description: "Profile photo is now live globally." });
       } else {
-        addLog(`CRITICAL ERROR: ${result.error}`);
         toast({ 
           variant: "destructive", 
           title: "Cloud Error", 
@@ -125,7 +109,6 @@ export default function ProfilePage() {
         });
       }
     } catch (err: any) {
-      addLog(`FATAL: ${err.message}`);
       toast({ variant: "destructive", title: "Pipeline Error", description: "Communication with MEGA failed." });
     } finally {
       setIsUploading(false);
@@ -169,14 +152,13 @@ export default function ProfilePage() {
     );
   }
 
-  // Use the proxy URL only if a real image exists
   const hasRealImage = profile?.profileImageUrl && profile.profileImageUrl.includes('mega.nz');
   const avatarSrc = hasRealImage ? `/api/avatar/${profile?.id}?t=${Date.now()}` : null;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#050505] relative custom-scrollbar">
-      <div className="max-w-4xl mx-auto px-6 py-12 md:py-20 space-y-12 pb-32">
-        <div className="space-y-4 text-center md:text-left">
+    <div className="flex-1 overflow-y-auto bg-[#050505] relative custom-scrollbar overflow-x-hidden">
+      <div className="max-w-4xl mx-auto px-4 py-8 md:py-20 space-y-8 md:space-y-12 pb-32">
+        <div className="space-y-4 text-center lg:text-left">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -184,14 +166,15 @@ export default function ProfilePage() {
           >
             <Settings className="w-3 h-3" /> Identity Management
           </motion.div>
-          <h1 className="text-4xl md:text-6xl font-black font-headline italic tracking-tighter uppercase text-gradient">My Profile</h1>
+          <h1 className="text-4xl md:text-6xl font-bold font-headline tracking-tighter uppercase text-gradient">My Profile</h1>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1 space-y-6">
-            <Card className="glass p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2.5rem] relative overflow-hidden group">
+        <div className="grid lg:grid-cols-3 gap-8 items-start">
+          {/* Profile Card Sidebar */}
+          <div className="lg:col-span-1 w-full">
+            <Card className="glass p-6 md:p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2rem] md:rounded-[2.5rem] relative overflow-hidden group">
               <div className="relative">
-                <div className="w-40 h-40 md:w-48 md:h-48 rounded-full border-4 border-primary/20 shadow-2xl bg-[#0d0d0d] overflow-hidden flex items-center justify-center">
+                <div className="w-32 h-32 md:w-48 md:h-48 rounded-full border-4 border-primary/20 shadow-2xl bg-[#0d0d0d] overflow-hidden flex items-center justify-center">
                   {avatarSrc ? (
                     <img 
                       src={avatarSrc} 
@@ -218,7 +201,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="absolute bottom-2 right-2 w-12 h-12 bg-primary rounded-full border-4 border-[#0a0a0a] glow-green flex items-center justify-center text-primary-foreground hover:scale-110 transition-transform active:scale-95 disabled:opacity-50"
+                  className="absolute bottom-1 right-1 md:bottom-2 md:right-2 w-10 h-10 md:w-12 md:h-12 bg-primary rounded-full border-4 border-[#0a0a0a] glow-green flex items-center justify-center text-primary-foreground hover:scale-110 transition-transform active:scale-95 disabled:opacity-50"
                 >
                   {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
                 </button>
@@ -232,26 +215,13 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-xl font-bold font-headline italic uppercase text-white">{formData.displayName || 'Unnamed User'}</h3>
+                <h3 className="text-xl font-bold font-headline uppercase text-white">{formData.displayName || 'Unnamed User'}</h3>
                 <p className="text-primary text-[10px] font-black uppercase tracking-widest">@{formData.username || 'username'}</p>
-              </div>
-
-              {/* Enhanced Debug Console */}
-              <div className="w-full p-4 bg-black/40 border border-white/5 rounded-2xl text-left space-y-2">
-                <div className="flex items-center gap-2 text-[8px] font-black text-muted-foreground uppercase">
-                  <Terminal className="w-3 h-3 text-primary" /> Sync Pipeline Output
-                </div>
-                <div className="space-y-1 max-h-[120px] overflow-y-auto no-scrollbar">
-                  {debugLogs.length === 0 && <p className="text-[8px] text-muted-foreground italic">System Idle</p>}
-                  {debugLogs.map((log, i) => (
-                    <p key={i} className="text-[8px] font-code text-primary leading-tight truncate">{log}</p>
-                  ))}
-                </div>
               </div>
 
               <div className="w-full pt-4 space-y-4">
                 <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white">Online Presence</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white">Presence</span>
                   <Switch 
                     checked={formData.isOnline} 
                     onCheckedChange={(val) => setFormData(prev => ({ ...prev, isOnline: val }))}
@@ -268,10 +238,11 @@ export default function ProfilePage() {
             </Card>
           </div>
 
-          <div className="lg:col-span-2">
+          {/* Form Content */}
+          <div className="lg:col-span-2 w-full">
             <form onSubmit={handleSave} className="space-y-6">
-              <Card className="glass p-8 md:p-10 border-white/5 rounded-[2.5rem] space-y-8">
-                <div className="grid md:grid-cols-2 gap-6">
+              <Card className="glass p-6 md:p-10 border-white/5 rounded-[2rem] md:rounded-[2.5rem] space-y-6 md:space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Display Name</Label>
                     <Input 
@@ -325,13 +296,15 @@ export default function ProfilePage() {
                   />
                 </div>
 
-                <Button 
-                  type="submit"
-                  disabled={isSaving || usernameStatus === 'taken'}
-                  className="w-full h-16 bg-primary hover:glow-green-bright text-primary-foreground font-black uppercase text-sm tracking-[0.3em] rounded-2xl transition-all"
-                >
-                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sync Global Identity'}
-                </Button>
+                <div className="pt-4">
+                  <Button 
+                    type="submit"
+                    disabled={isSaving || usernameStatus === 'taken'}
+                    className="w-full h-16 bg-primary hover:glow-green-bright text-primary-foreground font-black uppercase text-sm tracking-[0.3em] rounded-2xl transition-all"
+                  >
+                    {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sync Global Identity'}
+                  </Button>
+                </div>
               </Card>
             </form>
           </div>
