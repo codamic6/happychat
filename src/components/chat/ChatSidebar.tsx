@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -188,16 +187,19 @@ export function ChatSidebar() {
                   </div>
                   <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
                 </div>
-                <div className="flex-1 text-left min-w-0 pr-2">
-                  <div className="flex items-center justify-between mb-1 gap-2">
-                    <span className="font-bold text-sm text-white truncate">{name}</span>
+                {/* min-w-0 is critical for child truncation inside a flex container */}
+                <div className="flex-1 text-left min-w-0 pr-1 overflow-hidden">
+                  <div className="flex items-center justify-between mb-1 gap-2 min-w-0">
+                    <span className="font-bold text-sm text-white truncate flex-1 min-w-0">
+                      {name}
+                    </span>
                     <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter shrink-0">
                       {conv.updatedAt?.toDate ? formatShortTime(conv.updatedAt.toDate()) : ''}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center justify-between gap-3 min-w-0">
                     <p className={cn(
-                      "text-[11px] truncate flex-1",
+                      "text-[11px] truncate flex-1 min-w-0",
                       unreadCount > 0 ? "text-white font-bold" : "text-muted-foreground"
                     )}>
                       {conv.lastMessage || `Secure chat`}
