@@ -115,8 +115,8 @@ export function ChatSidebar() {
   }, [conversations, searchQuery, chatProfiles, user]);
 
   return (
-    <div className="flex flex-col h-full bg-[#0d0d0d]">
-      <div className="p-4 md:p-6 space-y-6">
+    <div className="flex flex-col h-full bg-[#0d0d0d] w-full overflow-hidden">
+      <div className="p-4 md:p-6 space-y-6 flex-none">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-xl md:text-2xl font-bold font-headline text-white tracking-tighter uppercase">Chats</h2>
@@ -137,8 +137,8 @@ export function ChatSidebar() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="px-3 pb-24 md:pb-6 space-y-1">
+      <ScrollArea className="flex-1 w-full overflow-hidden">
+        <div className="px-3 pb-24 md:pb-6 space-y-1 w-full overflow-hidden">
           {filteredConversations.map((conv) => {
             const otherId = conv.participantIds.find(id => id !== user?.uid);
             const profile = otherId ? chatProfiles[otherId] : null;
@@ -156,7 +156,7 @@ export function ChatSidebar() {
                 key={conv.id}
                 onClick={() => router.push(`/chat/${conv.id}`)}
                 className={cn(
-                  "w-full p-4 rounded-3xl flex items-center gap-4 transition-all group border border-transparent overflow-hidden",
+                  "w-full p-4 rounded-3xl flex items-center gap-4 transition-all group border border-transparent overflow-hidden max-w-full",
                   isSelected 
                     ? "bg-primary/10 border-primary/20 shadow-[0_0_20px_rgba(0,200,83,0.1)]" 
                     : "hover:bg-white/5"
@@ -187,22 +187,23 @@ export function ChatSidebar() {
                   </div>
                   <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
                 </div>
-                {/* min-w-0 is critical for child truncation inside a flex container */}
-                <div className="flex-1 text-left min-w-0 pr-1 overflow-hidden">
-                  <div className="flex items-center justify-between mb-1 gap-2 min-w-0">
-                    <span className="font-bold text-sm text-white truncate flex-1 min-w-0">
+                
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden text-left pr-2">
+                  <div className="flex items-center justify-between gap-2 min-w-0 w-full mb-1">
+                    <span className="font-bold text-sm text-white truncate min-w-0 flex-1 overflow-hidden">
                       {name}
                     </span>
                     <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter shrink-0">
                       {conv.updatedAt?.toDate ? formatShortTime(conv.updatedAt.toDate()) : ''}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between gap-3 min-w-0">
+                  
+                  <div className="flex items-center justify-between gap-3 min-w-0 w-full">
                     <p className={cn(
-                      "text-[11px] truncate flex-1 min-w-0",
+                      "text-[11px] truncate min-w-0 flex-1 overflow-hidden whitespace-nowrap",
                       unreadCount > 0 ? "text-white font-bold" : "text-muted-foreground"
                     )}>
-                      {conv.lastMessage || `Secure chat`}
+                      {conv.lastMessage || `Secure conversation`}
                     </p>
                     {unreadCount > 0 && (
                       <Badge className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center shrink-0">
