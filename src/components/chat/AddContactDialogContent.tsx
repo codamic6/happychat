@@ -60,7 +60,7 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
       }
       setHasSearched(true);
     } catch (err) {
-      toast({ variant: "destructive", title: "Scan Failed", description: "Database access error." });
+      toast({ variant: "destructive", title: "Search Failed", description: "Could not find user." });
     } finally {
       setIsSearching(false);
     }
@@ -71,20 +71,28 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
 
     setIsAdding(true);
     try {
-      // 1. Add to personal contact list (Sender only)
-      await setDoc(doc(db, 'users', currentUserId, 'contacts', foundUser.id), {
+      // 1. Add target to current user's list
+      const myRef = doc(db, 'users', currentUserId, 'contacts', foundUser.id);
+      await setDoc(myRef, {
         userId: foundUser.id,
         addedAt: serverTimestamp(),
       });
 
-      toast({ title: "Contact Synced", description: `${foundUser.fullName} added to address book.` });
+      // 2. Add current user to target's list (Mutual Connection)
+      // This ensures both can see each other's status updates instantly.
+      const theirRef = doc(db, 'users', foundUser.id, 'contacts', currentUserId);
+      await setDoc(theirRef, {
+        userId: currentUserId,
+        addedAt: serverTimestamp(),
+      });
+
+      toast({ title: "Contact Added", description: `${foundUser.fullName} is now in your network.` });
       
-      // 2. Navigate to a "potential" new chat. 
-      // The ConversationView will handle creating the doc on the first message.
       onSuccess();
       router.push(`/chat/new-${foundUser.id}`);
     } catch (err) {
-      toast({ variant: "destructive", title: "Sync Failed", description: "Could not establish connection." });
+      console.error(err);
+      toast({ variant: "destructive", title: "Action Failed", description: "Could not add contact." });
     } finally {
       setIsAdding(false);
     }
@@ -93,11 +101,11 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
   return (
     <DialogContent className="sm:max-w-md bg-[#0a0a0a] border-white/5 text-white p-0 overflow-hidden rounded-[2.5rem]">
       <DialogHeader className="p-8 pb-4">
-        <DialogTitle className="text-2xl font-black font-headline italic uppercase tracking-tight flex items-center gap-3 text-gradient">
-          <UserPlus className="text-primary w-6 h-6" /> Find Identity
+        <DialogTitle className="text-2xl font-bold font-headline uppercase tracking-tight flex items-center gap-3 text-gradient">
+          <UserPlus className="text-primary w-6 h-6" /> Find User
         </DialogTitle>
-        <DialogDescription className="text-muted-foreground text-[10px] uppercase font-bold tracking-[0.3em]">
-          Locate user by email or secure line
+        <DialogDescription className="text-muted-foreground text-[10px] font-bold uppercase tracking-[0.3em]">
+          Search by email or phone number
         </DialogDescription>
       </DialogHeader>
 
@@ -125,24 +133,24 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass p-6 rounded-3xl border border-white/5 space-y-4">
               <div className="flex items-center gap-4">
                 <Avatar className="w-16 h-16 border-2 border-primary/20">
-                  <AvatarImage src={foundUser.profileImageUrl} />
+                  <AvatarImage src={`/api/avatar/${foundUser.id}`} />
                   <AvatarFallback>{foundUser.fullName[0]}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0 text-left">
                   <h4 className="text-lg font-bold text-white truncate font-headline">{foundUser.fullName}</h4>
-                  <p className="text-xs text-muted-foreground font-black uppercase tracking-widest">@{foundUser.username}</p>
+                  <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">@{foundUser.username}</p>
                 </div>
               </div>
-              <Button onClick={handleAddContact} disabled={isAdding} className="w-full h-12 bg-primary hover:glow-green-bright text-primary-foreground font-black uppercase text-xs tracking-[0.2em] rounded-xl transition-all">
+              <Button onClick={handleAddContact} disabled={isAdding} className="w-full h-12 bg-primary hover:glow-green-bright text-primary-foreground font-bold uppercase text-xs tracking-[0.2em] rounded-xl transition-all">
                 {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-                  <>Add to Network <Plus className="w-4 h-4 ml-2" /></>
+                  <>Add Contact <Plus className="w-4 h-4 ml-2" /></>
                 )}
               </Button>
             </motion.div>
           ) : hasSearched && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-8 space-y-3">
               <Search className="w-8 h-8 mx-auto text-muted-foreground/30" />
-              <p className="text-sm font-bold text-white uppercase italic font-headline">No Identity Found</p>
+              <p className="text-sm font-bold text-white uppercase font-headline">No user found</p>
             </motion.div>
           )}
         </AnimatePresence>
