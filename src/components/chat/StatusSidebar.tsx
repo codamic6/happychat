@@ -125,8 +125,16 @@ export function StatusSidebar() {
     });
   }, [otherStatusGroups, searchQuery, userProfiles]);
 
+  const handleMyStatusClick = () => {
+    if (myStatusGroup) {
+      router.push(`/chat/status?uid=${user?.uid}`);
+    } else {
+      setIsComposerOpen(true);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-[#0d0d0d]">
+    <div className="flex flex-col h-full bg-[#0d0d0d] relative">
       <div className="p-4 md:p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -165,7 +173,7 @@ export function StatusSidebar() {
           <div className="space-y-4 px-3">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">My Status</h3>
             <button 
-              onClick={() => myStatusGroup && router.push(`/chat/status?uid=${user?.uid}`)}
+              onClick={handleMyStatusClick}
               className="w-full flex items-center gap-4 p-2 rounded-2xl hover:bg-white/5 transition-all text-left group"
             >
               <div className="relative shrink-0">
@@ -236,6 +244,16 @@ export function StatusSidebar() {
           </div>
         </div>
       </ScrollArea>
+
+      {/* Mobile FAB for adding status */}
+      <div className="md:hidden absolute bottom-24 right-6 z-50">
+        <Button 
+          onClick={() => setIsComposerOpen(true)}
+          className="h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-2xl glow-green hover:scale-110 active:scale-95 transition-all"
+        >
+          <Plus className="w-8 h-8" />
+        </Button>
+      </div>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -32,12 +33,22 @@ export function StatusComposer({ onSuccess }: { onSuccess: () => void }) {
     if (mode === 'camera') {
       const getCameraPermission = async () => {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'user' }, 
+            audio: false 
+          });
           setHasCameraPermission(true);
-          if (videoRef.current) videoRef.current.srcObject = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
         } catch (error) {
+          console.error('Camera error:', error);
           setHasCameraPermission(false);
-          toast({ variant: 'destructive', title: 'Camera Access Denied', description: 'Please allow camera access in settings.' });
+          toast({ 
+            variant: 'destructive', 
+            title: 'Camera Access Denied', 
+            description: 'Please allow camera access in browser settings.' 
+          });
           setMode('text');
         }
       };
@@ -114,35 +125,35 @@ export function StatusComposer({ onSuccess }: { onSuccess: () => void }) {
   };
 
   return (
-    <DialogContent className="sm:max-w-md bg-[#0a0a0a] border-white/5 text-white p-0 overflow-hidden rounded-[2.5rem]">
-      <DialogHeader className="p-8 pb-4">
-        <DialogTitle className="text-2xl font-bold font-headline italic uppercase tracking-tight text-gradient">
+    <DialogContent className="sm:max-w-md bg-[#0a0a0a] border-white/5 text-white p-0 overflow-hidden rounded-[2.5rem] max-h-[90vh] flex flex-col">
+      <DialogHeader className="p-6 pb-2 shrink-0">
+        <DialogTitle className="text-2xl font-bold font-headline uppercase tracking-tight text-gradient">
           Share a Moment
         </DialogTitle>
         <DialogDescription className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
-          Your update will vanish in 24 hours
+          Vanish in 24 hours
         </DialogDescription>
       </DialogHeader>
 
-      <div className="px-8 pb-8 space-y-6">
-        <div className="flex gap-4 border-b border-white/5 pb-4">
+      <div className="px-6 pb-6 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex gap-2 border-b border-white/5 pb-4 shrink-0">
           <Button 
             variant="ghost" 
             onClick={() => setMode('text')}
-            className={cn("flex-1 rounded-xl h-12 gap-2 font-bold uppercase text-[10px] tracking-widest", mode === 'text' ? "bg-primary/20 text-primary" : "text-muted-foreground")}
+            className={cn("flex-1 rounded-xl h-10 gap-2 font-bold uppercase text-[10px] tracking-widest", mode === 'text' ? "bg-primary/20 text-primary" : "text-muted-foreground")}
           >
             <Type className="w-4 h-4" /> Text
           </Button>
           <Button 
             variant="ghost" 
             onClick={() => setMode('camera')}
-            className={cn("flex-1 rounded-xl h-12 gap-2 font-bold uppercase text-[10px] tracking-widest", mode === 'camera' ? "bg-primary/20 text-primary" : "text-muted-foreground")}
+            className={cn("flex-1 rounded-xl h-10 gap-2 font-bold uppercase text-[10px] tracking-widest", mode === 'camera' ? "bg-primary/20 text-primary" : "text-muted-foreground")}
           >
             <Camera className="w-4 h-4" /> Camera
           </Button>
         </div>
 
-        <div className="relative aspect-[4/5] bg-white/5 rounded-3xl overflow-hidden group">
+        <div className="relative aspect-[4/5] bg-white/5 rounded-3xl overflow-hidden group shrink-0">
           <AnimatePresence mode="wait">
             {mode === 'text' && !imagePreview ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full w-full p-8 flex flex-col items-center justify-center bg-gradient-to-br from-primary/10 to-emerald-900/20">
@@ -150,12 +161,12 @@ export function StatusComposer({ onSuccess }: { onSuccess: () => void }) {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder="What's on your mind?"
-                  className="bg-transparent border-none text-2xl font-black font-headline text-center resize-none placeholder:text-white/20 h-full flex items-center justify-center italic tracking-tighter"
+                  className="bg-transparent border-none text-2xl font-black font-headline text-center resize-none placeholder:text-white/20 h-full flex items-center justify-center tracking-tighter"
                 />
               </motion.div>
             ) : imagePreview ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full w-full relative">
-                <img src={imagePreview} className="w-full h-full object-cover" />
+                <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
                 <Button 
                   size="icon" variant="ghost" 
                   onClick={() => { setImagePreview(null); setImageFile(null); }}
@@ -166,15 +177,19 @@ export function StatusComposer({ onSuccess }: { onSuccess: () => void }) {
               </motion.div>
             ) : mode === 'camera' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full w-full relative">
-                <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                <video 
+                  ref={videoRef} 
+                  className="w-full h-full object-cover" 
+                  autoPlay 
+                  muted 
+                  playsInline 
+                />
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4">
-                  <div className="relative">
-                     <Button 
-                      size="icon" 
-                      onClick={handleCapture}
-                      className="h-16 w-16 rounded-full bg-white border-4 border-primary shadow-2xl hover:scale-110 transition-transform active:scale-90"
-                    />
-                  </div>
+                   <Button 
+                    size="icon" 
+                    onClick={handleCapture}
+                    className="h-16 w-16 rounded-full bg-white border-4 border-primary shadow-2xl hover:scale-110 transition-transform active:scale-90"
+                  />
                   <Button 
                     size="icon" variant="ghost" 
                     onClick={() => fileInputRef.current?.click()}
@@ -192,7 +207,7 @@ export function StatusComposer({ onSuccess }: { onSuccess: () => void }) {
         <Button 
           onClick={handlePost}
           disabled={isPosting || (!inputText && !imageFile)}
-          className="w-full h-14 bg-primary hover:glow-green text-primary-foreground font-black uppercase text-xs tracking-[0.2em] rounded-2xl transition-all shadow-xl"
+          className="w-full h-14 bg-primary hover:glow-green text-primary-foreground font-black uppercase text-xs tracking-[0.2em] rounded-2xl transition-all shadow-xl shrink-0"
         >
           {isPosting ? <Loader2 className="w-5 h-5 animate-spin" /> : (
             <>Post Update <Send className="w-4 h-4 ml-2" /></>
