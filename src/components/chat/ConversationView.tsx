@@ -19,12 +19,14 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 type Message = {
   id: string;
   senderId: string;
   text: string;
   timestamp: any;
+  conversationParticipantIds: string[];
 };
 
 type UserProfile = {
@@ -51,14 +53,22 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch conversation meta
-  const convRef = useMemoFirebase(() => doc(db, 'conversations', conversationId), [db, conversationId]);
+  const convRef = useMemoFirebase(() => {
+    if (!db || !conversationId) return null;
+    return doc(db, 'conversations', conversationId);
+  }, [db, conversationId]);
   const { data: conversation } = useDoc<Conversation>(convRef);
 
-  // Fetch messages
+  // Fetch messages - with required security filter
   const msgQuery = useMemoFirebase(() => {
-    if (!db || !conversationId) return null;
-    return query(collection(db, 'conversations', conversationId, 'messages'), orderBy('timestamp', 'asc'), limit(100));
-  }, [db, conversationId]);
+    if (!db || !conversationId || !user) return null;
+    return query(
+      collection(db, 'conversations', conversationId, 'messages'),
+      where('conversationParticipantIds', 'array-contains', user.uid),
+      orderBy('timestamp', 'asc'),
+      limit(100)
+    );
+  }, [db, conversationId, user]);
   const { data: messages, isLoading: isMessagesLoading } = useCollection<Message>(msgQuery);
 
   // Fetch other participant profile
@@ -70,17 +80,16 @@ export function ConversationView({ conversationId }: { conversationId: string })
     if (!otherId) return;
 
     const fetchProfile = async () => {
-      const q = query(collection(db, 'users'), where('id', '==', otherId));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        setOtherProfile(snap.docs[0].data() as UserProfile);
+      const userDoc = await getDocs(query(collection(db, 'users'), where('id', '==', otherId)));
+      if (!userDoc.empty) {
+        setOtherProfile(userDoc.docs[0].data() as UserProfile);
       }
     };
     fetchProfile();
   }, [conversation, user, db]);
 
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && messages) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
@@ -98,10 +107,10 @@ export function ConversationView({ conversationId }: { conversationId: string })
     };
 
     // Add message
-    await addDoc(collection(db, 'conversations', conversationId, 'messages'), msgData);
+    addDoc(collection(db, 'conversations', conversationId, 'messages'), msgData);
     
     // Update conversation last message
-    await setDoc(doc(db, 'conversations', conversationId), {
+    setDoc(doc(db, 'conversations', conversationId), {
       lastMessage: text,
       updatedAt: serverTimestamp(),
     }, { merge: true });

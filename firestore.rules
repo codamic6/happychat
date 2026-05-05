@@ -17,19 +17,8 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
-    function isParticipant(participantIds) {
-      return isSignedIn() && 
-             participantIds != null && 
-             participantIds is list && 
-             (request.auth.uid in participantIds);
-    }
-
-    function isUnchanged(fieldName) {
-      return request.resource.data[fieldName] == resource.data[fieldName];
+    function isParticipant(pIds) {
+      return isSignedIn() && pIds is list && (request.auth.uid in pIds);
     }
 
     // --- Collection Rules ---
@@ -37,8 +26,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow get, list: if isSignedIn();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && isUnchanged('id');
-      allow delete: if isExistingOwner(userId);
+      allow update: if isOwner(userId) && request.resource.data.id == userId;
+      allow delete: if false;
 
       // Contact subcollection
       match /contacts/{contactId} {
@@ -47,43 +36,36 @@ service cloud.firestore {
     }
 
     match /conversations/{conversationId} {
-      allow get, list: if isParticipant(resource.data.participantIds);
-      allow create: if isParticipant(request.resource.data.participantIds);
-      allow update: if isParticipant(resource.data.participantIds);
-      allow delete: if isParticipant(resource.data.participantIds) && resource.data.adminId == request.auth.uid;
+      // allow read if the user is in the participantIds list
+      allow get, list: if isSignedIn() && (request.auth.uid in resource.data.participantIds);
+      
+      // allow create if the user is including themselves in the participantIds
+      allow create: if isSignedIn() && (request.auth.uid in request.resource.data.participantIds);
+      
+      // allow update if the user is a participant
+      allow update: if isSignedIn() && (request.auth.uid in resource.data.participantIds);
+      
+      // allow delete if the user is the admin
+      allow delete: if isSignedIn() && (resource.data.adminId == request.auth.uid);
 
       match /messages/{messageId} {
-        allow get, list: if isParticipant(resource.data.conversationParticipantIds);
-        allow create: if isParticipant(request.resource.data.conversationParticipantIds) 
+        // Must filter queries by conversationParticipantIds to match this rule
+        allow get, list: if isSignedIn() && (request.auth.uid in resource.data.conversationParticipantIds);
+        
+        allow create: if isSignedIn() 
+                      && (request.auth.uid in request.resource.data.conversationParticipantIds)
                       && request.resource.data.senderId == request.auth.uid;
-        allow update: if isExistingOwner(resource.data.senderId) 
-                      && isUnchanged('senderId') 
-                      && isUnchanged('conversationParticipantIds');
-        allow delete: if isExistingOwner(resource.data.senderId);
-
-        match /mediaAttachments/{attachmentId} {
-          allow get, list: if isParticipant(resource.data.conversationParticipantIds);
-          allow create: if isParticipant(request.resource.data.conversationParticipantIds)
-                        && request.resource.data.uploaderId == request.auth.uid;
-          allow update, delete: if isExistingOwner(resource.data.uploaderId);
-        }
-
-        match /reactions/{reactionId} {
-          allow get, list: if isParticipant(resource.data.conversationParticipantIds);
-          allow create: if isParticipant(request.resource.data.conversationParticipantIds)
-                        && request.resource.data.userId == request.auth.uid;
-          allow update, delete: if isExistingOwner(resource.data.userId);
-        }
+                      
+        allow update: if isSignedIn() && resource.data.senderId == request.auth.uid;
+        allow delete: if isSignedIn() && resource.data.senderId == request.auth.uid;
       }
     }
 
     match /calls/{callId} {
-      allow get, list: if isParticipant(resource.data.participantIds);
-      allow create: if isParticipant(request.resource.data.participantIds)
-                    && request.resource.data.initiatorId == request.auth.uid;
-      allow update: if isParticipant(resource.data.participantIds);
-      allow delete: if isParticipant(resource.data.participantIds) 
-                    && resource.data.initiatorId == request.auth.uid;
+      allow get, list: if isSignedIn() && (request.auth.uid in resource.data.participantIds);
+      allow create: if isSignedIn() && (request.auth.uid in request.resource.data.participantIds);
+      allow update: if isSignedIn() && (request.auth.uid in resource.data.participantIds);
+      allow delete: if isSignedIn() && (resource.data.initiatorId == request.auth.uid);
     }
   }
 }
