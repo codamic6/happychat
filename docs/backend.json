@@ -96,6 +96,17 @@
         "timestamp": { "type": "string", "format": "date-time" },
         "conversationParticipantIds": { "type": "array", "items": { "type": "string" } }
       }
+    },
+    "StatusUpdate": {
+      "title": "StatusUpdate",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -138,6 +149,14 @@
           "entityName": "Message",
           "schema": { "$ref": "#/backend/entities/Message" },
           "description": "Stores individual messages within a conversation."
+        }
+      },
+      {
+        "path": "/statuses/{statusId}",
+        "definition": {
+          "entityName": "StatusUpdate",
+          "schema": { "$ref": "#/backend/entities/StatusUpdate" },
+          "description": "Stores temporary user status updates."
         }
       }
     ]

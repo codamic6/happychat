@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -12,7 +13,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { AddContactDialogContent } from '@/components/chat/AddContactDialogContent';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function IconRail() {
   const { user } = useUser();
@@ -23,9 +24,9 @@ export function IconRail() {
 
   const navItems = [
     { id: 'chats', icon: MessageSquare, label: 'Chats', path: '/chat' },
-    { id: 'status', icon: Globe, label: 'Status', path: '/chat' },
+    { id: 'status', icon: Globe, label: 'Updates', path: '/chat/status' },
     { id: 'contacts', icon: Users, label: 'Contacts', path: '/chat' },
-    { id: 'ai', icon: Sparkles, label: 'AI Assistant', path: '/ai-assistant' },
+    { id: 'ai', icon: Sparkles, label: 'Assistant', path: '/ai-assistant' },
   ];
 
   const handleSignOut = async () => {
@@ -68,7 +69,7 @@ export function IconRail() {
                   )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="bg-[#111] border-white/10 text-xs font-bold uppercase tracking-widest text-primary">
+              <TooltipContent side="right" className="bg-[#111] border-white/10 text-[10px] font-bold uppercase tracking-widest text-primary">
                 {item.label}
               </TooltipContent>
             </Tooltip>
@@ -88,7 +89,7 @@ export function IconRail() {
                   </Button>
                 </TooltipTrigger>
               </DialogTrigger>
-              <TooltipContent side="right" className="bg-[#111] border-white/10 text-xs font-bold uppercase tracking-widest text-primary">
+              <TooltipContent side="right" className="bg-[#111] border-white/10 text-[10px] font-bold uppercase tracking-widest text-primary">
                 Add Contact
               </TooltipContent>
             </Tooltip>
@@ -113,13 +114,12 @@ export function IconRail() {
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="bg-[#111] border-white/10 text-xs font-bold uppercase tracking-widest text-primary">
+            <TooltipContent side="right" className="bg-[#111] border-white/10 text-[10px] font-bold uppercase tracking-widest text-primary">
               Profile
             </TooltipContent>
           </Tooltip>
 
-          <Button size="icon" variant="ghost" className="rounded-xl text-muted-foreground hover:text-white"><Settings className="w-5 h-5" /></Button>
-          <Button size="icon" variant="ghost" onClick={handleSignOut} className="rounded-xl text-muted-foreground hover:text-destructive"><LogOut className="w-5 h-5" /></Button>
+          <Button size="icon" variant="ghost" onClick={handleSignOut} className="rounded-xl text-muted-foreground hover:text-destructive transition-colors"><LogOut className="w-5 h-5" /></Button>
         </div>
       </nav>
     </TooltipProvider>

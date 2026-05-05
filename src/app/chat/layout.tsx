@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -5,6 +6,7 @@ import { useUser } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { IconRail } from '@/components/chat/IconRail';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
+import { StatusSidebar } from '@/components/chat/StatusSidebar';
 import { Loader2, Sparkles, MessageSquare, Globe, Users, UserCircle, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -16,8 +18,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  const isAtConversation = (pathname.startsWith('/chat/') && pathname !== '/chat' && pathname !== '/chat/profile');
+  const isAtConversation = (pathname.startsWith('/chat/') && pathname !== '/chat' && pathname !== '/chat/profile' && pathname !== '/chat/status');
   const isProfilePage = pathname === '/chat/profile';
+  const isStatusPage = pathname === '/chat/status';
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -56,7 +59,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
   const mobileTabs = [
     { label: 'Chats', icon: MessageSquare, href: '/chat' },
-    { label: 'Explore', icon: Globe, href: '/chat' },
+    { label: 'Updates', icon: Globe, href: '/chat/status' },
     { label: 'Assistant', icon: Sparkles, href: '/ai-assistant' },
     { label: 'Contacts', icon: Users, href: '/chat' },
     { label: 'Profile', icon: UserCircle, href: '/chat/profile' },
@@ -64,10 +67,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="flex flex-col h-screen bg-[#050505] text-white overflow-hidden relative">
-      {/* Mobile Top Header - Hide during chat */}
       <header className={cn(
         "md:hidden flex items-center justify-between px-6 h-16 border-b border-white/5 bg-[#0a0a0a] shrink-0 z-50",
-        isAtConversation && "hidden"
+        (isAtConversation || isProfilePage || isStatusPage) && "hidden"
       )}>
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center glow-green">
@@ -81,7 +83,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       </header>
 
       <div className="flex flex-1 overflow-hidden h-full">
-        {/* Desktop Navigation Rail */}
         <div className={cn(
           "hidden md:block shrink-0 h-full",
           isAtConversation && "hidden lg:block"
@@ -90,29 +91,26 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         <div className="flex flex-1 overflow-hidden h-full relative">
-          {/* Chat Sidebar / List View - Hide on mobile if in chat or profile */}
           <aside className={cn(
             "w-full md:w-80 border-r border-white/5 bg-[#0d0d0d] flex flex-col shrink-0 h-full transition-all duration-300",
-            (isAtConversation || isProfilePage) && "hidden md:flex lg:flex",
-            isProfilePage && "md:hidden"
+            (isAtConversation || isProfilePage || isStatusPage) && "hidden md:flex lg:flex",
+            (isProfilePage || isStatusPage) && "md:hidden"
           )}>
-            <ChatSidebar />
+            {isStatusPage ? <StatusSidebar /> : <ChatSidebar />}
           </aside>
 
-          {/* Main Content Area */}
           <main className={cn(
             "flex-1 flex flex-col relative bg-[#050505] h-full overflow-hidden",
-            (!isAtConversation && !isProfilePage) && "hidden md:flex"
+            (!isAtConversation && !isProfilePage && !isStatusPage) && "hidden md:flex"
           )}>
             {children}
           </main>
         </div>
       </div>
 
-      {/* Mobile Bottom Navigation - Hide only when in an active chat */}
       <nav className={cn(
         "md:hidden h-20 bg-[#0d0d0d] border-t border-white/5 flex items-center justify-around px-4 pb-safe shrink-0 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]",
-        isAtConversation && "hidden"
+        (isAtConversation || isProfilePage || isStatusPage) && "hidden"
       )}>
         {mobileTabs.map((tab, idx) => {
           const isActive = pathname === tab.href;
