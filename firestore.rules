@@ -22,7 +22,10 @@ service cloud.firestore {
     }
 
     function isParticipant(participantIds) {
-      return isSignedIn() && (request.auth.uid in participantIds);
+      return isSignedIn() && 
+             participantIds != null && 
+             participantIds is list && 
+             (request.auth.uid in participantIds);
     }
 
     function isUnchanged(fieldName) {
