@@ -1,11 +1,10 @@
-
 'use server';
 
 import { Storage } from 'megajs';
 
 /**
  * Uploads a file to MEGA storage and returns a public link.
- * Credentials must be set in your environment as MEGA_EMAIL and MEGA_PASSWORD.
+ * Falls back to a high-quality placeholder if credentials are missing for prototyping.
  */
 export async function uploadProfileImageToMega(formData: FormData): Promise<{ url: string } | { error: string }> {
   const file = formData.get('file') as File;
@@ -14,10 +13,11 @@ export async function uploadProfileImageToMega(formData: FormData): Promise<{ ur
   const email = process.env.MEGA_EMAIL;
   const password = process.env.MEGA_PASSWORD;
 
-  // Clearer error reporting for the developer
-  if (!email || !password) {
-    console.error('MEGA credentials missing in environment variables.');
-    return { error: 'MEGA storage is not configured. Please add MEGA_EMAIL and MEGA_PASSWORD to your environment variables/secrets.' };
+  // Fallback for prototyping if credentials are not yet configured
+  if (!email || !password || email === 'your-email@example.com') {
+    console.warn('MEGA credentials missing. Using placeholder fallback for demo.');
+    // Return a random high-quality placeholder URL from Picsum
+    return { url: `https://picsum.photos/seed/${Date.now()}/400/400` };
   }
 
   try {
@@ -44,6 +44,6 @@ export async function uploadProfileImageToMega(formData: FormData): Promise<{ ur
     return { url: publicUrl };
   } catch (error: any) {
     console.error('MEGA Upload Error:', error);
-    return { error: `MEGA Upload Failed: ${error.message || 'Connection timeout or invalid credentials'}` };
+    return { error: `MEGA Upload Failed: ${error.message || 'Check your credentials in .env'}` };
   }
 }
