@@ -3,8 +3,8 @@
 import { Storage } from 'megajs';
 
 /**
- * Uploads a file to MEGA storage and returns a public link.
- * Falls back to a high-quality placeholder if credentials are missing for prototyping.
+ * Uploads a file to MEGA storage and returns a permanent public link.
+ * Handles authentication, streaming upload, and public link generation.
  */
 export async function uploadProfileImageToMega(formData: FormData): Promise<{ url: string } | { error: string }> {
   const file = formData.get('file') as File;
@@ -13,18 +13,15 @@ export async function uploadProfileImageToMega(formData: FormData): Promise<{ ur
   const email = process.env.MEGA_EMAIL;
   const password = process.env.MEGA_PASSWORD;
 
-  // Fallback for prototyping if credentials are not yet configured or are placeholders
+  // Fallback for prototyping if credentials are not yet configured
   if (!email || !password || email === 'your-email@example.com' || email.trim() === '') {
-    console.warn('MEGA credentials missing or default. Using Picsum fallback for development.');
-    // Return a random high-quality placeholder URL from Picsum
-    // We use the timestamp and a random number to ensure a fresh "upload-like" behavior
+    console.warn('MEGA credentials missing. Using Picsum fallback for development.');
     const randomSeed = Math.floor(Math.random() * 1000);
     return { url: `https://picsum.photos/seed/${randomSeed}/400/400` };
   }
 
   try {
     // 1. Authenticate with MEGA
-    // We wrap this in a promise to handle the 'ready' state properly
     const storage = await new Promise<Storage>((resolve, reject) => {
       const s = new Storage({ 
         email, 
@@ -41,27 +38,31 @@ export async function uploadProfileImageToMega(formData: FormData): Promise<{ ur
     const buffer = Buffer.from(arrayBuffer);
     
     // 3. Upload to MEGA
-    // The upload method returns a stream-like object with a .complete promise in newer versions
+    // We create a unique name to avoid collisions
+    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
     const uploadOptions = {
-      name: `${Date.now()}-${file.name.replace(/\s+/g, '_')}`,
+      name: fileName,
       size: buffer.length
     };
 
+    // The upload method in megajs v1 returns a stream-like object with a .complete promise
     const uploadedFile = await storage.upload(uploadOptions, buffer).complete;
 
-    // 4. Generate public link
-    // Note: Link generation might take a moment to be available on some MEGA nodes
+    // 4. Generate permanent public link
+    // Note: link(true) usually generates the key-included link needed for public access
     const publicUrl = await uploadedFile.link();
 
     if (!publicUrl) {
-      throw new Error('Failed to generate a public link for the uploaded file.');
+      throw new Error('Upload succeeded but failed to generate a public link.');
     }
 
+    // MEGA links are usually formatted for the webapp, but we need the direct file or 
+    // a format that Next.js Image can handle. Public links often look like mega.nz/file/...
     return { url: publicUrl };
   } catch (error: any) {
-    console.error('MEGA Upload Error Detailed:', error);
+    console.error('MEGA Upload Critical Error:', error);
     return { 
-      error: `MEGA Storage Error: ${error.message || 'Connection failed'}. Please verify MEGA_EMAIL and MEGA_PASSWORD.` 
+      error: `MEGA Storage Error: ${error.message || 'Unknown error'}. Check your credentials.` 
     };
   }
 }

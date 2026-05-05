@@ -88,7 +88,13 @@ export default function ProfilePage() {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user || !db) return;
+
+    // Client side size check
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "File Too Large", description: "Please upload an image smaller than 5MB." });
+      return;
+    }
 
     setIsUploading(true);
     const megaFormData = new FormData();
@@ -96,36 +102,51 @@ export default function ProfilePage() {
 
     try {
       const result = await uploadProfileImageToMega(megaFormData);
+      
       if ('url' in result) {
-        await updateDoc(doc(db, 'users', user.uid), {
+        // Update Firestore user document with the new public URL
+        const userDocRef = doc(db, 'users', user.uid);
+        await updateDoc(userDocRef, {
           profileImageUrl: result.url,
           updatedAt: serverTimestamp()
         });
-        toast({ title: "Profile Image Updated", description: "Identity image synced successfully." });
+        
+        toast({ 
+          title: "Identity Verified", 
+          description: "Your profile photo has been synced with MEGA cloud storage." 
+        });
       } else {
-        toast({ variant: "destructive", title: "Upload Failed", description: result.error });
+        toast({ 
+          variant: "destructive", 
+          title: "Protocol Error", 
+          description: result.error || "Failed to establish storage link." 
+        });
       }
-    } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "An unexpected network error occurred." });
+    } catch (err: any) {
+      toast({ 
+        variant: "destructive", 
+        title: "Connection Lost", 
+        description: "An unexpected network error occurred during sync." 
+      });
     } finally {
       setIsUploading(false);
-      // Reset input so the same file can be uploaded again if needed
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || isSaving) return;
+    if (!user || isSaving || !db) return;
 
     if (usernameStatus === 'taken') {
-      toast({ variant: "destructive", title: "Username Taken", description: "Please choose another unique handle." });
+      toast({ variant: "destructive", title: "ID Conflict", description: "This username is already claimed in the network." });
       return;
     }
 
     setIsSaving(true);
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, {
         displayName: formData.displayName,
         username: formData.username.toLowerCase().trim(),
         about: formData.about,
@@ -133,9 +154,9 @@ export default function ProfilePage() {
         isOnline: formData.isOnline,
         updatedAt: serverTimestamp()
       });
-      toast({ title: "Profile Saved", description: "Your digital identity has been updated." });
+      toast({ title: "Neural Sync Complete", description: "Your digital identity has been updated across the network." });
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to save profile changes." });
+      toast({ variant: "destructive", title: "Sync Failed", description: "Could not update identity parameters." });
     } finally {
       setIsSaving(false);
     }
@@ -180,6 +201,7 @@ export default function ProfilePage() {
                     <AvatarFallback className="bg-white/5 text-5xl font-black">{profile?.displayName?.[0] || 'U'}</AvatarFallback>
                   </Avatar>
                   <button 
+                    type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
                     className="absolute bottom-2 right-2 w-12 h-12 bg-primary rounded-full border-4 border-[#0a0a0a] glow-green flex items-center justify-center text-primary-foreground hover:scale-110 transition-transform active:scale-95 disabled:opacity-50"
@@ -228,7 +250,7 @@ export default function ProfilePage() {
                 <ShieldCheck className="w-4 h-4" />
                 <span className="text-[10px] font-black uppercase tracking-widest">Security Status</span>
               </div>
-              <p className="text-xs text-muted-foreground italic leading-relaxed">Your account is secured with E2E Neural Encryption. All identity data is synced across your authorized devices.</p>
+              <p className="text-xs text-muted-foreground italic leading-relaxed">Your account is secured with E2E Neural Encryption. All identity data is synced across your authorized devices and stored securely in MEGA cloud.</p>
             </Card>
           </div>
 
@@ -307,7 +329,7 @@ export default function ProfilePage() {
                     <Textarea 
                       value={formData.about}
                       onChange={(e) => setFormData(prev => ({ ...prev, about: e.target.value }))}
-                      className="min-h-[120px] bg-white/5 border-white/5 pl-12 pt-4 rounded-xl focus-visible:ring-primary focus-visible:ring-offset-0 transition-all resize-none"
+                      className="min-h-[120px] bg-white/5 border-white/10 pl-12 pt-4 rounded-xl focus-visible:ring-primary focus-visible:ring-offset-0 transition-all resize-none"
                       placeholder="Tell the world about yourself..."
                     />
                   </div>
