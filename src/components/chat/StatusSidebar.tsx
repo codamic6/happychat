@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Camera, Type, Loader2, Search, Clock } from 'lucide-react';
+import { Plus, Loader2, Search, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -40,7 +40,23 @@ export function StatusSidebar() {
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile>>({});
   const [isComposerOpen, setIsComposerOpen] = useState(false);
 
-  // Only show statuses that haven't expired
+  // 1. Fetch user's contacts first
+  const contactsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'users', user.uid, 'contacts'));
+  }, [db, user]);
+  const { data: contactsData } = useCollection(contactsQuery);
+
+  const contactIds = useMemo(() => {
+    if (!user) return [];
+    const ids = [user.uid];
+    if (contactsData) {
+      contactsData.forEach(c => ids.push(c.id));
+    }
+    return ids;
+  }, [contactsData, user]);
+
+  // 2. Fetch active statuses
   const now = new Date();
   const statusQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -54,29 +70,32 @@ export function StatusSidebar() {
 
   const { data: rawStatuses } = useCollection<StatusUpdate>(statusQuery);
 
-  // Group statuses by user
+  // 3. Group statuses by user and filter by contacts
   const groupedStatuses = useMemo(() => {
     if (!rawStatuses) return [];
     const groups: Record<string, StatusUpdate[]> = {};
+    
     rawStatuses.forEach(s => {
-      if (!groups[s.userId]) groups[s.userId] = [];
-      groups[s.userId].push(s);
+      // Only include if in contacts or self
+      if (contactIds.includes(s.userId)) {
+        if (!groups[s.userId]) groups[s.userId] = [];
+        groups[s.userId].push(s);
+      }
     });
     
-    // Sort groups so "My Status" is first, then others by latest update
     return Object.entries(groups).sort(([uidA], [uidB]) => {
       if (uidA === user?.uid) return -1;
       if (uidB === user?.uid) return 1;
       return 0;
     });
-  }, [rawStatuses, user?.uid]);
+  }, [rawStatuses, user?.uid, contactIds]);
 
   useEffect(() => {
     if (!rawStatuses || !db) return;
 
     const fetchProfiles = async () => {
       const uids = Array.from(new Set(rawStatuses.map(s => s.userId)));
-      const missingUids = uids.filter(uid => !userProfiles[uid]);
+      const missingUids = uids.filter(uid => !userProfiles[uid] && contactIds.includes(uid));
 
       if (missingUids.length > 0) {
         const newProfiles = { ...userProfiles };
@@ -92,7 +111,7 @@ export function StatusSidebar() {
     };
 
     fetchProfiles();
-  }, [rawStatuses, db]);
+  }, [rawStatuses, db, contactIds, userProfiles]);
 
   const myStatusGroup = groupedStatuses.find(([uid]) => uid === user?.uid);
   const otherStatusGroups = groupedStatuses.filter(([uid]) => uid !== user?.uid);
@@ -112,7 +131,6 @@ export function StatusSidebar() {
           </Dialog>
         </div>
 
-        {/* Search */}
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 
@@ -124,9 +142,8 @@ export function StatusSidebar() {
 
       <ScrollArea className="flex-1 px-3">
         <div className="space-y-6 pb-24">
-          {/* My Status Section */}
           <div className="space-y-4 px-3">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">My Status</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">My Status</h3>
             <button 
               onClick={() => myStatusGroup && router.push(`/chat/status?uid=${user?.uid}`)}
               className="w-full flex items-center gap-4 p-2 rounded-2xl hover:bg-white/5 transition-all text-left group"
@@ -138,7 +155,7 @@ export function StatusSidebar() {
                 )}>
                   <div className="w-full h-full rounded-full bg-[#111] overflow-hidden flex items-center justify-center">
                     {user?.photoURL ? (
-                      <img src={user.photoURL} className="w-full h-full object-cover" />
+                      <img src={user.photoURL} className="w-full h-full object-cover" alt="Me" />
                     ) : (
                       <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
                     )}
@@ -146,48 +163,42 @@ export function StatusSidebar() {
                 </div>
               </div>
               <div>
-                <p className="font-bold text-sm text-white">My Status</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
+                <p className="font-bold text-sm text-white font-headline">My Status</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
                   {myStatusGroup ? 'Tap to view' : 'Share a moment'}
                 </p>
               </div>
             </button>
           </div>
 
-          {/* Contacts' Status Section */}
           <div className="space-y-4 px-3">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Recent Updates</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Recent Updates</h3>
             <div className="space-y-1">
               {otherStatusGroups.map(([uid, items]) => {
                 const profile = userProfiles[uid];
                 if (!profile) return null;
                 const name = profile.displayName || profile.fullName || 'User';
                 const latest = items[items.length - 1];
-                const isSelected = pathname.includes(`/chat/status`) && new URLSearchParams(window.location.search).get('uid') === uid;
-
+                
                 return (
                   <button 
                     key={uid}
                     onClick={() => router.push(`/chat/status?uid=${uid}`)}
-                    className={cn(
-                      "w-full p-3 rounded-2xl flex items-center gap-4 transition-all hover:bg-white/5 text-left",
-                      isSelected && "bg-white/5"
-                    )}
+                    className="w-full p-3 rounded-2xl flex items-center gap-4 transition-all hover:bg-white/5 text-left"
                   >
                     <div className="relative shrink-0">
                       <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-primary to-emerald-400 p-[2px] glow-green">
                         <div className="w-full h-full rounded-full bg-[#111] overflow-hidden flex items-center justify-center border-2 border-[#0d0d0d]">
-                          {profile.profileImageUrl?.includes('mega.nz') ? (
-                            <img src={`/api/avatar/${uid}`} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="text-xl font-bold text-primary">{(profile.displayName || profile.fullName || 'U').charAt(0)}</div>
-                          )}
+                          <Avatar className="w-full h-full">
+                            <AvatarImage src={`/api/avatar/${uid}`} />
+                            <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+                          </Avatar>
                         </div>
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-white truncate">{name}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                      <p className="font-bold text-sm text-white truncate font-headline">{name}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
                         {latest.createdAt?.toDate ? formatDistanceToNow(latest.createdAt.toDate(), { addSuffix: true }) : ''}
                       </p>
                     </div>
@@ -198,7 +209,7 @@ export function StatusSidebar() {
               {otherStatusGroups.length === 0 && (
                 <div className="py-12 text-center space-y-3 opacity-20">
                   <Clock className="w-10 h-10 mx-auto text-muted-foreground" />
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em]">No new updates</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em]">No new updates</p>
                 </div>
               )}
             </div>

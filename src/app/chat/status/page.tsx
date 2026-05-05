@@ -1,15 +1,14 @@
 
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, ChevronLeft, ChevronRight, Play, Pause, 
-  MessageSquare, Send, ArrowLeft, Loader2,
-  Maximize2, Volume2
+  Send, ArrowLeft, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +36,23 @@ export default function StatusImmersivePage() {
   const [isPaused, setIsPaused] = useState(false);
   const [replyText, setReplyText] = useState('');
 
-  // Fetch all active statuses
+  // 1. Fetch user's contacts to filter statuses
+  const contactsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'users', user.uid, 'contacts'));
+  }, [db, user]);
+  const { data: contactsData } = useCollection(contactsQuery);
+
+  const contactIds = useMemo(() => {
+    if (!user) return [];
+    const ids = [user.uid];
+    if (contactsData) {
+      contactsData.forEach(c => ids.push(c.id));
+    }
+    return ids;
+  }, [contactsData, user]);
+
+  // 2. Fetch active statuses
   const now = new Date();
   const statusQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -50,60 +65,66 @@ export default function StatusImmersivePage() {
 
   const { data: allStatuses, isLoading } = useCollection<StatusUpdate>(statusQuery);
 
-  // Group by user and filter for the selected user
+  // 3. Filter for selected user and ensure they are in contacts
   const userStatuses = useMemo(() => {
     if (!allStatuses || !selectedUid) return [];
+    // Only show if the user is a contact (or self)
+    if (!contactIds.includes(selectedUid)) return [];
     return allStatuses.filter(s => s.userId === selectedUid);
-  }, [allStatuses, selectedUid]);
+  }, [allStatuses, selectedUid, contactIds]);
 
   const currentStatus = userStatuses[currentIndex];
 
-  // Auto-advance logic
-  useEffect(() => {
-    if (!currentStatus || isPaused) return;
-
-    const duration = 5000; // 5 seconds per story
-    const interval = 50; // Update every 50ms
-    const step = (interval / duration) * 100;
-
-    const timer = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          handleNext();
-          return 0;
-        }
-        return prev + step;
-      });
-    }, interval);
-
-    return () => clearInterval(timer);
-  }, [currentStatus, currentIndex, isPaused]);
-
-  // Reset index when user changes
-  useEffect(() => {
-    setCurrentIndex(0);
-    setProgress(0);
-  }, [selectedUid]);
-
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (currentIndex < userStatuses.length - 1) {
       setCurrentIndex(prev => prev + 1);
       setProgress(0);
     } else {
       router.push('/chat/status');
     }
-  };
+  }, [currentIndex, userStatuses.length, router]);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1);
       setProgress(0);
     }
-  };
+  }, [currentIndex]);
+
+  // Auto-advance logic - Separate navigation from state update
+  useEffect(() => {
+    if (!currentStatus || isPaused) return;
+
+    const duration = 5000;
+    const interval = 50;
+    const step = (interval / duration) * 100;
+
+    const timer = setInterval(() => {
+      setProgress(prev => {
+        const next = prev + step;
+        return next >= 100 ? 100 : next;
+      });
+    }, interval);
+
+    return () => clearInterval(timer);
+  }, [currentStatus, currentIndex, isPaused]);
+
+  // Handle the transition when progress reaches 100
+  useEffect(() => {
+    if (progress >= 100) {
+      handleNext();
+    }
+  }, [progress, handleNext]);
+
+  // Reset state when user changes
+  useEffect(() => {
+    setCurrentIndex(0);
+    setProgress(0);
+  }, [selectedUid]);
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-black">
+      <div className="flex-1 flex items-center justify-center bg-[#050505]">
         <Loader2 className="w-8 h-8 text-primary animate-spin" />
       </div>
     );
@@ -116,8 +137,8 @@ export default function StatusImmersivePage() {
           <Play className="w-12 h-12 text-primary" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-sm font-black uppercase tracking-[0.4em] italic text-white font-headline">Select a Moment</h3>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Encrypted Social Layer Phase I Active</p>
+          <h3 className="text-sm font-bold uppercase tracking-[0.4em] text-white font-headline">Select a Moment</h3>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Secure Private Stories Active</p>
         </div>
       </div>
     );
@@ -128,7 +149,7 @@ export default function StatusImmersivePage() {
       {/* Background Blur */}
       <div className="absolute inset-0 z-0 opacity-40 blur-3xl scale-150">
         {currentStatus.type === 'image' ? (
-          <img src={currentStatus.content} className="w-full h-full object-cover" />
+          <img src={currentStatus.content} className="w-full h-full object-cover" alt="blur-bg" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/30 to-emerald-900/30" />
         )}
@@ -164,8 +185,8 @@ export default function StatusImmersivePage() {
               <AvatarFallback className="bg-primary/20 text-primary">U</AvatarFallback>
             </Avatar>
             <div>
-              <p className="text-sm font-bold text-white uppercase tracking-tight">Viewing Moment</p>
-              <p className="text-[10px] text-primary font-black uppercase tracking-widest">Live Sync</p>
+              <p className="text-sm font-bold text-white uppercase tracking-tight font-headline">Viewing Moment</p>
+              <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Live</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -200,12 +221,12 @@ export default function StatusImmersivePage() {
                 <img 
                   src={currentStatus.content} 
                   className="w-full h-full object-contain md:rounded-2xl" 
-                  alt="Status"
+                  alt="Status Content"
                 />
               ) : (
                 <div className="text-center space-y-6 px-4">
-                  <p className="text-3xl md:text-4xl font-black font-headline text-white leading-tight italic tracking-tighter">
-                    "{currentStatus.content}"
+                  <p className="text-3xl md:text-4xl font-bold font-headline text-white leading-tight tracking-tighter">
+                    {currentStatus.content}
                   </p>
                 </div>
               )}

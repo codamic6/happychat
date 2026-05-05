@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -43,7 +44,7 @@
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Space Grotesk', sans-serif;
-    font-style: normal !important;
+    font-style: normal !important; /* Forces non-italic */
     font-weight: 700;
   }
 }
