@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { 
-  doc, query, collection, orderBy, limit, serverTimestamp, setDoc, 
+  doc, query, collection, limit, serverTimestamp, setDoc, 
   getDocs, where, addDoc 
 } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -60,16 +60,27 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const { data: conversation } = useDoc<Conversation>(convRef);
 
   // Fetch messages - with required security filter
+  // Simplified: removed orderBy timestamp to prevent composite index permission requirements
   const msgQuery = useMemoFirebase(() => {
     if (!db || !conversationId || !user) return null;
     return query(
       collection(db, 'conversations', conversationId, 'messages'),
       where('conversationParticipantIds', 'array-contains', user.uid),
-      orderBy('timestamp', 'asc'),
       limit(100)
     );
   }, [db, conversationId, user]);
-  const { data: messages, isLoading: isMessagesLoading } = useCollection<Message>(msgQuery);
+  
+  const { data: rawMessages, isLoading: isMessagesLoading } = useCollection<Message>(msgQuery);
+
+  // Sort messages in memory
+  const messages = React.useMemo(() => {
+    if (!rawMessages) return null;
+    return [...rawMessages].sort((a, b) => {
+      const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
+      const timeB = b.timestamp?.toMillis ? b.timestamp.toMillis() : 0;
+      return timeA - timeB;
+    });
+  }, [rawMessages]);
 
   // Fetch other participant profile
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);

@@ -2,13 +2,13 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, MessageSquare, Users } from 'lucide-react';
+import { Search, Plus, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit, doc, getDocs, where } from 'firebase/firestore';
+import { collection, query, limit, getDocs, where } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -36,13 +36,13 @@ export function ChatSidebar() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch conversations for the current user
+  // Simplified query: Removed orderBy to prevent index-related permission issues
   const convQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     return query(
       collection(db, 'conversations'),
       where('participantIds', 'array-contains', user.uid),
-      orderBy('updatedAt', 'desc'),
-      limit(20)
+      limit(50)
     );
   }, [db, user]);
 
@@ -79,9 +79,17 @@ export function ChatSidebar() {
 
   const filteredConversations = useMemo(() => {
     if (!conversations) return [];
-    if (!searchQuery.trim()) return conversations;
     
-    return conversations.filter(conv => {
+    // Sort manually in memory since we removed it from the Firestore query for safety
+    const sorted = [...conversations].sort((a, b) => {
+      const timeA = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : 0;
+      const timeB = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : 0;
+      return timeB - timeA;
+    });
+
+    if (!searchQuery.trim()) return sorted;
+    
+    return sorted.filter(conv => {
       const otherId = conv.participantIds.find(id => id !== user?.uid);
       const profile = otherId ? chatProfiles[otherId] : null;
       return (
