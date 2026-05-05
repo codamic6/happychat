@@ -1,21 +1,32 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Send, Paperclip, Smile, Search, 
   Sparkles, MessageSquare, User, AtSign, Settings, LogOut,
-  Plus, MoreVertical, X, Users, Globe, UserCircle, ShieldCheck, Mail, Phone, Info
+  Plus, MoreVertical, X, Users, Globe, UserCircle, ShieldCheck, Mail, Phone, Info,
+  UserPlus, Loader2, CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger,
+  DialogDescription
+} from '@/components/ui/dialog';
 import { useAuth, useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, limit, doc, onSnapshot, where } from 'firebase/firestore';
+import { collection, query, orderBy, limit, doc, onSnapshot, where, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from '@/hooks/use-toast';
 
 type Message = {
   id: string;
@@ -35,6 +46,12 @@ type UserProfile = {
   about?: string;
 };
 
+type ContactRelationship = {
+  id: string;
+  userId: string;
+  addedAt: any;
+};
+
 export function ChatView() {
   const { user } = useUser();
   const auth = useAuth();
@@ -45,13 +62,53 @@ export function ChatView() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [showUserDetail, setShowUserDetail] = useState(false);
   const [inputText, setInputText] = useState('');
+  const [isAddContactOpen, setIsAddContactOpen] = useState(false);
 
-  // Fetch all users except current user for contacts/chat list
+  // Fetch current user's contacts
+  const contactsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'users', user.uid, 'contacts'), orderBy('addedAt', 'desc'));
+  }, [db, user]);
+
+  const { data: contactsData } = useCollection<ContactRelationship>(contactsQuery);
+
+  // Fetch User Profiles for these contacts
+  const [contactProfiles, setContactProfiles] = useState<UserProfile[]>([]);
+  
+  useEffect(() => {
+    if (!contactsData || !db) {
+      setContactProfiles([]);
+      return;
+    }
+
+    const uids = contactsData.map(c => c.id);
+    if (uids.length === 0) {
+      setContactProfiles([]);
+      return;
+    }
+
+    // In a real high-scale app, we might batch these or use a different structure
+    // For MVP, we'll fetch them. Firestore 'in' query has a limit of 30, so let's handle that or use a simple loop
+    const fetchProfiles = async () => {
+      const results: UserProfile[] = [];
+      for (const uid of uids) {
+        const docRef = doc(db, 'users', uid);
+        const snap = await getDocs(query(collection(db, 'users'), where('id', '==', uid)));
+        if (!snap.empty) {
+          results.push(snap.docs[0].data() as UserProfile);
+        }
+      }
+      setContactProfiles(results);
+    };
+
+    fetchProfiles();
+  }, [contactsData, db]);
+
+  // All users (for global contacts tab discovery if desired, or just use contacts)
   const usersQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     return query(collection(db, 'users'), limit(50));
   }, [db, user]);
-
   const { data: allUsers } = useCollection<UserProfile>(usersQuery);
 
   // Selected User Data
@@ -61,8 +118,6 @@ export function ChatView() {
 
   const handleSendMessage = (text: string) => {
     if (!text.trim() || !selectedUserId) return;
-    // In a real app, we would add to Firestore here
-    // For now, we update local state or just clear input as mockup data is removed
     setInputText('');
   };
 
@@ -104,7 +159,23 @@ export function ChatView() {
           >
             <Sparkles className="w-5 h-5" />
           </Button>
+
+          <div className="h-px w-8 bg-white/5 mx-auto my-2" />
+
+          {/* Add Contact Trigger */}
+          <Dialog open={isAddContactOpen} onOpenChange={setIsAddContactOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                size="icon" variant="ghost" 
+                className="rounded-xl text-primary hover:bg-primary/20 hover:glow-green transition-all"
+              >
+                <UserPlus className="w-5 h-5" />
+              </Button>
+            </DialogTrigger>
+            <AddContactDialogContent onSuccess={() => setIsAddContactOpen(false)} currentUserId={user?.uid} />
+          </Dialog>
         </div>
+        
         <div className="flex flex-col gap-4">
           <Button 
             size="icon" variant="ghost" 
@@ -150,7 +221,7 @@ export function ChatView() {
 
         <ScrollArea className="flex-1">
           <div className="px-3 pb-6 space-y-1">
-            {allUsers?.filter(u => u.id !== user?.uid).map((contact) => (
+            {contactProfiles.map((contact) => (
               <button 
                 key={contact.id}
                 onClick={() => {
@@ -174,9 +245,20 @@ export function ChatView() {
                 </div>
               </button>
             ))}
-            {(!allUsers || allUsers.length <= 1) && (
-              <div className="p-6 text-center text-muted-foreground text-xs italic">
-                No active conversations found.
+            {contactProfiles.length === 0 && (
+              <div className="p-12 text-center space-y-4">
+                <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto opacity-20">
+                  <Users className="w-6 h-6" />
+                </div>
+                <p className="text-xs text-muted-foreground italic">Your contact list is empty. Add your first contact to start chatting.</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsAddContactOpen(true)}
+                  className="border-primary/20 text-primary hover:bg-primary/10 rounded-full text-[10px] font-black uppercase tracking-widest"
+                >
+                  Find Contacts
+                </Button>
               </div>
             )}
           </div>
@@ -337,5 +419,175 @@ export function ChatView() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function AddContactDialogContent({ onSuccess, currentUserId }: { onSuccess: () => void, currentUserId?: string }) {
+  const db = useFirestore();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [foundUser, setFoundUser] = useState<UserProfile | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchTerm.trim() || !db) return;
+
+    setIsSearching(true);
+    setHasSearched(false);
+    setFoundUser(null);
+
+    try {
+      // Try searching by email
+      let q = query(collection(db, 'users'), where('email', '==', searchTerm.toLowerCase().trim()));
+      let snap = await getDocs(q);
+
+      // If not found, try phone number
+      if (snap.empty) {
+        q = query(collection(db, 'users'), where('phoneNumber', '==', searchTerm.trim()));
+        snap = await getDocs(q);
+      }
+
+      if (!snap.empty) {
+        const userData = snap.docs[0].data() as UserProfile;
+        // Don't find yourself
+        if (userData.id !== currentUserId) {
+          setFoundUser(userData);
+        }
+      }
+      setHasSearched(true);
+    } catch (err) {
+      console.error(err);
+      toast({
+        variant: "destructive",
+        title: "Search Error",
+        description: "Could not complete the user search."
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleAddContact = async () => {
+    if (!foundUser || !currentUserId || !db) return;
+
+    setIsAdding(true);
+    try {
+      // Create relationship
+      await setDoc(doc(db, 'users', currentUserId, 'contacts', foundUser.id), {
+        userId: foundUser.id,
+        addedAt: serverTimestamp(),
+      });
+
+      toast({
+        title: "Contact Added",
+        description: `${foundUser.fullName} has been added to your network.`
+      });
+      onSuccess();
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Operation Failed",
+        description: "Could not add this contact."
+      });
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  return (
+    <DialogContent className="sm:max-w-md bg-[#0a0a0a] border-white/5 text-white p-0 overflow-hidden rounded-[2.5rem]">
+      <DialogHeader className="p-8 pb-4">
+        <DialogTitle className="text-2xl font-black font-headline italic uppercase tracking-tight flex items-center gap-3">
+          <UserPlus className="text-primary w-6 h-6" /> Add New Contact
+        </DialogTitle>
+        <DialogDescription className="text-muted-foreground text-xs uppercase font-bold tracking-widest">
+          Find users by email or phone number
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="px-8 pb-8 space-y-6">
+        <form onSubmit={handleSearch} className="relative group">
+          <div className="absolute inset-0 bg-primary/10 rounded-2xl blur-md opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
+          <div className="relative flex gap-2">
+            <Input 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="e.g. name@email.com or +1234567..."
+              className="bg-white/5 border-white/10 h-14 pl-5 rounded-2xl focus-visible:ring-primary focus-visible:ring-offset-0 transition-all text-sm"
+            />
+            <Button 
+              type="submit" 
+              disabled={isSearching || !searchTerm.trim()}
+              className="h-14 w-14 bg-white/5 border border-white/10 hover:bg-primary hover:text-primary-foreground rounded-2xl transition-all"
+            >
+              {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+            </Button>
+          </div>
+        </form>
+
+        <AnimatePresence mode="wait">
+          {foundUser ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="glass p-6 rounded-3xl border border-white/5 space-y-4"
+            >
+              <div className="flex items-center gap-4">
+                <Avatar className="w-16 h-16 border-2 border-primary/20">
+                  <AvatarImage src={foundUser.profileImageUrl} />
+                  <AvatarFallback>{foundUser.fullName[0]}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-lg font-bold text-white truncate">{foundUser.fullName}</h4>
+                  <p className="text-xs text-muted-foreground">@{foundUser.username}</p>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                  <span className="text-[8px] font-black uppercase text-primary tracking-widest">Active</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-3 h-3 text-primary" />
+                  <span className="truncate">{foundUser.email}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-3 h-3 text-primary" />
+                  <span>{foundUser.phoneNumber || "N/A"}</span>
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleAddContact}
+                disabled={isAdding}
+                className="w-full h-12 bg-primary hover:glow-green-bright text-primary-foreground font-black uppercase text-xs tracking-[0.2em] rounded-xl transition-all"
+              >
+                {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                  <>Add to Network <Plus className="w-4 h-4 ml-2" /></>
+                )}
+              </Button>
+            </motion.div>
+          ) : hasSearched && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-8 space-y-3"
+            >
+              <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto text-muted-foreground/30">
+                <Search className="w-8 h-8" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white uppercase italic">Protocol: No User Found</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Double check the identifier and try again</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </DialogContent>
   );
 }

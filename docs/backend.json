@@ -50,6 +50,26 @@
         "createdAt",
         "updatedAt"
       ]
+    },
+    "Contact": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Contact",
+      "type": "object",
+      "description": "Represents a saved contact relationship.",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the contact."
+        },
+        "addedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "userId",
+        "addedAt"
+      ]
     }
   },
   "auth": {
@@ -70,6 +90,16 @@
             "$ref": "#/backend/entities/UserProfile"
           },
           "description": "Stores individual user profiles."
+        }
+      },
+      {
+        "path": "/users/{userId}/contacts/{contactId}",
+        "definition": {
+          "entityName": "Contact",
+          "schema": {
+            "$ref": "#/backend/entities/Contact"
+          },
+          "description": "Stores a user's personal contact list."
         }
       }
     ]

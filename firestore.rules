@@ -1,98 +1,54 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * HappyChat Security Rules (Prototyping Mode)
-     * 
-     * Core Philosophy:
-     * This ruleset implements an Authorization Independence model for a next-generation AI 
-     * communication platform. Security is enforced through strict ownership and shared 
-     * participant lists, prioritizing high performance by avoiding cross-document lookups.
-     * 
-     * Data Structure:
-     * - /users/{userId}: Top-level user profiles tied to Firebase Auth UIDs.
-     * - /conversations/{conversationId}: Shared chat spaces using participant lists.
-     * - /conversations/.../messages: Nested messages containing denormalized participant data.
-     * - /calls/{callId}: Top-level call events with participant-based access.
-     * 
-     * Key Security Decisions:
-     * 1. Denormalization for Authorization: Essential security data (like participant IDs) 
-     *    is copied directly into messages and sub-resources to allow instant, single-document 
-     *    authorization checks without using expensive get() calls.
-     * 2. Prototyping Flexibility: Rules enforce WHO can access data and relational integrity 
-     *    (ensuring documents belong to the right owners), but do NOT enforce strict data 
-     *    schemas or types for non-relational fields.
-     * 3. Verified Identity: All write operations and non-public reads require a valid 
-     *    Firebase Authentication token.
+     * HappyChat Security Rules
      */
 
     // --- Helper Functions ---
 
-    /** @description Checks if the requester is signed in. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the user's UID matches the provided ID. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Checks if the user is the owner and the resource exists. */
     function isExistingOwner(userId) {
       return resource != null && isOwner(userId);
     }
 
-    /** @description Checks if the authenticated user is in a list of participant UIDs. */
     function isParticipant(participantIds) {
       return isSignedIn() && (request.auth.uid in participantIds);
     }
 
-    /** @description Ensures a field is not modified during an update. */
     function isUnchanged(fieldName) {
       return request.resource.data[fieldName] == resource.data[fieldName];
     }
 
     // --- Collection Rules ---
 
-    /**
-     * @description Rules for the UserProfile collection. Owners can manage their data; 
-     *              all authenticated users can view profiles for lookups.
-     * @path /users/{userId}
-     * @allow (create) User with UID 'abc' creates document '/users/abc'.
-     * @deny (create) User with UID 'abc' tries to create '/users/xyz'.
-     * @principle Path-based ownership and self-creation validation.
-     */
     match /users/{userId} {
       allow get, list: if isSignedIn();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && isUnchanged('id');
       allow delete: if isExistingOwner(userId);
+
+      // Contact subcollection
+      match /contacts/{contactId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
-    /**
-     * @description Rules for Conversations. Access is granted if the user's UID 
-     *              is present in the denormalized 'participantIds' array.
-     * @path /conversations/{conversationId}
-     * @allow (get) User 'abc' reads conversation where 'participantIds' contains 'abc'.
-     * @deny (update) User 'abc' modifies conversation where they are not a participant.
-     * @principle Shared access via membership lists (Closed Collaborators).
-     */
     match /conversations/{conversationId} {
       allow get, list: if isParticipant(resource.data.participantIds);
       allow create: if isParticipant(request.resource.data.participantIds);
       allow update: if isParticipant(resource.data.participantIds);
       allow delete: if isParticipant(resource.data.participantIds) && resource.data.adminId == request.auth.uid;
 
-      /**
-       * @description Rules for Messages. Uses denormalized conversationParticipantIds 
-       *              for authorization independence.
-       * @path /conversations/{conversationId}/messages/{messageId}
-       * @allow (list) User 'abc' lists messages in a conversation they belong to.
-       * @deny (create) User 'abc' sends a message to a conversation they are not in.
-       * @principle Denormalization for Authorization Independence.
-       */
       match /messages/{messageId} {
         allow get, list: if isParticipant(resource.data.conversationParticipantIds);
         allow create: if isParticipant(request.resource.data.conversationParticipantIds) 
@@ -102,12 +58,6 @@ service cloud.firestore {
                       && isUnchanged('conversationParticipantIds');
         allow delete: if isExistingOwner(resource.data.senderId);
 
-        /**
-         * @description Rules for Media Attachments. Nested under messages.
-         * @path /conversations/{conversationId}/messages/{messageId}/mediaAttachments/{attachmentId}
-         * @allow (create) User 'abc' uploads file to their own message.
-         * @principle Inheritance of access via denormalized participant data.
-         */
         match /mediaAttachments/{attachmentId} {
           allow get, list: if isParticipant(resource.data.conversationParticipantIds);
           allow create: if isParticipant(request.resource.data.conversationParticipantIds)
@@ -115,12 +65,6 @@ service cloud.firestore {
           allow update, delete: if isExistingOwner(resource.data.uploaderId);
         }
 
-        /**
-         * @description Rules for Message Reactions (Emojis).
-         * @path /conversations/{conversationId}/messages/{messageId}/reactions/{reactionId}
-         * @allow (create) User 'abc' reacts to a message in a conversation they are in.
-         * @principle Resource-specific role validation via UID check.
-         */
         match /reactions/{reactionId} {
           allow get, list: if isParticipant(resource.data.conversationParticipantIds);
           allow create: if isParticipant(request.resource.data.conversationParticipantIds)
@@ -130,13 +74,6 @@ service cloud.firestore {
       }
     }
 
-    /**
-     * @description Rules for Voice/Video Calls.
-     * @path /calls/{callId}
-     * @allow (get) User 'abc' retrieves details for a call they participated in.
-     * @deny (list) Anonymous user tries to list calls.
-     * @principle Query-Accurate Projections (QAPs) via participant array.
-     */
     match /calls/{callId} {
       allow get, list: if isParticipant(resource.data.participantIds);
       allow create: if isParticipant(request.resource.data.participantIds)
