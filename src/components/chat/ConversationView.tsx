@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, Paperclip, Smile, Search, 
-  MoreVertical, X, Info, ShieldCheck, Mail, Phone, ArrowLeft, Loader2,
-  ShieldAlert, UserCheck
+  MoreVertical, X, Info, ShieldCheck, ArrowLeft, Loader2,
+  ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -176,9 +176,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const otherAvatar = otherProfile.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${otherProfile.id}?t=${Date.now()}` : null;
 
   return (
-    <div className="flex-1 flex overflow-hidden h-full flex-col relative bg-[#050505]">
-      {/* Fixed Header */}
-      <header className="h-16 px-4 md:px-6 border-b border-white/5 flex items-center justify-between bg-black/80 backdrop-blur-3xl sticky top-0 z-40 shrink-0">
+    <div className="flex flex-col h-full relative bg-[#050505] overflow-hidden">
+      {/* Fixed Header - Always visible */}
+      <header className="flex-none h-16 px-4 md:px-6 border-b border-white/5 flex items-center justify-between bg-black/80 backdrop-blur-3xl z-40">
         <div className="flex items-center gap-3 overflow-hidden flex-1">
           <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground hover:text-white">
             <ArrowLeft className="w-6 h-6" />
@@ -235,8 +235,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
         </div>
       </header>
 
-      {/* Message Feed */}
-      <ScrollArea className="flex-1 relative bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-fixed opacity-[0.98]">
+      {/* Message Feed - Scrollable area */}
+      <div className="flex-1 overflow-y-auto relative custom-scrollbar bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-fixed">
         <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-4 pb-12">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 opacity-30 space-y-4">
@@ -263,10 +263,10 @@ export function ConversationView({ conversationId }: { conversationId: string })
           })}
           <div ref={scrollRef} />
         </div>
-      </ScrollArea>
+      </div>
 
-      {/* Fixed Message Input */}
-      <footer className="p-4 bg-[#0a0a0a] border-t border-white/5 shrink-0 z-40">
+      {/* Fixed Footer - Message input always visible */}
+      <footer className="flex-none p-4 bg-[#0a0a0a] border-t border-white/5 z-40">
         <div className="flex items-center gap-3 max-w-5xl mx-auto">
           <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-white shrink-0 bg-white/5 rounded-xl h-11 w-11">
             <Paperclip className="w-5 h-5" />

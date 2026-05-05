@@ -64,8 +64,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="flex flex-col h-screen bg-[#050505] text-white overflow-hidden relative">
-      {/* Mobile Top Header - Always Visible */}
-      <header className="md:hidden flex items-center justify-between px-6 h-16 border-b border-white/5 bg-[#0a0a0a] shrink-0 z-50">
+      {/* Mobile Top Header - Hide during chat */}
+      <header className={cn(
+        "md:hidden flex items-center justify-between px-6 h-16 border-b border-white/5 bg-[#0a0a0a] shrink-0 z-50",
+        isAtConversation && "hidden"
+      )}>
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center glow-green">
             <Zap className="text-primary-foreground h-5 w-5 fill-current" />
@@ -87,7 +90,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         <div className="flex flex-1 overflow-hidden h-full relative">
-          {/* Chat Sidebar / List View */}
+          {/* Chat Sidebar / List View - Hide on mobile if in chat */}
           <aside className={cn(
             "w-full md:w-80 border-r border-white/5 bg-[#0d0d0d] flex flex-col shrink-0 h-full transition-all duration-300",
             (isAtConversation || isProfilePage) && "hidden md:flex lg:flex",
@@ -106,8 +109,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         </div>
       </div>
 
-      {/* Mobile Bottom Navigation - ALWAYS VISIBLE */}
-      <nav className="md:hidden h-20 bg-[#0d0d0d] border-t border-white/5 flex items-center justify-around px-4 pb-safe shrink-0 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
+      {/* Mobile Bottom Navigation - Hide during active chat to prioritize chat input */}
+      <nav className={cn(
+        "md:hidden h-20 bg-[#0d0d0d] border-t border-white/5 flex items-center justify-around px-4 pb-safe shrink-0 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]",
+        isAtConversation && "hidden"
+      )}>
         {mobileTabs.map((tab, idx) => {
           const isActive = pathname === tab.href;
           return (
