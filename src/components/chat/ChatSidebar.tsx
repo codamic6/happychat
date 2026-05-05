@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, getDocs, where } from 'firebase/firestore';
+import { collection, query, getDocs, where } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -39,14 +39,25 @@ export function ChatSidebar() {
 
   const convQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
+    // Simple query without orderBy to avoid permission/index errors
     return query(
       collection(db, 'conversations'),
-      where('participantIds', 'array-contains', user.uid),
-      orderBy('updatedAt', 'desc')
+      where('participantIds', 'array-contains', user.uid)
     );
   }, [db, user]);
 
-  const { data: conversations } = useCollection<Conversation>(convQuery);
+  const { data: rawConversations } = useCollection<Conversation>(convQuery);
+
+  // Sort conversations manually in memory by updatedAt desc
+  const conversations = useMemo(() => {
+    if (!rawConversations) return [];
+    return [...rawConversations].sort((a, b) => {
+      const timeA = a.updatedAt?.toMillis?.() || 0;
+      const timeB = b.updatedAt?.toMillis?.() || 0;
+      return timeB - timeA;
+    });
+  }, [rawConversations]);
+
   const [chatProfiles, setChatProfiles] = useState<Record<string, UserProfile>>({});
 
   useEffect(() => {
@@ -64,7 +75,7 @@ export function ChatSidebar() {
       });
 
       if (missingUids.size > 0) {
-        for (const uid of missingUids) {
+        for (const uid of Array.from(missingUids)) {
           const userDoc = await getDocs(query(collection(db, 'users'), where('id', '==', uid)));
           if (!userDoc.empty) {
             newProfiles[uid] = userDoc.docs[0].data() as UserProfile;

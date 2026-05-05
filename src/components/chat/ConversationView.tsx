@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, Paperclip, Smile, Search, 
   MoreVertical, X, Info, ShieldCheck, Mail, Phone, ArrowLeft, Loader2,
@@ -20,8 +20,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { 
-  doc, query, collection, limit, serverTimestamp, setDoc, 
-  getDocs, where, addDoc, updateDoc, increment, orderBy
+  doc, query, collection, serverTimestamp, setDoc, 
+  getDocs, where, addDoc, updateDoc, increment
 } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -60,7 +60,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [showProfile, setShowProfile] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Handle "New Chat" logic or regular chat
   const isNewChat = conversationId.startsWith('new-');
   const targetUid = isNewChat ? conversationId.replace('new-', '') : null;
 
@@ -73,14 +72,24 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   const msgQuery = useMemoFirebase(() => {
     if (!db || isNewChat || !user) return null;
+    // Query without orderBy to avoid index/permission errors during initial setup
     return query(
       collection(db, 'conversations', conversationId, 'messages'),
-      orderBy('timestamp', 'asc'),
-      limit(100)
+      where('conversationParticipantIds', 'array-contains', user.uid)
     );
   }, [db, conversationId, isNewChat, user]);
   
-  const { data: messages } = useCollection<Message>(msgQuery);
+  const { data: rawMessages } = useCollection<Message>(msgQuery);
+
+  // Sort messages manually in memory by timestamp asc
+  const messages = useMemo(() => {
+    if (!rawMessages) return [];
+    return [...rawMessages].sort((a, b) => {
+      const timeA = a.timestamp?.toMillis?.() || 0;
+      const timeB = b.timestamp?.toMillis?.() || 0;
+      return timeA - timeB;
+    });
+  }, [rawMessages]);
 
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
 
@@ -97,7 +106,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
     fetchProfile();
   }, [conversation, targetUid, user, db]);
 
-  // Reset unread count when viewing
   useEffect(() => {
     if (conversation && user && db && conversation.unreadCount?.[user.uid] && conversation.unreadCount[user.uid] > 0) {
       updateDoc(doc(db, 'conversations', conversationId), {
@@ -107,7 +115,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   }, [conversation, user, db, conversationId]);
 
   useEffect(() => {
-    if (scrollRef.current && messages) {
+    if (scrollRef.current && messages.length > 0) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
@@ -120,9 +128,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     let activeId = conversationId;
     let participantIds = conversation?.participantIds || [user.uid, otherProfile.id].sort();
 
-    // 1. If it's a new chat, create the conversation first
     if (isNewChat) {
-      // Check if a conversation already exists between these two
       const existingQ = query(
         collection(db, 'conversations'),
         where('participantIds', '==', participantIds)
@@ -144,7 +150,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
       }
     }
 
-    // 2. Add the message
     addDoc(collection(db, 'conversations', activeId, 'messages'), {
       text,
       senderId: user.uid,
@@ -152,7 +157,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
       conversationParticipantIds: participantIds
     });
 
-    // 3. Update conversation metadata and increment receiver's unread count
     if (!isNewChat) {
       updateDoc(doc(db, 'conversations', activeId), {
         lastMessage: text,
@@ -220,7 +224,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
              </div>
           </div>
 
-          {messages?.map((msg) => {
+          {messages.map((msg) => {
             const isOwn = msg.senderId === user?.uid;
             return (
               <motion.div key={msg.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className={cn("flex group", isOwn ? "justify-end" : "justify-start")}>
@@ -238,7 +242,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
               </motion.div>
             );
           })}
-          {(!messages || messages.length === 0) && !isNewChat && (
+          {messages.length === 0 && !isNewChat && (
             <div className="flex flex-col items-center justify-center h-full opacity-20 pt-20">
               <ShieldCheck className="w-16 h-16 text-primary mb-4" />
               <p className="text-xs font-black uppercase tracking-widest">Secure session established</p>
