@@ -6,7 +6,7 @@ import { useUser } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { IconRail } from '@/components/chat/IconRail';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
-import { Loader2, Sparkles, MessageSquare, Globe, Users, UserCircle, Settings } from 'lucide-react';
+import { Loader2, Sparkles, MessageSquare, Globe, Users, UserCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -17,7 +17,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  const isAtConversation = pathname.startsWith('/chat/') && pathname !== '/chat';
+  const isAtConversation = (pathname.startsWith('/chat/') && pathname !== '/chat' && pathname !== '/chat/profile');
+  const isProfilePage = pathname === '/chat/profile';
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -56,10 +57,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
   const mobileTabs = [
     { label: 'Chats', icon: MessageSquare, href: '/chat' },
-    { label: 'Status', icon: Globe, href: '/chat' }, // Placeholder routes
+    { label: 'Status', icon: Globe, href: '/chat' },
     { label: 'HappyAI', icon: Sparkles, href: '/ai-assistant' },
     { label: 'Contacts', icon: Users, href: '/chat' },
-    { label: 'Profile', icon: UserCircle, href: '/chat' },
+    { label: 'Profile', icon: UserCircle, href: '/chat/profile' },
   ];
 
   return (
@@ -74,10 +75,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         <div className="flex flex-1 overflow-hidden h-full relative">
-          {/* Chat Sidebar / List View */}
+          {/* Chat Sidebar / List View - Hidden on Profile Page Desktop */}
           <aside className={cn(
             "w-full md:w-80 border-r border-white/5 bg-[#0d0d0d] flex flex-col shrink-0 h-full transition-all duration-300",
-            isAtConversation && "hidden md:flex"
+            (isAtConversation || isProfilePage) && "hidden md:flex lg:flex",
+            isProfilePage && "md:hidden"
           )}>
             <ChatSidebar />
           </aside>
@@ -85,7 +87,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           {/* Main Content Area */}
           <main className={cn(
             "flex-1 flex flex-col relative bg-[#050505] h-full overflow-hidden",
-            !isAtConversation && "hidden md:flex"
+            (!isAtConversation && !isProfilePage) && "hidden md:flex"
           )}>
             {children}
           </main>

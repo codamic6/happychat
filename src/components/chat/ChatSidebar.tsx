@@ -16,10 +16,12 @@ import { Badge } from '@/components/ui/badge';
 
 type UserProfile = {
   id: string;
-  fullName: string;
+  displayName?: string;
+  fullName?: string;
   username: string;
   email: string;
-  profileImageUrl: string;
+  profileImage?: string;
+  profileImageUrl?: string;
 };
 
 type Conversation = {
@@ -39,7 +41,6 @@ export function ChatSidebar() {
 
   const convQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
-    // Simple query without orderBy to avoid permission/index errors
     return query(
       collection(db, 'conversations'),
       where('participantIds', 'array-contains', user.uid)
@@ -48,7 +49,6 @@ export function ChatSidebar() {
 
   const { data: rawConversations } = useCollection<Conversation>(convQuery);
 
-  // Sort conversations manually in memory by updatedAt desc
   const conversations = useMemo(() => {
     if (!rawConversations) return [];
     return [...rawConversations].sort((a, b) => {
@@ -95,8 +95,9 @@ export function ChatSidebar() {
     return conversations.filter(conv => {
       const otherId = conv.participantIds.find(id => id !== user?.uid);
       const profile = otherId ? chatProfiles[otherId] : null;
+      const name = profile?.displayName || profile?.fullName || '';
       return (
-        profile?.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         profile?.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
         conv.lastMessage?.toLowerCase().includes(searchQuery.toLowerCase())
       );
@@ -139,6 +140,8 @@ export function ChatSidebar() {
 
             const isSelected = pathname === `/chat/${conv.id}`;
             const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
+            const name = profile.displayName || profile.fullName || 'User';
+            const avatar = profile.profileImage || profile.profileImageUrl;
 
             return (
               <button 
@@ -153,14 +156,14 @@ export function ChatSidebar() {
               >
                 <div className="relative shrink-0">
                   <Avatar className="w-14 h-14 border border-white/10">
-                    <AvatarImage src={profile.profileImageUrl} />
-                    <AvatarFallback className="bg-white/5 text-white font-black">{profile.fullName[0]}</AvatarFallback>
+                    <AvatarImage src={avatar} />
+                    <AvatarFallback className="bg-white/5 text-white font-black">{name[0]}</AvatarFallback>
                   </Avatar>
                   <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
                 </div>
                 <div className="flex-1 text-left min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-sm text-white truncate">{profile.fullName}</span>
+                    <span className="font-bold text-sm text-white truncate">{name}</span>
                     <span className={cn(
                       "text-[9px] uppercase font-black tracking-tighter",
                       unreadCount > 0 ? "text-primary" : "text-muted-foreground"

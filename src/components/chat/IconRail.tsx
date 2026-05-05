@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -23,8 +24,8 @@ export function IconRail() {
 
   const navItems = [
     { id: 'chats', icon: MessageSquare, label: 'Recent Chats', path: '/chat' },
-    { id: 'status', icon: Globe, label: 'Status Updates', path: '/status' },
-    { id: 'contacts', icon: Users, label: 'Contacts', path: '/contacts' },
+    { id: 'status', icon: Globe, label: 'Status Updates', path: '/chat' },
+    { id: 'contacts', icon: Users, label: 'Contacts', path: '/chat' },
     { id: 'ai', icon: Sparkles, label: 'HappyAI', path: '/ai-assistant' },
   ];
 
@@ -33,11 +34,17 @@ export function IconRail() {
     router.push('/login');
   };
 
-  const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
+  const isActive = (path: string) => {
+    if (path === '/chat' && pathname === '/chat') return true;
+    if (path !== '/chat' && pathname.startsWith(path)) return true;
+    return false;
+  };
+
+  const isProfileActive = pathname === '/chat/profile';
 
   return (
     <TooltipProvider delayDuration={0}>
-      <nav className="w-16 flex flex-col items-center py-6 border-r border-white/5 bg-[#0a0a0a] h-full">
+      <nav className="w-16 flex flex-col items-center py-6 border-r border-white/5 bg-[#0a0a0a] h-full z-50">
         <div className="mb-8">
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center glow-green cursor-pointer" onClick={() => router.push('/')}>
             <Zap className="text-primary-foreground h-6 w-6 fill-current" />
@@ -91,7 +98,27 @@ export function IconRail() {
         </div>
         
         <div className="flex flex-col gap-4">
-          <Button size="icon" variant="ghost" className="rounded-xl text-muted-foreground hover:text-white"><UserCircle className="w-5 h-5" /></Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                size="icon" variant="ghost" 
+                onClick={() => router.push('/chat/profile')}
+                className={cn(
+                  "rounded-xl transition-all relative group",
+                  isProfileActive ? "bg-primary/20 text-primary glow-green" : "text-muted-foreground hover:text-white"
+                )}
+              >
+                <UserCircle className="w-5 h-5" />
+                {isProfileActive && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-primary rounded-r-full" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#111] border-white/10 text-xs font-bold uppercase tracking-widest text-primary">
+              My Profile
+            </TooltipContent>
+          </Tooltip>
+
           <Button size="icon" variant="ghost" className="rounded-xl text-muted-foreground hover:text-white"><Settings className="w-5 h-5" /></Button>
           <Button size="icon" variant="ghost" onClick={handleSignOut} className="rounded-xl text-muted-foreground hover:text-destructive"><LogOut className="w-5 h-5" /></Button>
         </div>

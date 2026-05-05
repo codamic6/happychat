@@ -38,11 +38,13 @@ type Message = {
 
 type UserProfile = {
   id: string;
-  fullName: string;
+  displayName?: string;
+  fullName?: string;
   username: string;
   email: string;
   phoneNumber?: string;
-  profileImageUrl: string;
+  profileImage?: string;
+  profileImageUrl?: string;
   about?: string;
 };
 
@@ -72,7 +74,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   const msgQuery = useMemoFirebase(() => {
     if (!db || isNewChat || !user) return null;
-    // Query without orderBy to avoid index/permission errors during initial setup
     return query(
       collection(db, 'conversations', conversationId, 'messages'),
       where('conversationParticipantIds', 'array-contains', user.uid)
@@ -81,7 +82,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   
   const { data: rawMessages } = useCollection<Message>(msgQuery);
 
-  // Sort messages manually in memory by timestamp asc
   const messages = useMemo(() => {
     if (!rawMessages) return [];
     return [...rawMessages].sort((a, b) => {
@@ -174,6 +174,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
     );
   }
 
+  const otherName = otherProfile.displayName || otherProfile.fullName || 'Anonymous';
+  const otherAvatar = otherProfile.profileImage || otherProfile.profileImageUrl;
+
   return (
     <div className="flex-1 flex overflow-hidden h-full flex-col relative bg-[#050505]">
       <header className="h-16 md:h-20 px-4 md:px-6 border-b border-white/5 flex items-center justify-between bg-black/60 backdrop-blur-3xl sticky top-0 z-40">
@@ -183,12 +186,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
           </Button>
           <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
             <Avatar className="w-10 h-10 border border-primary/20 shadow-lg">
-              <AvatarImage src={otherProfile.profileImageUrl} />
-              <AvatarFallback className="bg-white/5 font-black">{otherProfile.fullName[0]}</AvatarFallback>
+              <AvatarImage src={otherAvatar} />
+              <AvatarFallback className="bg-white/5 font-black">{otherName[0]}</AvatarFallback>
             </Avatar>
             <div className="min-w-0">
               <h3 className="text-sm md:text-base font-bold text-white truncate group-hover:text-primary transition-colors">
-                {otherProfile.fullName}
+                {otherName}
               </h3>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -287,11 +290,11 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 </div>
                 <div className="flex flex-col items-center text-center space-y-8">
                   <Avatar className="w-40 h-40 md:w-48 md:h-48 border-4 border-primary/20 shadow-2xl relative z-10">
-                    <AvatarImage src={otherProfile.profileImageUrl} />
-                    <AvatarFallback className="text-6xl font-black bg-[#111]">{otherProfile.fullName[0]}</AvatarFallback>
+                    <AvatarImage src={otherAvatar} />
+                    <AvatarFallback className="text-6xl font-black bg-[#111]">{otherName[0]}</AvatarFallback>
                   </Avatar>
                   <div className="space-y-2">
-                    <h2 className="text-3xl md:text-4xl font-black font-headline italic tracking-tighter uppercase text-gradient">{otherProfile.fullName}</h2>
+                    <h2 className="text-3xl md:text-4xl font-black font-headline italic tracking-tighter uppercase text-gradient">{otherName}</h2>
                     <p className="text-primary text-[10px] font-black uppercase tracking-[0.5em]">Neural Verified</p>
                   </div>
                   <Card className="w-full bg-white/5 border-white/10 p-6 space-y-6 text-left rounded-3xl backdrop-blur-xl">
