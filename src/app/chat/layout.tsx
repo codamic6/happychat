@@ -6,9 +6,10 @@ import { useUser } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { IconRail } from '@/components/chat/IconRail';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
-import { Loader2, Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2, Sparkles, MessageSquare, Globe, Users, UserCircle, Settings } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -16,7 +17,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  // Determine if we are on a specific chat ID route
   const isAtConversation = pathname.startsWith('/chat/') && pathname !== '/chat';
 
   useEffect(() => {
@@ -54,33 +54,68 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
   if (!user) return null;
 
+  const mobileTabs = [
+    { label: 'Chats', icon: MessageSquare, href: '/chat' },
+    { label: 'Status', icon: Globe, href: '/chat' }, // Placeholder routes
+    { label: 'HappyAI', icon: Sparkles, href: '/ai-assistant' },
+    { label: 'Contacts', icon: Users, href: '/chat' },
+    { label: 'Profile', icon: UserCircle, href: '/chat' },
+  ];
+
   return (
-    <div className="flex h-screen bg-[#050505] text-white overflow-hidden relative">
-      {/* Icon Rail - Responsive: Fixed on Desktop, Bottom on Mobile Layout (implied by design goal) */}
-      <div className={cn(
-        "hidden md:block shrink-0 h-full",
-        isAtConversation && "hidden lg:block"
-      )}>
-        <IconRail />
-      </div>
-
+    <div className="flex flex-col h-screen bg-[#050505] text-white overflow-hidden relative">
       <div className="flex flex-1 overflow-hidden h-full">
-        {/* Chat Sidebar - Hidden on Mobile if in Conversation Route */}
-        <aside className={cn(
-          "w-full md:w-80 border-r border-white/5 bg-[#0d0d0d] flex flex-col shrink-0 h-full",
-          isAtConversation && "hidden md:flex"
+        {/* Desktop Navigation Rail */}
+        <div className={cn(
+          "hidden md:block shrink-0 h-full",
+          isAtConversation && "hidden lg:block"
         )}>
-          <ChatSidebar />
-        </aside>
+          <IconRail />
+        </div>
 
-        {/* Main Area: Page Content (ConversationView or EmptyState) */}
-        <main className={cn(
-          "flex-1 flex flex-col relative bg-[#050505] h-full overflow-hidden",
-          !isAtConversation && "hidden md:flex"
-        )}>
-          {children}
-        </main>
+        <div className="flex flex-1 overflow-hidden h-full relative">
+          {/* Chat Sidebar / List View */}
+          <aside className={cn(
+            "w-full md:w-80 border-r border-white/5 bg-[#0d0d0d] flex flex-col shrink-0 h-full transition-all duration-300",
+            isAtConversation && "hidden md:flex"
+          )}>
+            <ChatSidebar />
+          </aside>
+
+          {/* Main Content Area */}
+          <main className={cn(
+            "flex-1 flex flex-col relative bg-[#050505] h-full overflow-hidden",
+            !isAtConversation && "hidden md:flex"
+          )}>
+            {children}
+          </main>
+        </div>
       </div>
+
+      {/* Mobile Bottom Navigation - Hidden in Conversations */}
+      {!isAtConversation && (
+        <nav className="md:hidden h-20 bg-[#0d0d0d]/90 backdrop-blur-2xl border-t border-white/5 flex items-center justify-around px-4 pb-safe z-50">
+          {mobileTabs.map((tab, idx) => {
+            const isActive = pathname === tab.href;
+            return (
+              <Link key={idx} href={tab.href} className="flex flex-col items-center gap-1 group">
+                <div className={cn(
+                  "p-2 rounded-xl transition-all duration-300",
+                  isActive ? "bg-primary/20 text-primary glow-green" : "text-muted-foreground group-hover:text-white"
+                )}>
+                  <tab.icon className="w-6 h-6" />
+                </div>
+                <span className={cn(
+                  "text-[8px] font-black uppercase tracking-widest",
+                  isActive ? "text-primary" : "text-muted-foreground"
+                )}>
+                  {tab.label}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+      )}
     </div>
   );
 }
