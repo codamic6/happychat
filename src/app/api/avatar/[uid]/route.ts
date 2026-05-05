@@ -7,6 +7,7 @@ import { initializeFirebase } from '@/firebase';
 /**
  * Proxy route to serve MEGA images directly to the browser.
  * It fetches the file from MEGA, decrypts it, and streams the raw bytes.
+ * Now strictly handles real images only.
  */
 export async function GET(
   request: NextRequest,
@@ -15,7 +16,7 @@ export async function GET(
   const { uid } = await params;
 
   try {
-    console.log(`[AVATAR PROXY] Requesting avatar for UID: ${uid}`);
+    console.log(`[AVATAR PROXY] Requesting real avatar for UID: ${uid}`);
     
     // 1. Get User Profile from Firestore to find the MEGA link
     const { firestore } = initializeFirebase();
@@ -24,19 +25,20 @@ export async function GET(
 
     if (!userSnap.exists()) {
       console.warn(`[AVATAR PROXY] User ${uid} not found in Firestore.`);
-      return NextResponse.redirect(`https://picsum.photos/seed/${uid}/200/200`);
+      return new NextResponse(null, { status: 404 });
     }
 
     const userData = userSnap.data();
     const megaUrl = userData.profileImageUrl;
 
+    // No valid MEGA URL = No Image. No more picsum fallbacks here.
     if (!megaUrl || !megaUrl.includes('mega.nz')) {
-      console.log(`[AVATAR PROXY] No MEGA URL found for ${uid}, using fallback.`);
-      return NextResponse.redirect(`https://picsum.photos/seed/${uid}/200/200`);
+      console.log(`[AVATAR PROXY] No real identity image found for ${uid}.`);
+      return new NextResponse(null, { status: 404 });
     }
 
     // 2. Fetch and Decrypt the file data from MEGA
-    console.log(`[AVATAR PROXY] Fetching from MEGA: ${megaUrl.substring(0, 30)}...`);
+    console.log(`[AVATAR PROXY] Syncing from MEGA...`);
     const file = MegaFile.fromURL(megaUrl);
     
     // Load attributes (essential for identifying the file)
@@ -49,7 +51,7 @@ export async function GET(
       throw new Error('Downloaded buffer is empty.');
     }
 
-    console.log(`[AVATAR PROXY] Successfully decrypted ${buffer.length} bytes for ${uid}`);
+    console.log(`[AVATAR PROXY] Identity data synchronized: ${buffer.length} bytes`);
 
     // 3. Return the raw image data with correct headers
     return new NextResponse(buffer, {
@@ -61,7 +63,7 @@ export async function GET(
     });
   } catch (error: any) {
     console.error('[AVATAR PROXY ERROR]:', error.message);
-    // Return a generic fallback on error so the UI doesn't break
-    return NextResponse.redirect(`https://picsum.photos/seed/${uid}/200/200`);
+    // Return 404 so frontend can handle fallback to initials/icons
+    return new NextResponse(null, { status: 404 });
   }
 }

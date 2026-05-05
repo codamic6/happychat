@@ -33,15 +33,17 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      // Start with an empty profile image URL - no more demo/picsum images
       await setDoc(doc(db, 'users', user.uid), {
         id: user.uid,
         fullName,
         username: username.toLowerCase(),
         email: email.toLowerCase(),
         phoneNumber,
-        profileImageUrl: `https://picsum.photos/seed/${user.uid}/200/200`,
+        profileImageUrl: '', 
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        isOnline: true,
       });
 
       toast({

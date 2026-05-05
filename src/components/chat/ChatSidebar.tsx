@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, MessageSquare, Zap, MoreVertical } from 'lucide-react';
+import { Search, Plus, MessageSquare, Zap, MoreVertical, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -136,6 +136,11 @@ export function ChatSidebar() {
             const isSelected = pathname === `/chat/${conv.id}`;
             const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
             const name = profile.displayName || profile.fullName || 'User';
+            const initials = (profile.displayName || profile.fullName || 'U').charAt(0).toUpperCase();
+
+            // Real image logic only
+            const hasRealImage = profile.profileImageUrl && profile.profileImageUrl.includes('mega.nz');
+            const avatarSrc = hasRealImage ? `/api/avatar/${profile.id}?t=${Date.now()}` : null;
 
             return (
               <button 
@@ -149,14 +154,27 @@ export function ChatSidebar() {
                 )}
               >
                 <div className="relative shrink-0">
-                  <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden bg-[#111]">
-                    {/* Use Secure Image Proxy URL for MEGA images */}
-                    <img 
-                      src={`/api/avatar/${profile.id}?t=${Date.now()}`} 
-                      alt={name} 
-                      className="w-full h-full object-cover" 
-                      loading="lazy"
-                    />
+                  <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden bg-[#111] flex items-center justify-center">
+                    {avatarSrc ? (
+                      <img 
+                        src={avatarSrc} 
+                        alt={name} 
+                        className="w-full h-full object-cover" 
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          const parent = (e.target as HTMLImageElement).parentElement;
+                          if (parent) {
+                            const fallback = document.createElement('div');
+                            fallback.className = "w-full h-full flex items-center justify-center text-xl font-black text-primary";
+                            fallback.innerText = initials;
+                            parent.appendChild(fallback);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="text-xl font-black text-primary">{initials}</div>
+                    )}
                   </div>
                   <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
                 </div>

@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, Paperclip, Smile, Search, 
   MoreVertical, X, Info, ShieldCheck, Mail, Phone, ArrowLeft, Loader2,
-  ShieldAlert, UserCheck
+  ShieldAlert, UserCheck, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -168,14 +168,19 @@ export function ConversationView({ conversationId }: { conversationId: string })
   if (!otherProfile) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[#050505]">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <div className="relative">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        </div>
       </div>
     );
   }
 
   const otherName = otherProfile.displayName || otherProfile.fullName || 'Anonymous';
-  // Use Secure Proxy Route for Avatar
-  const otherAvatar = `/api/avatar/${otherProfile.id}?t=${Date.now()}`;
+  const initials = (otherProfile.displayName || otherProfile.fullName || 'A').charAt(0).toUpperCase();
+  
+  // Real image logic only
+  const hasRealImage = otherProfile.profileImageUrl && otherProfile.profileImageUrl.includes('mega.nz');
+  const otherAvatar = hasRealImage ? `/api/avatar/${otherProfile.id}?t=${Date.now()}` : null;
 
   return (
     <div className="flex-1 flex overflow-hidden h-full flex-col relative bg-[#050505]">
@@ -185,8 +190,26 @@ export function ConversationView({ conversationId }: { conversationId: string })
             <ArrowLeft className="w-6 h-6" />
           </Button>
           <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
-            <div className="w-10 h-10 rounded-full border border-primary/20 shadow-lg overflow-hidden shrink-0">
-               <img src={otherAvatar} className="w-full h-full object-cover" alt={otherName} />
+            <div className="w-10 h-10 rounded-full border border-primary/20 shadow-lg overflow-hidden shrink-0 flex items-center justify-center bg-[#111]">
+               {otherAvatar ? (
+                 <img 
+                    src={otherAvatar} 
+                    className="w-full h-full object-cover" 
+                    alt={otherName} 
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      const parent = (e.target as HTMLImageElement).parentElement;
+                      if (parent) {
+                        const fallback = document.createElement('div');
+                        fallback.className = "w-full h-full flex items-center justify-center text-sm font-black text-primary";
+                        fallback.innerText = initials;
+                        parent.appendChild(fallback);
+                      }
+                    }}
+                  />
+               ) : (
+                 <div className="text-sm font-black text-primary">{initials}</div>
+               )}
             </div>
             <div className="min-w-0">
               <h3 className="text-sm md:text-base font-bold text-white truncate group-hover:text-primary transition-colors">
@@ -220,6 +243,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
       <ScrollArea className="flex-1 relative bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-fixed opacity-[0.98]">
         <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6 pb-24 md:pb-32">
+          {messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 opacity-30 space-y-6">
+              <ShieldCheck className="w-16 h-16 text-primary/50 animate-pulse" />
+              <p className="text-sm font-black uppercase tracking-widest italic text-center">Start a secure conversation with {otherName.split(' ')[0]}</p>
+            </div>
+          )}
           {messages.map((msg) => {
             const isOwn = msg.senderId === user?.uid;
             return (
@@ -276,8 +305,26 @@ export function ConversationView({ conversationId }: { conversationId: string })
                   <Button size="icon" variant="ghost" onClick={() => setShowProfile(false)} className="h-10 w-10 rounded-full"><X className="w-6 h-6" /></Button>
                 </div>
                 <div className="flex flex-col items-center text-center space-y-8">
-                  <div className="w-40 h-40 md:w-48 md:h-48 border-4 border-primary/20 shadow-2xl relative z-10 bg-[#111] rounded-full overflow-hidden">
-                    <img src={otherAvatar} className="w-full h-full object-cover" alt={otherName} />
+                  <div className="w-40 h-40 md:w-48 md:h-48 border-4 border-primary/20 shadow-2xl relative z-10 bg-[#111] rounded-full overflow-hidden flex items-center justify-center">
+                    {otherAvatar ? (
+                      <img 
+                        src={otherAvatar} 
+                        className="w-full h-full object-cover" 
+                        alt={otherName} 
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          const parent = (e.target as HTMLImageElement).parentElement;
+                          if (parent) {
+                            const fallback = document.createElement('div');
+                            fallback.className = "w-full h-full flex items-center justify-center text-5xl font-black text-primary";
+                            fallback.innerText = initials;
+                            parent.appendChild(fallback);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="text-5xl font-black text-primary">{initials}</div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <h2 className="text-3xl md:text-4xl font-black font-headline italic tracking-tighter uppercase text-gradient">{otherName}</h2>

@@ -14,8 +14,8 @@ import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useUser, useFirestore, useDoc } from '@/firebase';
-import { doc, updateDoc, serverTimestamp, collection, query, where, getDocs, getDoc } from 'firebase/firestore';
-import { motion, AnimatePresence } from 'framer-motion';
+import { doc, updateDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
+import { motion } from 'framer-motion';
 import { toast } from '@/hooks/use-toast';
 import { uploadProfileImageToMega } from '@/app/actions/profile';
 import { signOut } from 'firebase/auth';
@@ -105,7 +105,7 @@ export default function ProfilePage() {
       const result = await uploadProfileImageToMega(megaFormData);
       
       if ('url' in result) {
-        addLog(`SUCCESS: Public Link Generated`);
+        addLog(`SUCCESS: Identity Link Generated`);
         const userDocRef = doc(db, 'users', user.uid);
         
         addLog('FIRESTORE: Updating Identity Record...');
@@ -169,8 +169,9 @@ export default function ProfilePage() {
     );
   }
 
-  // Use the proxy URL for rendering
-  const avatarSrc = profile?.id ? `/api/avatar/${profile.id}?t=${Date.now()}` : '';
+  // Use the proxy URL only if a real image exists
+  const hasRealImage = profile?.profileImageUrl && profile.profileImageUrl.includes('mega.nz');
+  const avatarSrc = hasRealImage ? `/api/avatar/${profile?.id}?t=${Date.now()}` : null;
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#050505] relative custom-scrollbar">
@@ -190,16 +191,26 @@ export default function ProfilePage() {
           <div className="lg:col-span-1 space-y-6">
             <Card className="glass p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2.5rem] relative overflow-hidden group">
               <div className="relative">
-                <div className="w-40 h-40 md:w-48 md:h-48 rounded-full border-4 border-primary/20 shadow-2xl bg-[#0d0d0d] overflow-hidden">
-                  {profile?.id ? (
+                <div className="w-40 h-40 md:w-48 md:h-48 rounded-full border-4 border-primary/20 shadow-2xl bg-[#0d0d0d] overflow-hidden flex items-center justify-center">
+                  {avatarSrc ? (
                     <img 
                       src={avatarSrc} 
                       alt="Avatar" 
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        const parent = (e.target as HTMLImageElement).parentElement;
+                        if (parent) {
+                          const fallback = document.createElement('div');
+                          fallback.className = "w-full h-full flex items-center justify-center text-5xl font-black bg-white/5 text-primary";
+                          fallback.innerText = profile?.displayName?.[0] || 'U';
+                          parent.appendChild(fallback);
+                        }
+                      }}
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-5xl font-black bg-white/5">
-                      {profile?.displayName?.[0] || 'U'}
+                    <div className="w-full h-full flex items-center justify-center text-5xl font-black bg-white/5 text-primary">
+                      {profile?.displayName?.[0] || profile?.fullName?.[0] || 'U'}
                     </div>
                   )}
                 </div>
