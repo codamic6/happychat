@@ -150,11 +150,12 @@ export function ChatSidebar() {
               >
                 <div className="relative shrink-0">
                   <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden bg-[#111]">
-                    {/* Use Proxy URL for MEGA images */}
+                    {/* Use Secure Image Proxy URL for MEGA images */}
                     <img 
                       src={`/api/avatar/${profile.id}?t=${Date.now()}`} 
                       alt={name} 
                       className="w-full h-full object-cover" 
+                      loading="lazy"
                     />
                   </div>
                   <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />

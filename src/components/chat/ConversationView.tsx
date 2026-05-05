@@ -174,6 +174,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   }
 
   const otherName = otherProfile.displayName || otherProfile.fullName || 'Anonymous';
+  // Use Secure Proxy Route for Avatar
   const otherAvatar = `/api/avatar/${otherProfile.id}?t=${Date.now()}`;
 
   return (
@@ -184,10 +185,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
             <ArrowLeft className="w-6 h-6" />
           </Button>
           <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
-            <Avatar className="w-10 h-10 border border-primary/20 shadow-lg">
-              <AvatarImage src={otherAvatar} className="object-cover" />
-              <AvatarFallback className="bg-white/5 font-black">{otherName[0]}</AvatarFallback>
-            </Avatar>
+            <div className="w-10 h-10 rounded-full border border-primary/20 shadow-lg overflow-hidden shrink-0">
+               <img src={otherAvatar} className="w-full h-full object-cover" alt={otherName} />
+            </div>
             <div className="min-w-0">
               <h3 className="text-sm md:text-base font-bold text-white truncate group-hover:text-primary transition-colors">
                 {otherName}
@@ -276,10 +276,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
                   <Button size="icon" variant="ghost" onClick={() => setShowProfile(false)} className="h-10 w-10 rounded-full"><X className="w-6 h-6" /></Button>
                 </div>
                 <div className="flex flex-col items-center text-center space-y-8">
-                  <Avatar className="w-40 h-40 md:w-48 md:h-48 border-4 border-primary/20 shadow-2xl relative z-10 bg-[#111]">
-                    <AvatarImage src={otherAvatar} className="object-cover" />
-                    <AvatarFallback className="text-6xl font-black">{otherName[0]}</AvatarFallback>
-                  </Avatar>
+                  <div className="w-40 h-40 md:w-48 md:h-48 border-4 border-primary/20 shadow-2xl relative z-10 bg-[#111] rounded-full overflow-hidden">
+                    <img src={otherAvatar} className="w-full h-full object-cover" alt={otherName} />
+                  </div>
                   <div className="space-y-2">
                     <h2 className="text-3xl md:text-4xl font-black font-headline italic tracking-tighter uppercase text-gradient">{otherName}</h2>
                     <p className="text-primary text-[10px] font-black uppercase tracking-[0.5em]">Neural Verified</p>
