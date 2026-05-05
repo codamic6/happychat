@@ -157,7 +157,7 @@ export function ChatSidebar() {
                 key={conv.id}
                 onClick={() => router.push(`/chat/${conv.id}`)}
                 className={cn(
-                  "w-full p-4 rounded-3xl flex items-center gap-4 transition-all group border border-transparent",
+                  "w-full p-4 rounded-3xl flex items-center gap-4 transition-all group border border-transparent overflow-hidden",
                   isSelected 
                     ? "bg-primary/10 border-primary/20 shadow-[0_0_20px_rgba(0,200,83,0.1)]" 
                     : "hover:bg-white/5"
@@ -188,14 +188,14 @@ export function ChatSidebar() {
                   </div>
                   <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
                 </div>
-                <div className="flex-1 text-left min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-sm text-white truncate flex-1">{name}</span>
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter shrink-0 ml-2">
+                <div className="flex-1 text-left min-w-0 pr-2">
+                  <div className="flex items-center justify-between mb-1 gap-2">
+                    <span className="font-bold text-sm text-white truncate">{name}</span>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter shrink-0">
                       {conv.updatedAt?.toDate ? formatShortTime(conv.updatedAt.toDate()) : ''}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-3">
                     <p className={cn(
                       "text-[11px] truncate flex-1",
                       unreadCount > 0 ? "text-white font-bold" : "text-muted-foreground"
