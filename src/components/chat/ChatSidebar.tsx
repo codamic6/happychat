@@ -190,20 +190,20 @@ export function ChatSidebar() {
                 </div>
                 <div className="flex-1 text-left min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-sm text-white truncate">{name}</span>
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">
+                    <span className="font-bold text-sm text-white truncate flex-1">{name}</span>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter shrink-0 ml-2">
                       {conv.updatedAt?.toDate ? formatShortTime(conv.updatedAt.toDate()) : ''}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <p className={cn(
-                      "text-[11px] truncate max-w-[80%]",
+                      "text-[11px] truncate flex-1",
                       unreadCount > 0 ? "text-white font-bold" : "text-muted-foreground"
                     )}>
-                      {conv.lastMessage || `Encrypted chat`}
+                      {conv.lastMessage || `Secure chat`}
                     </p>
                     {unreadCount > 0 && (
-                      <Badge className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center">
+                      <Badge className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center shrink-0">
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </Badge>
                     )}
