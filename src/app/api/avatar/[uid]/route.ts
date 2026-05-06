@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { File as MegaFile } from 'megajs';
 import { doc, getDoc } from 'firebase/firestore';
