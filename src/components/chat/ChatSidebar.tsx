@@ -61,7 +61,7 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
     ? manualTruncate(conv.lastMessage, 12) 
     : 'Secure chat...';
 
-  // Use the new URL-based proxy with cache-busting
+  // Use the new URL-based proxy with key encoding preserved
   const avatarSrc = profile.profileImageUrl?.includes('mega.nz') 
     ? `/api/avatar?url=${encodeURIComponent(profile.profileImageUrl)}&t=${Date.now()}` 
     : null;

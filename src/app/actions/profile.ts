@@ -84,7 +84,10 @@ export async function uploadProfileImageToMega(formData: FormData): Promise<{ ur
       size: buffer.length
     }, buffer).complete;
 
-    console.log('[DEBUG] UPLOAD: File committed to MEGA');
+    console.log('[DEBUG] UPLOAD: File committed to MEGA. Loading attributes for key generation...');
+
+    // Crucial: Load attributes before link generation to ensure key is available
+    await uploadedFile.loadAttributes();
 
     // Generate Permanent Public Link (with decryption key)
     // link(true) is critical as it includes the decryption hash fragment (#key)
@@ -94,7 +97,11 @@ export async function uploadProfileImageToMega(formData: FormData): Promise<{ ur
           console.error('[DEBUG] UPLOAD: Failed to generate link:', err.message);
           reject(err);
         } else {
-          console.log('[DEBUG] UPLOAD: Public link generated successfully');
+          const hasKey = link.includes('#');
+          console.log(`[DEBUG] UPLOAD: Link generated. Length: ${link.length}, Contains Key (#): ${hasKey}`);
+          if (!hasKey) {
+            console.warn('[DEBUG] UPLOAD: Generated link is missing the decryption key fragment!');
+          }
           resolve(link);
         }
       });

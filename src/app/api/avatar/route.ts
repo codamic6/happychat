@@ -13,22 +13,29 @@ export async function GET(request: NextRequest) {
   const megaUrlParam = searchParams.get('url');
 
   if (!megaUrlParam) {
+    console.error('[AVATAR PROXY] Error: Missing url parameter');
     return new Response(null, { status: 400 });
   }
 
-  // URL may be double-encoded or missing hash fragment if handled poorly by client
+  // URL may be double-encoded. We decode it once.
   const megaUrl = decodeURIComponent(megaUrlParam);
 
   if (!megaUrl.includes('mega.nz')) {
+    console.error('[AVATAR PROXY] Error: Invalid domain in URL');
     return new Response(null, { status: 404 });
   }
 
-  // LOG: Debugging the incoming link structure
-  console.log(`[AVATAR PROXY] Processing: ${megaUrl.split('#')[0]} (Has Key: ${megaUrl.includes('#')})`);
+  const hasKey = megaUrl.includes('#');
+  console.log(`[AVATAR PROXY] Processing: ${megaUrl.split('#')[0]} | Contains Key (#): ${hasKey}`);
+
+  if (!hasKey) {
+    console.error('[AVATAR PROXY] Error: MEGA URL is missing decryption key fragment (#)');
+    // We cannot proceed without the key
+    return new Response(null, { status: 404 });
+  }
 
   try {
     // megajs fromURL handles decryption via the URL fragment (#key)
-    // If the # is missing, decryption will fail.
     const file = MegaFile.fromURL(megaUrl);
     
     // Load attributes to verify the file and prepare for download

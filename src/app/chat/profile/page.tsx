@@ -69,9 +69,10 @@ export default function ProfilePage() {
         isOnline: profile.isOnline ?? true
       });
 
-      // ONLY reset image error if the URL has actually changed
-      // This prevents the infinite "H H H H" initials duplication loop
+      // Stability check: Only reset image state if the URL actually changed.
+      // This prevents the infinite initials growth loop.
       if (profile.profileImageUrl !== lastProcessedUrl) {
+        console.log(`[PROFILE] URL Changed from "${lastProcessedUrl}" to "${profile.profileImageUrl}"`);
         setImageError(false);
         setLastProcessedUrl(profile.profileImageUrl || null);
         setTimestamp(Date.now());
@@ -108,6 +109,7 @@ export default function ProfilePage() {
       const result = await uploadProfileImageToMega(megaFormData);
       
       if (result && 'url' in result) {
+        console.log(`[PROFILE] Upload success. Full URL: ${result.url}`);
         const userDocRef = doc(db, 'users', user.uid);
         await updateDoc(userDocRef, {
           profileImageUrl: result.url,

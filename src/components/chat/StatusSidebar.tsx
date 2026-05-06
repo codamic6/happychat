@@ -207,7 +207,7 @@ export function StatusSidebar() {
                 const name = profile.displayName || profile.fullName || 'User';
                 const latest = items[items.length - 1];
                 
-                // Use new URL-based proxy for status avatars
+                // Use new URL-based proxy for status avatars with key encoding preserved
                 const avatarSrc = profile.profileImageUrl?.includes('mega.nz') 
                   ? `/api/avatar?url=${encodeURIComponent(profile.profileImageUrl)}&t=${Date.now()}` 
                   : null;

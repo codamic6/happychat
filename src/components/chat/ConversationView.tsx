@@ -176,7 +176,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const otherName = otherProfile.displayName || otherProfile.fullName || 'User';
   const initial = otherName.charAt(0).toUpperCase();
   
-  // Use the new URL-based proxy for conversation headers
+  // Use the new URL-based proxy for conversation headers with key encoding preserved
   const otherAvatar = otherProfile.profileImageUrl?.includes('mega.nz') 
     ? `/api/avatar?url=${encodeURIComponent(otherProfile.profileImageUrl)}&t=${Date.now()}` 
     : null;
