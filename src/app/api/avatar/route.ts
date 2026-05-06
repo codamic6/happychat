@@ -10,14 +10,25 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const megaUrl = searchParams.get('url');
+  const megaUrlParam = searchParams.get('url');
 
-  if (!megaUrl || !megaUrl.includes('mega.nz')) {
+  if (!megaUrlParam) {
+    return new Response(null, { status: 400 });
+  }
+
+  // URL may be double-encoded or missing hash fragment if handled poorly by client
+  const megaUrl = decodeURIComponent(megaUrlParam);
+
+  if (!megaUrl.includes('mega.nz')) {
     return new Response(null, { status: 404 });
   }
 
+  // LOG: Debugging the incoming link structure
+  console.log(`[AVATAR PROXY] Processing: ${megaUrl.split('#')[0]} (Has Key: ${megaUrl.includes('#')})`);
+
   try {
     // megajs fromURL handles decryption via the URL fragment (#key)
+    // If the # is missing, decryption will fail.
     const file = MegaFile.fromURL(megaUrl);
     
     // Load attributes to verify the file and prepare for download

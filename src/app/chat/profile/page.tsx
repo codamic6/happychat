@@ -53,7 +53,10 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  
+  // Image handling state
   const [imageError, setImageError] = useState(false);
+  const [lastProcessedUrl, setLastProcessedUrl] = useState<string | null>(null);
   const [timestamp, setTimestamp] = useState(Date.now());
 
   useEffect(() => {
@@ -65,10 +68,16 @@ export default function ProfilePage() {
         phoneNumber: profile.phoneNumber || '',
         isOnline: profile.isOnline ?? true
       });
-      setImageError(false);
-      setTimestamp(Date.now());
+
+      // ONLY reset image error if the URL has actually changed
+      // This prevents the infinite "H H H H" initials duplication loop
+      if (profile.profileImageUrl !== lastProcessedUrl) {
+        setImageError(false);
+        setLastProcessedUrl(profile.profileImageUrl || null);
+        setTimestamp(Date.now());
+      }
     }
-  }, [profile]);
+  }, [profile, lastProcessedUrl]);
 
   const handleCheckUsername = async (val: string) => {
     if (!val || val === profile?.username) {
@@ -104,7 +113,6 @@ export default function ProfilePage() {
           profileImageUrl: result.url,
           updatedAt: serverTimestamp()
         });
-        setTimestamp(Date.now());
         toast({ title: "Photo Updated", description: "Your photo has been saved." });
       } else {
         toast({ 
@@ -160,7 +168,7 @@ export default function ProfilePage() {
   const nameForInitials = formData.displayName || profile?.fullName || 'User';
   const initial = nameForInitials.charAt(0).toUpperCase();
   
-  // Use the new URL-based proxy to avoid permission issues
+  // Construct proxy URL with key encoding preserved
   const avatarSrc = profile?.profileImageUrl?.includes('mega.nz') 
     ? `/api/avatar?url=${encodeURIComponent(profile.profileImageUrl)}&t=${timestamp}` 
     : null;

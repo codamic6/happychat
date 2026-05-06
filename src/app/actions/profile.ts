@@ -87,10 +87,16 @@ export async function uploadProfileImageToMega(formData: FormData): Promise<{ ur
     console.log('[DEBUG] UPLOAD: File committed to MEGA');
 
     // Generate Permanent Public Link (with decryption key)
+    // link(true) is critical as it includes the decryption hash fragment (#key)
     const publicUrl = await new Promise<string>((resolve, reject) => {
       uploadedFile.link(true, (err, link) => {
-        if (err) reject(err);
-        else resolve(link);
+        if (err) {
+          console.error('[DEBUG] UPLOAD: Failed to generate link:', err.message);
+          reject(err);
+        } else {
+          console.log('[DEBUG] UPLOAD: Public link generated successfully');
+          resolve(link);
+        }
       });
     });
     
