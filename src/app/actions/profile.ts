@@ -63,14 +63,15 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
     const buffer = Buffer.from(await file.arrayBuffer());
     const fileName = `profile-${userId}-${Date.now()}`;
 
+    // 1. Upload the file
     const uploadedFile = await storage.upload({
       name: fileName,
       size: buffer.length
     }, buffer).complete;
 
-    await uploadedFile.loadAttributes();
-
-    // file.link(true) is essential for including the decryption key (#fragment)
+    // 2. Generate the PERMANENT public link with decryption key (#)
+    // IMPORTANT: We do NOT call loadAttributes() here as it can throw 
+    // "This is not needed for files loaded from logged in sessions"
     const rawUrl = await new Promise<string>((resolve, reject) => {
       uploadedFile.link(true, (err, link) => {
         if (err) reject(err);
@@ -80,11 +81,11 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
 
     console.log('[DEBUG] MEGA: Generated Raw Link:', rawUrl);
     
-    if (!rawUrl.includes('#')) {
-      throw new Error('Generated MEGA link is missing decryption key.');
+    if (!rawUrl || !rawUrl.includes('#')) {
+      throw new Error('Generated MEGA link is missing decryption key fragment (#).');
     }
 
-    // Save to Firestore immediately
+    // 3. Save the RAW URL to Firestore
     const { firestore } = initializeFirebase();
     const userRef = doc(firestore, 'users', userId);
     await updateDoc(userRef, {
@@ -92,9 +93,9 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
       updatedAt: serverTimestamp()
     });
 
-    // Verification step: Read it back to ensure it's saved correctly
-    const snap = await getDoc(userRef);
-    const savedUrl = snap.data()?.profileImageUrl;
+    // Verification check
+    const verifySnap = await getDoc(userRef);
+    const savedUrl = verifySnap.data()?.profileImageUrl;
     console.log('[DEBUG] FIRESTORE: Verified Stored Link:', savedUrl);
 
     return { url: rawUrl };

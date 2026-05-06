@@ -43,7 +43,7 @@ function formatShortTime(date: Date) {
 }
 
 /**
- * Hard limit of 12 characters followed by dots.
+ * Strict JavaScript-based manual truncation to exactly 12 characters.
  */
 function manualTruncate(text: string, limit: number = 12) {
   if (!text) return '';
@@ -57,7 +57,12 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
   const name = profile.displayName || profile.fullName || 'User';
   const initial = name.charAt(0).toUpperCase();
   const messagePreview = manualTruncate(conv.lastMessage || 'Secure chat...', 12);
-  const avatarUrl = `/api/avatar/${profile.id}?t=${conv.updatedAt?.toMillis?.() || Date.now()}`;
+  const avatarSrc = `/api/avatar/${profile.id}?t=${conv.updatedAt?.toMillis?.() || Date.now()}`;
+
+  // Reset error state if the conversation updates
+  useEffect(() => {
+    setImageError(false);
+  }, [conv.updatedAt]);
 
   return (
     <button 
@@ -73,7 +78,7 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
         <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden bg-[#111] flex items-center justify-center">
           {!imageError && profile.profileImageUrl ? (
             <img 
-              src={avatarUrl} 
+              src={avatarSrc} 
               alt={name} 
               className="w-full h-full object-cover" 
               onError={() => setImageError(true)}

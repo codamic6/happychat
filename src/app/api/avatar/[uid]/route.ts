@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Avatar Proxy Route [uid]
- * Fetches the raw MEGA URL from Firestore server-side to ensure fragments (#key) are preserved.
+ * Fetches the raw MEGA URL from Firestore server-side to ensure 
+ * the decryption key (#fragment) is correctly retrieved and used.
  */
 export async function GET(
   request: NextRequest,
@@ -36,11 +37,11 @@ export async function GET(
     }
 
     if (!megaUrl.includes('#')) {
-      console.error(`[AVATAR PROXY] Error: Stored URL for ${uid} is missing decryption key: ${megaUrl}`);
-      return new NextResponse('Missing decryption key in stored URL', { status: 404 });
+      console.error(`[AVATAR PROXY] Error: Stored URL for ${uid} is missing decryption key (#): ${megaUrl}`);
+      return new NextResponse('Incomplete MEGA URL (Missing #)', { status: 404 });
     }
 
-    // megajs handles the full URL with fragment internally
+    // megajs fromURL handles the full URL with fragment internally for decryption
     const file = MegaFile.fromURL(megaUrl);
     await file.loadAttributes();
     const buffer = await file.downloadBuffer();

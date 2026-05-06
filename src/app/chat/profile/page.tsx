@@ -65,8 +65,7 @@ export default function ProfilePage() {
         phoneNumber: profile.phoneNumber || '',
         isOnline: profile.isOnline ?? true
       });
-      // Only reset image error if the profile actually exists
-      setImageError(false);
+      setImageError(false); // Reset error state when new profile data arrives
     }
   }, [profile]);
 
@@ -146,8 +145,9 @@ export default function ProfilePage() {
     );
   }
 
-  const initial = (profile?.displayName || profile?.fullName || 'U').charAt(0).toUpperCase();
-  const avatarUrl = profile?.id ? `/api/avatar/${profile.id}?t=${profile.updatedAt?.toMillis?.() || Date.now()}` : null;
+  const name = profile?.displayName || profile?.fullName || 'User';
+  const initial = name.charAt(0).toUpperCase();
+  const avatarSrc = profile?.id ? `/api/avatar/${profile.id}?t=${profile.updatedAt?.toMillis?.() || Date.now()}` : null;
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#050505] custom-scrollbar overflow-x-hidden">
@@ -170,7 +170,7 @@ export default function ProfilePage() {
               <div className="w-32 h-32 md:w-44 md:h-44 rounded-full border-4 border-primary/20 bg-[#0d0d0d] overflow-hidden flex items-center justify-center">
                 {!imageError && profile?.profileImageUrl ? (
                   <img 
-                    src={avatarUrl!} 
+                    src={avatarSrc!} 
                     alt="Profile" 
                     className="w-full h-full object-cover"
                     onError={() => setImageError(true)}
@@ -191,7 +191,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-lg font-bold text-white">{formData.displayName || profile?.fullName}</h3>
+              <h3 className="text-lg font-bold text-white">{name}</h3>
               <p className="text-primary text-[10px] font-bold uppercase tracking-widest">@{formData.username}</p>
             </div>
 
