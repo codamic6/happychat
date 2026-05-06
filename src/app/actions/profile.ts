@@ -3,20 +3,38 @@
 import { Storage } from 'megajs';
 
 /**
- * Initializes and returns a ready MEGA storage instance.
- * No fallbacks - strictly authenticates with environment variables.
+ * MEGA Singleton Service
+ * We store the storage instance globally to reuse the authenticated session
+ * and avoid repeated logins that cause MEGA account locking.
+ */
+declare global {
+  var megaStorage: Storage | undefined;
+  var megaAuthPromise: Promise<Storage> | undefined;
+}
+
+let isUploading = false;
+
+/**
+ * Securely retrieves the authenticated MEGA storage instance.
+ * Reuses existing session if available.
  */
 async function getMegaStorage(): Promise<Storage> {
   const email = process.env.MEGA_EMAIL;
   const password = process.env.MEGA_PASSWORD;
 
   if (!email || !password || email === 'your-email@example.com' || email.trim() === '') {
-    throw new Error('MEGA_EMAIL or MEGA_PASSWORD environment variables are missing. Please add them to your project environment.');
+    throw new Error('MEGA_EMAIL or MEGA_PASSWORD environment variables are missing.');
   }
 
-  console.log('[DEBUG] MEGA: Initializing connection for:', email);
+  // If already authenticated, return instance
+  if (global.megaStorage) return global.megaStorage;
 
-  return new Promise((resolve, reject) => {
+  // If authentication is already in progress, wait for it
+  if (global.megaAuthPromise) return global.megaAuthPromise;
+
+  console.log('[DEBUG] MEGA: Initializing single session for:', email);
+
+  global.megaAuthPromise = new Promise((resolve, reject) => {
     const storage = new Storage({ 
       email, 
       password,
@@ -25,71 +43,66 @@ async function getMegaStorage(): Promise<Storage> {
     }, (err) => {
       if (err) {
         console.error('[DEBUG] MEGA: Auth failed:', err.message);
+        global.megaAuthPromise = undefined; // Reset so we can try again
         reject(new Error(`MEGA Authentication Failed: ${err.message}`));
       } else {
-        console.log('[DEBUG] MEGA: Connection established and ready');
+        console.log('[DEBUG] MEGA: Session established successfully');
+        global.megaStorage = storage;
         resolve(storage);
       }
     });
   });
+
+  return global.megaAuthPromise;
 }
 
 /**
  * Securely uploads a profile image to MEGA storage and returns a permanent public link.
- * This function waits for the upload to COMPLETELY commit before generating the link.
  */
 export async function uploadProfileImageToMega(formData: FormData): Promise<{ url: string } | { error: string }> {
+  if (isUploading) return { error: 'An upload is already in progress. Please wait.' };
+  
   const file = formData.get('file') as File;
   if (!file) return { error: 'No file provided' };
 
-  console.log(`[DEBUG] UPLOAD: Processing "${file.name}" (${file.size} bytes)`);
+  isUploading = true;
+  console.log(`[DEBUG] UPLOAD: Starting upload for "${file.name}"`);
 
   try {
-    // 1. Initialize Storage (Thows error if credentials missing)
     const storage = await getMegaStorage();
 
-    // 2. Prepare Data Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     
-    if (buffer.length === 0) {
-      throw new Error('File buffer is empty.');
-    }
+    if (buffer.length === 0) throw new Error('File buffer is empty.');
 
     const fileName = `profile-${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-    console.log(`[DEBUG] UPLOAD: Sending ${fileName} to Cloud Drive...`);
 
-    // 3. Perform Upload and wait for full COMMITMENT
+    // Perform Upload
     const uploadedFile = await storage.upload({
       name: fileName,
       size: buffer.length
     }, buffer).complete;
 
-    console.log('[DEBUG] UPLOAD: Committed successfully');
+    console.log('[DEBUG] UPLOAD: File committed to MEGA');
 
-    // 4. Generate Permanent Public Link (with decryption key)
+    // Generate Permanent Public Link (with decryption key)
     const publicUrl = await new Promise<string>((resolve, reject) => {
       uploadedFile.link(true, (err, link) => {
-        if (err) {
-          console.error('[DEBUG] LINK GEN FAILED:', err);
-          reject(err);
-        } else {
-          resolve(link);
-        }
+        if (err) reject(err);
+        else resolve(link);
       });
     });
     
-    if (!publicUrl) {
-      throw new Error('Upload finished but could not generate public link.');
-    }
-
-    console.log('[DEBUG] UPLOAD COMPLETE: URL:', publicUrl);
+    if (!publicUrl) throw new Error('Could not generate public link.');
 
     return { url: publicUrl };
   } catch (error: any) {
-    console.error('[DEBUG] MEGA PIPELINE FAILURE:', error.message);
+    console.error('[DEBUG] MEGA UPLOAD FAILURE:', error.message);
     return { 
-      error: error.message || 'An unexpected error occurred during cloud synchronization.'
+      error: error.message || 'Cloud synchronization failed.'
     };
+  } finally {
+    isUploading = false;
   }
 }

@@ -103,7 +103,7 @@ export default function ProfilePage() {
         toast({ 
           variant: "destructive", 
           title: "Upload Failed", 
-          description: result.error || "Could not sync with cloud storage. Please check your credentials." 
+          description: result.error || "Could not sync with cloud storage." 
         });
       }
     } catch (err: any) {
@@ -150,6 +150,7 @@ export default function ProfilePage() {
     );
   }
 
+  // Use standard img tag with cache-busting timestamp
   const avatarSrc = profile?.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${profile?.id}?t=${Date.now()}` : null;
 
   return (

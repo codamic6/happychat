@@ -44,7 +44,6 @@ function formatShortTime(date: Date) {
 
 /**
  * Manually truncates a string to 12 characters followed by dots.
- * This is used to guarantee no overflow in the sidebar.
  */
 function manualTruncate(text: string, limit: number = 12) {
   if (!text) return '';
@@ -159,7 +158,6 @@ export function ChatSidebar() {
             const name = profile.displayName || profile.fullName || 'User';
             const initials = (profile.displayName || profile.fullName || 'U').charAt(0).toUpperCase();
             
-            // Manual truncation logic as requested
             const messagePreview = conv.lastMessage 
               ? manualTruncate(conv.lastMessage, 12) 
               : 'Secure chat...';
