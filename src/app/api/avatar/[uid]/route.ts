@@ -30,11 +30,11 @@ export async function GET(
 
     let finalUrl = '';
 
-    // Priority 1: Use internal components
+    // Priority 1: Use internal components for maximum reliability
     if (megaId && megaKey) {
       finalUrl = `https://mega.nz/file/${megaId}#${megaKey}`;
     } 
-    // Priority 2: Use legacy profileImageUrl
+    // Priority 2: Use legacy profileImageUrl if fragment is intact
     else if (profileImageUrl && profileImageUrl.includes('#')) {
       finalUrl = profileImageUrl;
     }
@@ -44,7 +44,7 @@ export async function GET(
       return new NextResponse('No valid image data', { status: 404 });
     }
 
-    console.log(`[AVATAR PROXY] Fetching: ${finalUrl.split('#')[0]} | Key: ${finalUrl.includes('#')}`);
+    console.log(`[AVATAR PROXY] Fetching UID: ${uid} | Fragment Present: ${finalUrl.includes('#')}`);
 
     // Initialize MEGA file
     const file = MegaFile.fromURL(finalUrl);
