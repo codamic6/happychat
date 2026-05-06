@@ -74,7 +74,7 @@ export default function ProfilePage() {
         phoneNumber: profile.phoneNumber || '',
         isOnline: profile.isOnline ?? true
       });
-      // Reset error state when new image data is successfully fetched
+      // Reset error state when new profile data is received (likely after upload)
       setImageError(false);
     }
   }, [profile?.megaId, profile?.updatedAt]);

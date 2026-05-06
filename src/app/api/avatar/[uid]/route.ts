@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 /**
  * Avatar Proxy Route [uid]
  * Reconstructs the MEGA URL server-side and streams the decrypted buffer.
+ * This prevents browser URL fragment stripping (#).
  */
 export async function GET(
   request: NextRequest,
@@ -30,11 +31,11 @@ export async function GET(
 
     let finalUrl = '';
 
-    // Priority 1: Use internal components for maximum reliability
+    // Priority 1: Use internal components (ID and KEY) for maximum reliability
     if (megaId && megaKey) {
       finalUrl = `https://mega.nz/file/${megaId}#${megaKey}`;
     } 
-    // Priority 2: Use legacy profileImageUrl if fragment is intact
+    // Priority 2: Use stored full URL if it has the fragment
     else if (profileImageUrl && profileImageUrl.includes('#')) {
       finalUrl = profileImageUrl;
     }
@@ -44,7 +45,7 @@ export async function GET(
       return new NextResponse('No valid image data', { status: 404 });
     }
 
-    console.log(`[AVATAR PROXY] Fetching UID: ${uid} | Fragment Present: ${finalUrl.includes('#')}`);
+    console.log(`[AVATAR PROXY] Fetching UID: ${uid} | URL: ${finalUrl.split('#')[0]}...#PRESENT`);
 
     // Initialize MEGA file
     const file = MegaFile.fromURL(finalUrl);

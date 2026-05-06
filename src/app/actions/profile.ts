@@ -77,6 +77,8 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
         });
       });
 
+      console.log(`[MEGA UPLOAD ATTEMPT ${i}] Generated URL: ${fullUrl} | Has #: ${fullUrl.includes('#')}`);
+
       if (fullUrl && fullUrl.includes('#')) {
         const parts = fullUrl.split('#');
         megaKey = parts[1];
@@ -91,7 +93,7 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
       throw new Error('MEGA failed to generate a decryption key fragment (#). Please try again.');
     }
 
-    console.log(`[MEGA UPLOAD SUCCESS] UID: ${userId} | ID: ${megaId} | Key exists: ${!!megaKey}`);
+    console.log(`[MEGA UPLOAD SUCCESS] UID: ${userId} | ID: ${megaId} | Key captured: ${!!megaKey}`);
 
     // 4. Save components to Firestore
     const { firestore } = initializeFirebase();
@@ -99,7 +101,7 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
     await updateDoc(userRef, {
       megaId,
       megaKey,
-      profileImageUrl: fullUrl, // Legacy support
+      profileImageUrl: fullUrl, // Raw string exactly as returned
       updatedAt: serverTimestamp()
     });
 

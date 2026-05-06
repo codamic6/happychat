@@ -59,6 +59,8 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
   const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
   const name = profile.displayName || profile.fullName || 'User';
   const initial = name.charAt(0).toUpperCase();
+  
+  // Apply manual 12-char truncation
   const messagePreview = manualTruncate(conv.lastMessage || 'Secure chat...', 12);
   
   const avatarSrc = useMemo(() => {
