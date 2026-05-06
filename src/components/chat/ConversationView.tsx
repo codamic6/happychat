@@ -57,6 +57,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const router = useRouter();
   const [inputText, setInputText] = useState('');
   const [showProfile, setShowProfile] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const isNewChat = conversationId.startsWith('new-');
@@ -98,6 +99,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
       const userDoc = await getDocs(query(collection(db, 'users'), where('id', '==', uid)));
       if (!userDoc.empty) {
         setOtherProfile(userDoc.docs[0].data() as UserProfile);
+        setImageError(false); // Reset image error on new profile
       }
     };
     fetchProfile();
@@ -172,7 +174,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   }
 
   const otherName = otherProfile.displayName || otherProfile.fullName || 'User';
-  const initials = (otherProfile.displayName || otherProfile.fullName || 'U').charAt(0).toUpperCase();
+  const initials = otherName.charAt(0).toUpperCase();
   const otherAvatar = otherProfile.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${otherProfile.id}?t=${Date.now()}` : null;
 
   return (
@@ -184,21 +186,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
           </Button>
           <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
             <div className="w-9 h-9 rounded-full border border-primary/20 shadow-lg overflow-hidden shrink-0 flex items-center justify-center bg-[#111]">
-               {otherAvatar ? (
+               {!imageError && otherAvatar ? (
                  <img 
                     src={otherAvatar} 
                     className="w-full h-full object-cover" 
                     alt={otherName} 
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                      const parent = (e.target as HTMLImageElement).parentElement;
-                      if (parent) {
-                        const fallback = document.createElement('div');
-                        fallback.className = "w-full h-full flex items-center justify-center text-sm font-bold text-primary";
-                        fallback.innerText = initials;
-                        parent.appendChild(fallback);
-                      }
-                    }}
+                    onError={() => setImageError(true)}
                   />
                ) : (
                  <div className="text-sm font-bold text-primary">{initials}</div>
@@ -298,21 +291,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 </div>
                 <div className="flex flex-col items-center text-center space-y-8">
                   <div className="w-36 h-36 md:w-40 md:h-40 border-4 border-primary/20 shadow-2xl bg-[#111] rounded-full overflow-hidden flex items-center justify-center">
-                    {otherAvatar ? (
+                    {!imageError && otherAvatar ? (
                       <img 
                         src={otherAvatar} 
                         className="w-full h-full object-cover" 
                         alt={otherName} 
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                          const parent = (e.target as HTMLImageElement).parentElement;
-                          if (parent) {
-                            const fallback = document.createElement('div');
-                            fallback.className = "w-full h-full flex items-center justify-center text-5xl font-bold text-primary";
-                            fallback.innerText = initials;
-                            parent.appendChild(fallback);
-                          }
-                        }}
+                        onError={() => setImageError(true)}
                       />
                     ) : (
                       <div className="text-5xl font-bold text-primary">{initials}</div>

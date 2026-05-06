@@ -51,6 +51,73 @@ function manualTruncate(text: string, limit: number = 12) {
   return text.substring(0, limit) + '...';
 }
 
+function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversation, profile: UserProfile, user: any, isSelected: boolean, onClick: () => void }) {
+  const [imageError, setImageError] = useState(false);
+  const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
+  const name = profile.displayName || profile.fullName || 'User';
+  const initials = name.charAt(0).toUpperCase();
+  
+  const messagePreview = conv.lastMessage 
+    ? manualTruncate(conv.lastMessage, 12) 
+    : 'Secure chat...';
+
+  const avatarSrc = profile.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${profile.id}?t=${Date.now()}` : null;
+
+  return (
+    <button 
+      onClick={onClick}
+      className={cn(
+        "w-full p-4 rounded-3xl flex items-center gap-4 transition-all group border border-transparent overflow-hidden max-w-full",
+        isSelected 
+          ? "bg-primary/10 border-primary/20 shadow-[0_0_20px_rgba(0,200,83,0.1)]" 
+          : "hover:bg-white/5"
+      )}
+    >
+      <div className="relative shrink-0">
+        <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden bg-[#111] flex items-center justify-center">
+          {!imageError && avatarSrc ? (
+            <img 
+              src={avatarSrc} 
+              alt={name} 
+              className="w-full h-full object-cover" 
+              loading="lazy"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="text-xl font-bold text-primary">{initials}</div>
+          )}
+        </div>
+        <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
+      </div>
+      
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden text-left pr-4">
+        <div className="flex items-center justify-between gap-2 min-w-0 w-full mb-1">
+          <span className="font-bold text-sm text-white truncate min-w-0 flex-1 overflow-hidden">
+            {name}
+          </span>
+          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter shrink-0">
+            {conv.updatedAt?.toDate ? formatShortTime(conv.updatedAt.toDate()) : ''}
+          </span>
+        </div>
+        
+        <div className="flex items-center justify-between gap-3 min-w-0 w-full">
+          <p className={cn(
+            "text-[11px] min-w-0 flex-1 overflow-hidden whitespace-nowrap",
+            unreadCount > 0 ? "text-white font-bold" : "text-muted-foreground"
+          )}>
+            {messagePreview}
+          </p>
+          {unreadCount > 0 && (
+            <Badge className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center shrink-0">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </Badge>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export function ChatSidebar() {
   const { user } = useUser();
   const db = useFirestore();
@@ -153,79 +220,15 @@ export function ChatSidebar() {
             const profile = otherId ? chatProfiles[otherId] : null;
             if (!profile) return null;
 
-            const isSelected = pathname === `/chat/${conv.id}`;
-            const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
-            const name = profile.displayName || profile.fullName || 'User';
-            const initials = (profile.displayName || profile.fullName || 'U').charAt(0).toUpperCase();
-            
-            const messagePreview = conv.lastMessage 
-              ? manualTruncate(conv.lastMessage, 12) 
-              : 'Secure chat...';
-
-            const avatarSrc = profile.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${profile.id}?t=${Date.now()}` : null;
-
             return (
-              <button 
+              <ChatItem 
                 key={conv.id}
+                conv={conv}
+                profile={profile}
+                user={user}
+                isSelected={pathname === `/chat/${conv.id}`}
                 onClick={() => router.push(`/chat/${conv.id}`)}
-                className={cn(
-                  "w-full p-4 rounded-3xl flex items-center gap-4 transition-all group border border-transparent overflow-hidden max-w-full",
-                  isSelected 
-                    ? "bg-primary/10 border-primary/20 shadow-[0_0_20px_rgba(0,200,83,0.1)]" 
-                    : "hover:bg-white/5"
-                )}
-              >
-                <div className="relative shrink-0">
-                  <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden bg-[#111] flex items-center justify-center">
-                    {avatarSrc ? (
-                      <img 
-                        src={avatarSrc} 
-                        alt={name} 
-                        className="w-full h-full object-cover" 
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                          const parent = (e.target as HTMLImageElement).parentElement;
-                          if (parent) {
-                            const fallback = document.createElement('div');
-                            fallback.className = "w-full h-full flex items-center justify-center text-xl font-bold text-primary";
-                            fallback.innerText = initials;
-                            parent.appendChild(fallback);
-                          }
-                        }}
-                      />
-                    ) : (
-                      <div className="text-xl font-bold text-primary">{initials}</div>
-                    )}
-                  </div>
-                  <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
-                </div>
-                
-                <div className="flex-1 flex flex-col min-w-0 overflow-hidden text-left pr-4">
-                  <div className="flex items-center justify-between gap-2 min-w-0 w-full mb-1">
-                    <span className="font-bold text-sm text-white truncate min-w-0 flex-1 overflow-hidden">
-                      {name}
-                    </span>
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter shrink-0">
-                      {conv.updatedAt?.toDate ? formatShortTime(conv.updatedAt.toDate()) : ''}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between gap-3 min-w-0 w-full">
-                    <p className={cn(
-                      "text-[11px] min-w-0 flex-1 overflow-hidden whitespace-nowrap",
-                      unreadCount > 0 ? "text-white font-bold" : "text-muted-foreground"
-                    )}>
-                      {messagePreview}
-                    </p>
-                    {unreadCount > 0 && (
-                      <Badge className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center shrink-0">
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </button>
+              />
             );
           })}
         </div>

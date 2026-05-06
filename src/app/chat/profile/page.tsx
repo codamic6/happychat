@@ -53,6 +53,7 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -63,6 +64,8 @@ export default function ProfilePage() {
         phoneNumber: profile.phoneNumber || '',
         isOnline: profile.isOnline ?? true
       });
+      // Reset image error state when profile changes (new upload)
+      setImageError(false);
     }
   }, [profile]);
 
@@ -86,6 +89,7 @@ export default function ProfilePage() {
     if (!file || !user || !db) return;
 
     setIsUploading(true);
+    setImageError(false); // Reset error state on new upload
     const megaFormData = new FormData();
     megaFormData.append('file', file);
 
@@ -150,7 +154,7 @@ export default function ProfilePage() {
     );
   }
 
-  // Use standard img tag with cache-busting timestamp
+  const initials = (profile?.displayName?.[0] || profile?.fullName?.[0] || 'U').toUpperCase();
   const avatarSrc = profile?.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${profile?.id}?t=${Date.now()}` : null;
 
   return (
@@ -182,25 +186,16 @@ export default function ProfilePage() {
             <Card className="glass p-6 md:p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2rem]">
               <div className="relative">
                 <div className="w-32 h-32 md:w-44 md:h-44 rounded-full border-4 border-primary/20 shadow-2xl bg-[#0d0d0d] overflow-hidden flex items-center justify-center">
-                  {avatarSrc ? (
+                  {!imageError && avatarSrc ? (
                     <img 
                       src={avatarSrc} 
                       alt="Avatar" 
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                        const parent = (e.target as HTMLImageElement).parentElement;
-                        if (parent) {
-                          const fallback = document.createElement('div');
-                          fallback.className = "w-full h-full flex items-center justify-center text-5xl font-bold bg-white/5 text-primary";
-                          fallback.innerText = profile?.displayName?.[0] || 'U';
-                          parent.appendChild(fallback);
-                        }
-                      }}
+                      onError={() => setImageError(true)}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-5xl font-bold bg-white/5 text-primary">
-                      {profile?.displayName?.[0] || profile?.fullName?.[0] || 'U'}
+                      {initials}
                     </div>
                   )}
                 </div>
