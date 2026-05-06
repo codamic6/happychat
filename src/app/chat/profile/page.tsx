@@ -54,6 +54,7 @@ export default function ProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [imageError, setImageError] = useState(false);
+  const [timestamp, setTimestamp] = useState(Date.now());
 
   useEffect(() => {
     if (profile) {
@@ -64,8 +65,9 @@ export default function ProfilePage() {
         phoneNumber: profile.phoneNumber || '',
         isOnline: profile.isOnline ?? true
       });
-      // Reset image error state when profile changes (new upload)
+      // Reset image state when profile data arrives
       setImageError(false);
+      setTimestamp(Date.now());
     }
   }, [profile]);
 
@@ -89,7 +91,8 @@ export default function ProfilePage() {
     if (!file || !user || !db) return;
 
     setIsUploading(true);
-    setImageError(false); // Reset error state on new upload
+    setImageError(false);
+    
     const megaFormData = new FormData();
     megaFormData.append('file', file);
 
@@ -102,6 +105,7 @@ export default function ProfilePage() {
           profileImageUrl: result.url,
           updatedAt: serverTimestamp()
         });
+        setTimestamp(Date.now());
         toast({ title: "Photo Updated", description: "Your photo has been saved." });
       } else {
         toast({ 
@@ -154,8 +158,9 @@ export default function ProfilePage() {
     );
   }
 
-  const initials = (profile?.displayName?.[0] || profile?.fullName?.[0] || 'U').toUpperCase();
-  const avatarSrc = profile?.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${profile?.id}?t=${Date.now()}` : null;
+  const nameForInitials = formData.displayName || profile?.fullName || 'User';
+  const initial = nameForInitials.charAt(0).toUpperCase();
+  const avatarSrc = profile?.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${profile?.id}?t=${timestamp}` : null;
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#050505] custom-scrollbar overflow-x-hidden">
@@ -185,17 +190,20 @@ export default function ProfilePage() {
           <div className="lg:col-span-1">
             <Card className="glass p-6 md:p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2rem]">
               <div className="relative">
-                <div className="w-32 h-32 md:w-44 md:h-44 rounded-full border-4 border-primary/20 shadow-2xl bg-[#0d0d0d] overflow-hidden flex items-center justify-center">
+                <div className="w-32 h-32 md:w-44 md:h-44 rounded-full border-4 border-primary/20 shadow-2xl bg-[#0d0d0d] overflow-hidden flex items-center justify-center relative">
                   {!imageError && avatarSrc ? (
                     <img 
                       src={avatarSrc} 
                       alt="Avatar" 
                       className="w-full h-full object-cover"
-                      onError={() => setImageError(true)}
+                      onError={() => {
+                        console.error("Profile Image failed to load:", avatarSrc);
+                        setImageError(true);
+                      }}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-5xl font-bold bg-white/5 text-primary">
-                      {initials}
+                      {initial}
                     </div>
                   )}
                 </div>
@@ -203,7 +211,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="absolute bottom-1 right-1 w-10 h-10 bg-primary rounded-full border-4 border-[#0a0a0a] glow-green flex items-center justify-center text-primary-foreground hover:scale-110 transition-transform active:scale-95 disabled:opacity-50"
+                  className="absolute bottom-1 right-1 w-10 h-10 bg-primary rounded-full border-4 border-[#0a0a0a] glow-green flex items-center justify-center text-primary-foreground hover:scale-110 transition-transform active:scale-95 disabled:opacity-50 z-20"
                 >
                   {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
                 </button>
@@ -299,7 +307,7 @@ export default function ProfilePage() {
                 </div>
 
                 <Button 
-                  type="submit"
+                  type="submit" 
                   disabled={isSaving || usernameStatus === 'taken'}
                   className="w-full h-14 bg-primary hover:glow-green-bright text-primary-foreground font-bold uppercase text-xs tracking-widest rounded-xl transition-all"
                 >

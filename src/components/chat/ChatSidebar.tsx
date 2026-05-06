@@ -55,25 +55,26 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
   const [imageError, setImageError] = useState(false);
   const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
   const name = profile.displayName || profile.fullName || 'User';
-  const initials = name.charAt(0).toUpperCase();
+  const initial = name.charAt(0).toUpperCase();
   
   const messagePreview = conv.lastMessage 
     ? manualTruncate(conv.lastMessage, 12) 
     : 'Secure chat...';
 
+  // Always append timestamp for cache busting
   const avatarSrc = profile.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${profile.id}?t=${Date.now()}` : null;
 
   return (
     <button 
       onClick={onClick}
       className={cn(
-        "w-full p-4 rounded-3xl flex items-center gap-4 transition-all group border border-transparent overflow-hidden max-w-full",
+        "w-full p-4 rounded-3xl flex items-center gap-4 transition-all group border border-transparent overflow-hidden max-w-full relative",
         isSelected 
           ? "bg-primary/10 border-primary/20 shadow-[0_0_20px_rgba(0,200,83,0.1)]" 
           : "hover:bg-white/5"
       )}
     >
-      <div className="relative shrink-0">
+      <div className="relative shrink-0 flex-none">
         <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden bg-[#111] flex items-center justify-center">
           {!imageError && avatarSrc ? (
             <img 
@@ -84,23 +85,23 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
               onError={() => setImageError(true)}
             />
           ) : (
-            <div className="text-xl font-bold text-primary">{initials}</div>
+            <div className="text-xl font-bold text-primary">{initial}</div>
           )}
         </div>
         <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
       </div>
       
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden text-left pr-4">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden text-left pr-2">
         <div className="flex items-center justify-between gap-2 min-w-0 w-full mb-1">
-          <span className="font-bold text-sm text-white truncate min-w-0 flex-1 overflow-hidden">
+          <span className="font-bold text-sm text-white truncate min-w-0 flex-1 overflow-hidden whitespace-nowrap">
             {name}
           </span>
-          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter shrink-0">
+          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter flex-none">
             {conv.updatedAt?.toDate ? formatShortTime(conv.updatedAt.toDate()) : ''}
           </span>
         </div>
         
-        <div className="flex items-center justify-between gap-3 min-w-0 w-full">
+        <div className="flex items-center justify-between gap-3 min-w-0 w-full overflow-hidden">
           <p className={cn(
             "text-[11px] min-w-0 flex-1 overflow-hidden whitespace-nowrap",
             unreadCount > 0 ? "text-white font-bold" : "text-muted-foreground"
@@ -108,7 +109,7 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
             {messagePreview}
           </p>
           {unreadCount > 0 && (
-            <Badge className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center shrink-0">
+            <Badge className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center shrink-0 flex-none">
               {unreadCount > 99 ? '99+' : unreadCount}
             </Badge>
           )}
@@ -172,7 +173,7 @@ export function ChatSidebar() {
     };
 
     fetchOtherParticipantProfiles();
-  }, [conversations, db, user]);
+  }, [conversations, db, user, chatProfiles]);
 
   const filteredConversations = useMemo(() => {
     if (!conversations) return [];
@@ -214,7 +215,7 @@ export function ChatSidebar() {
       </div>
 
       <ScrollArea className="flex-1 w-full overflow-hidden">
-        <div className="px-3 pb-24 md:pb-6 space-y-1 w-full overflow-hidden">
+        <div className="px-3 pb-24 md:pb-6 space-y-1 w-full min-w-0 overflow-hidden">
           {filteredConversations.map((conv) => {
             const otherId = conv.participantIds.find(id => id !== user?.uid);
             const profile = otherId ? chatProfiles[otherId] : null;

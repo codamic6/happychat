@@ -99,7 +99,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
       const userDoc = await getDocs(query(collection(db, 'users'), where('id', '==', uid)));
       if (!userDoc.empty) {
         setOtherProfile(userDoc.docs[0].data() as UserProfile);
-        setImageError(false); // Reset image error on new profile
+        setImageError(false);
       }
     };
     fetchProfile();
@@ -174,7 +174,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   }
 
   const otherName = otherProfile.displayName || otherProfile.fullName || 'User';
-  const initials = otherName.charAt(0).toUpperCase();
+  const initial = otherName.charAt(0).toUpperCase();
   const otherAvatar = otherProfile.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${otherProfile.id}?t=${Date.now()}` : null;
 
   return (
@@ -191,10 +191,13 @@ export function ConversationView({ conversationId }: { conversationId: string })
                     src={otherAvatar} 
                     className="w-full h-full object-cover" 
                     alt={otherName} 
-                    onError={() => setImageError(true)}
+                    onError={() => {
+                      console.error("Avatar failed in chat view:", otherAvatar);
+                      setImageError(true);
+                    }}
                   />
                ) : (
-                 <div className="text-sm font-bold text-primary">{initials}</div>
+                 <div className="text-sm font-bold text-primary">{initial}</div>
                )}
             </div>
             <div className="min-w-0 text-left">
@@ -299,7 +302,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                         onError={() => setImageError(true)}
                       />
                     ) : (
-                      <div className="text-5xl font-bold text-primary">{initials}</div>
+                      <div className="text-5xl font-bold text-primary">{initial}</div>
                     )}
                   </div>
                   <div className="space-y-1">
