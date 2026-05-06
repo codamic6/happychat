@@ -2,18 +2,17 @@
 'use server';
 
 import { Storage } from 'megajs';
-import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
 /**
  * MEGA Singleton Service
+ * Reuses a single authenticated session to prevent MEGA security locks.
  */
 declare global {
   var megaStorage: Storage | undefined;
   var megaAuthPromise: Promise<Storage> | undefined;
 }
-
-let isUploading = false;
 
 async function getMegaStorage(): Promise<Storage> {
   const email = process.env.MEGA_EMAIL;
@@ -50,18 +49,22 @@ async function getMegaStorage(): Promise<Storage> {
   return global.megaAuthPromise;
 }
 
+let isUploadingGlobal = false;
+
 export async function uploadProfileImageToMega(formData: FormData, userId: string): Promise<{ url: string } | { error: string }> {
-  if (isUploading) return { error: 'An upload is already in progress.' };
+  if (isUploadingGlobal) return { error: 'An upload is already in progress.' };
   
   const file = formData.get('file') as File;
   if (!file) return { error: 'No file provided' };
 
-  isUploading = true;
+  isUploadingGlobal = true;
 
   try {
     const storage = await getMegaStorage();
     const buffer = Buffer.from(await file.arrayBuffer());
     const fileName = `profile-${userId}-${Date.now()}`;
+
+    console.log(`[DEBUG] UPLOAD: Starting for user ${userId}, size: ${buffer.length}`);
 
     // 1. Upload the file
     const uploadedFile = await storage.upload({
@@ -70,26 +73,30 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
     }, buffer).complete;
 
     // 2. Generate the PERMANENT public link with decryption key (#)
-    // We retry up to 3 times because MEGA API sometimes takes a second to generate the fragment
+    // We retry because MEGA API sometimes takes a second to generate the fragment
     let rawUrl = '';
-    for (let i = 0; i < 3; i++) {
-      rawUrl = await new Promise<string>((resolve, reject) => {
+    for (let i = 0; i < 5; i++) {
+      rawUrl = await new Promise<string>((resolve) => {
         uploadedFile.link(true, (err, link) => {
           if (err) resolve('');
-          else resolve(link);
+          else resolve(link || '');
         });
       });
 
-      if (rawUrl && rawUrl.includes('#')) break;
-      console.log(`[DEBUG] MEGA: Link missing #, retrying in 1s... (Attempt ${i + 1})`);
-      await new Promise(r => setTimeout(r, 1000));
+      if (rawUrl && rawUrl.includes('#')) {
+        console.log(`[DEBUG] MEGA: Success! Decryption key found in link.`);
+        break;
+      }
+      
+      console.log(`[DEBUG] MEGA: Link missing #, retrying in 1.5s... (Attempt ${i + 1})`);
+      await new Promise(r => setTimeout(r, 1500));
     }
 
-    console.log('[DEBUG] MEGA: Generated Raw Link:', rawUrl);
-    
     if (!rawUrl || !rawUrl.includes('#')) {
-      throw new Error('Generated MEGA link is missing decryption key fragment (#). Please try again in a moment.');
+      throw new Error('MEGA Link generation failed to include the key fragment (#). Please try uploading again.');
     }
+
+    console.log('[DEBUG] MEGA: Captured RAW URL with Key:', rawUrl);
 
     // 3. Save the RAW URL to Firestore
     const { firestore } = initializeFirebase();
@@ -104,6 +111,6 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
     console.error('[DEBUG] UPLOAD FAILURE:', error.message);
     return { error: error.message || 'Cloud synchronization failed.' };
   } finally {
-    isUploading = false;
+    isUploadingGlobal = false;
   }
 }

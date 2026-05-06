@@ -34,21 +34,25 @@ export async function GET(
     const megaUrl = userData?.profileImageUrl;
 
     if (!megaUrl || !megaUrl.includes('mega.nz')) {
+      console.error(`[AVATAR PROXY] No valid MEGA URL found for ${uid}`);
       return new NextResponse('No profile image URL', { status: 404 });
     }
 
     if (!megaUrl.includes('#')) {
-      console.error(`[AVATAR PROXY] Error: Stored URL for ${uid} is missing decryption key (#): ${megaUrl}`);
-      return new NextResponse('Incomplete MEGA URL (Missing #)', { status: 404 });
+      console.error(`[AVATAR PROXY] CRITICAL: Stored URL for ${uid} is missing decryption key (#): ${megaUrl}`);
+      return new NextResponse('Incomplete MEGA URL (Missing Decryption Key)', { status: 404 });
     }
+
+    console.log(`[AVATAR PROXY] Decrypting: ${megaUrl.split('#')[0]}... for ${uid}`);
 
     // megajs fromURL handles the full URL with fragment internally for decryption
     const file = MegaFile.fromURL(megaUrl);
-    await file.loadAttributes();
+    
+    // Download the raw decrypted buffer
     const buffer = await file.downloadBuffer();
 
     if (!buffer || buffer.length === 0) {
-      throw new Error('Empty buffer downloaded');
+      throw new Error('Empty buffer downloaded from MEGA');
     }
 
     return new Response(buffer, {
