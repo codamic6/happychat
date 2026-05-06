@@ -30,7 +30,8 @@ export async function GET(
       return new NextResponse('User not found', { status: 404 });
     }
 
-    const megaUrl = userSnap.data()?.profileImageUrl;
+    const userData = userSnap.data();
+    const megaUrl = userData?.profileImageUrl;
 
     if (!megaUrl || !megaUrl.includes('mega.nz')) {
       return new NextResponse('No profile image URL', { status: 404 });

@@ -70,19 +70,25 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
     }, buffer).complete;
 
     // 2. Generate the PERMANENT public link with decryption key (#)
-    // IMPORTANT: We do NOT call loadAttributes() here as it can throw 
-    // "This is not needed for files loaded from logged in sessions"
-    const rawUrl = await new Promise<string>((resolve, reject) => {
-      uploadedFile.link(true, (err, link) => {
-        if (err) reject(err);
-        else resolve(link);
+    // We retry up to 3 times because MEGA API sometimes takes a second to generate the fragment
+    let rawUrl = '';
+    for (let i = 0; i < 3; i++) {
+      rawUrl = await new Promise<string>((resolve, reject) => {
+        uploadedFile.link(true, (err, link) => {
+          if (err) resolve('');
+          else resolve(link);
+        });
       });
-    });
+
+      if (rawUrl && rawUrl.includes('#')) break;
+      console.log(`[DEBUG] MEGA: Link missing #, retrying in 1s... (Attempt ${i + 1})`);
+      await new Promise(r => setTimeout(r, 1000));
+    }
 
     console.log('[DEBUG] MEGA: Generated Raw Link:', rawUrl);
     
     if (!rawUrl || !rawUrl.includes('#')) {
-      throw new Error('Generated MEGA link is missing decryption key fragment (#).');
+      throw new Error('Generated MEGA link is missing decryption key fragment (#). Please try again in a moment.');
     }
 
     // 3. Save the RAW URL to Firestore
@@ -92,11 +98,6 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
       profileImageUrl: rawUrl,
       updatedAt: serverTimestamp()
     });
-
-    // Verification check
-    const verifySnap = await getDoc(userRef);
-    const savedUrl = verifySnap.data()?.profileImageUrl;
-    console.log('[DEBUG] FIRESTORE: Verified Stored Link:', savedUrl);
 
     return { url: rawUrl };
   } catch (error: any) {

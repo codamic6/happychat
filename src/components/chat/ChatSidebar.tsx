@@ -59,10 +59,9 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
   const messagePreview = manualTruncate(conv.lastMessage || 'Secure chat...', 12);
   const avatarSrc = `/api/avatar/${profile.id}?t=${conv.updatedAt?.toMillis?.() || Date.now()}`;
 
-  // Reset error state if the conversation updates
   useEffect(() => {
     setImageError(false);
-  }, [conv.updatedAt]);
+  }, [profile.profileImageUrl, conv.updatedAt]);
 
   return (
     <button 
@@ -82,6 +81,7 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
               alt={name} 
               className="w-full h-full object-cover" 
               onError={() => setImageError(true)}
+              data-ai-hint="profile avatar"
             />
           ) : (
             <div className="text-xl font-bold text-primary">{initial}</div>
@@ -151,28 +151,26 @@ export function ChatSidebar() {
 
     const fetchOtherParticipantProfiles = async () => {
       const newProfiles = { ...chatProfiles };
-      const missingUids = new Set<string>();
+      let changed = false;
 
-      conversations.forEach(conv => {
+      for (const conv of conversations) {
         const otherId = conv.participantIds.find(id => id !== user.uid);
         if (otherId && !newProfiles[otherId]) {
-          missingUids.add(otherId);
-        }
-      });
-
-      if (missingUids.size > 0) {
-        for (const uid of Array.from(missingUids)) {
-          const userDoc = await getDocs(query(collection(db, 'users'), where('id', '==', uid)));
+          const userDoc = await getDocs(query(collection(db, 'users'), where('id', '==', otherId)));
           if (!userDoc.empty) {
-            newProfiles[uid] = userDoc.docs[0].data() as UserProfile;
+            newProfiles[otherId] = userDoc.docs[0].data() as UserProfile;
+            changed = true;
           }
         }
+      }
+
+      if (changed) {
         setChatProfiles(newProfiles);
       }
     };
 
     fetchOtherParticipantProfiles();
-  }, [conversations, db, user, chatProfiles]);
+  }, [conversations, db, user]);
 
   const filteredConversations = useMemo(() => {
     if (!conversations) return [];

@@ -65,9 +65,10 @@ export default function ProfilePage() {
         phoneNumber: profile.phoneNumber || '',
         isOnline: profile.isOnline ?? true
       });
-      setImageError(false); // Reset error state when new profile data arrives
+      // Reset error flag only when profile image actually changes in data
+      setImageError(false);
     }
-  }, [profile]);
+  }, [profile?.profileImageUrl, profile?.updatedAt]);
 
   const handleCheckUsername = async (val: string) => {
     if (!val || val === profile?.username) {
