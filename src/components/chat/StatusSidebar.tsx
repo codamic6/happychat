@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -208,6 +207,11 @@ export function StatusSidebar() {
                 const name = profile.displayName || profile.fullName || 'User';
                 const latest = items[items.length - 1];
                 
+                // Use new URL-based proxy for status avatars
+                const avatarSrc = profile.profileImageUrl?.includes('mega.nz') 
+                  ? `/api/avatar?url=${encodeURIComponent(profile.profileImageUrl)}&t=${Date.now()}` 
+                  : null;
+
                 return (
                   <button 
                     key={uid}
@@ -218,7 +222,7 @@ export function StatusSidebar() {
                       <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-primary to-emerald-400 p-[2px] glow-green">
                         <div className="w-full h-full rounded-full bg-[#111] overflow-hidden flex items-center justify-center border-2 border-[#0d0d0d]">
                           <Avatar className="w-full h-full">
-                            <AvatarImage src={`/api/avatar/${uid}`} />
+                            <AvatarImage src={avatarSrc || undefined} />
                             <AvatarFallback className="bg-primary/20 text-primary">{name.charAt(0)}</AvatarFallback>
                           </Avatar>
                         </div>

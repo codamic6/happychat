@@ -61,8 +61,10 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
     ? manualTruncate(conv.lastMessage, 12) 
     : 'Secure chat...';
 
-  // Always append timestamp for cache busting
-  const avatarSrc = profile.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${profile.id}?t=${Date.now()}` : null;
+  // Use the new URL-based proxy with cache-busting
+  const avatarSrc = profile.profileImageUrl?.includes('mega.nz') 
+    ? `/api/avatar?url=${encodeURIComponent(profile.profileImageUrl)}&t=${Date.now()}` 
+    : null;
 
   return (
     <button 

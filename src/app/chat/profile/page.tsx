@@ -65,7 +65,6 @@ export default function ProfilePage() {
         phoneNumber: profile.phoneNumber || '',
         isOnline: profile.isOnline ?? true
       });
-      // Reset image state when profile data arrives
       setImageError(false);
       setTimestamp(Date.now());
     }
@@ -160,7 +159,11 @@ export default function ProfilePage() {
 
   const nameForInitials = formData.displayName || profile?.fullName || 'User';
   const initial = nameForInitials.charAt(0).toUpperCase();
-  const avatarSrc = profile?.profileImageUrl?.includes('mega.nz') ? `/api/avatar/${profile?.id}?t=${timestamp}` : null;
+  
+  // Use the new URL-based proxy to avoid permission issues
+  const avatarSrc = profile?.profileImageUrl?.includes('mega.nz') 
+    ? `/api/avatar?url=${encodeURIComponent(profile.profileImageUrl)}&t=${timestamp}` 
+    : null;
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#050505] custom-scrollbar overflow-x-hidden">
