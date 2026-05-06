@@ -58,6 +58,7 @@ async function getMegaStorage(): Promise<Storage> {
 
 /**
  * Securely uploads a profile image to MEGA storage and returns a permanent public link.
+ * THE LINK MUST CONTAIN THE #FRAGMENT DECRYPTION KEY.
  */
 export async function uploadProfileImageToMega(formData: FormData): Promise<{ url: string } | { error: string }> {
   if (isUploading) return { error: 'An upload is already in progress. Please wait.' };
@@ -84,9 +85,9 @@ export async function uploadProfileImageToMega(formData: FormData): Promise<{ ur
       size: buffer.length
     }, buffer).complete;
 
-    console.log('[DEBUG] UPLOAD: File committed to MEGA. Loading attributes for key generation...');
+    console.log('[DEBUG] UPLOAD: File committed to MEGA. Fetching full public link with key...');
 
-    // Crucial: Load attributes before link generation to ensure key is available
+    // Load attributes to ensure metadata (including key) is ready
     await uploadedFile.loadAttributes();
 
     // Generate Permanent Public Link (with decryption key)
@@ -97,18 +98,19 @@ export async function uploadProfileImageToMega(formData: FormData): Promise<{ ur
           console.error('[DEBUG] UPLOAD: Failed to generate link:', err.message);
           reject(err);
         } else {
+          // STRICT VERIFICATION: If no # fragment, the link is broken for decryption
           const hasKey = link.includes('#');
-          console.log(`[DEBUG] UPLOAD: Link generated. Length: ${link.length}, Contains Key (#): ${hasKey}`);
+          console.log(`[DEBUG] UPLOAD: Link verified. Contains Key (#): ${hasKey} | URL: ${link}`);
+          
           if (!hasKey) {
-            console.warn('[DEBUG] UPLOAD: Generated link is missing the decryption key fragment!');
+            reject(new Error('MEGA generated a link without a decryption fragment. Please try again.'));
+          } else {
+            resolve(link);
           }
-          resolve(link);
         }
       });
     });
     
-    if (!publicUrl) throw new Error('Could not generate public link.');
-
     return { url: publicUrl };
   } catch (error: any) {
     console.error('[DEBUG] MEGA UPLOAD FAILURE:', error.message);

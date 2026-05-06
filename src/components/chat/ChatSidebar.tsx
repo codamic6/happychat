@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, MessageSquare, Zap, MoreVertical, User } from 'lucide-react';
+import { Search, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, getDocs, where } from 'firebase/firestore';
@@ -57,9 +56,8 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
   const name = profile.displayName || profile.fullName || 'User';
   const initial = name.charAt(0).toUpperCase();
   
-  const messagePreview = conv.lastMessage 
-    ? manualTruncate(conv.lastMessage, 12) 
-    : 'Secure chat...';
+  // Apply manual 12-char truncation
+  const messagePreview = manualTruncate(conv.lastMessage || 'Secure chat...', 12);
 
   // Use the new URL-based proxy with key encoding preserved
   const avatarSrc = profile.profileImageUrl?.includes('mega.nz') 
@@ -93,7 +91,7 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
         <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
       </div>
       
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden text-left pr-2">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden text-left pr-4">
         <div className="flex items-center justify-between gap-2 min-w-0 w-full mb-1">
           <span className="font-bold text-sm text-white truncate min-w-0 flex-1 overflow-hidden whitespace-nowrap">
             {name}
