@@ -30,15 +30,13 @@ export async function GET(request: NextRequest) {
 
   if (!hasKey) {
     console.error('[AVATAR PROXY] Error: MEGA URL is missing decryption key fragment (#). Decoding attempt:', megaUrl);
-    // We cannot proceed without the key fragment which is essential for decryption
     return new Response(null, { status: 404 });
   }
 
   try {
-    // megajs fromURL handles decryption via the URL fragment (#key)
     const file = MegaFile.fromURL(megaUrl);
     
-    // Load attributes to verify the file and prepare for download
+    // CRITICAL: Load attributes before downloading to ensure decryption context is initialized
     await file.loadAttributes();
     
     // Download the raw decrypted buffer
@@ -48,7 +46,6 @@ export async function GET(request: NextRequest) {
       throw new Error('Downloaded buffer is empty.');
     }
 
-    // Return the raw image data with appropriate headers
     return new Response(buffer, {
       status: 200,
       headers: {

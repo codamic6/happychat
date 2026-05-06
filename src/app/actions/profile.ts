@@ -60,11 +60,15 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
       size: buffer.length
     }, buffer).complete;
 
-    // 2. Poll for the link to ensure the decryption key (#) is generated
+    // 2. CRITICAL: Sync attributes to ensure the decryption key is available
+    await uploadedFile.loadAttributes();
+
+    // 3. Generate the link (explicitly requesting key fragment)
     let megaId = '';
     let megaKey = '';
     let fullUrl = '';
 
+    // Retry loop to ensure MEGA internal indexing has finished and returned the hash (#)
     for (let i = 0; i < 5; i++) {
       fullUrl = await new Promise<string>((resolve) => {
         uploadedFile.link(true, (err, link) => {
@@ -83,16 +87,18 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
     }
 
     if (!megaId || !megaKey) {
-      throw new Error('MEGA failed to generate a decryption key fragment (#) for this file. Please try again.');
+      throw new Error('MEGA failed to generate a decryption key fragment (#). Please try again.');
     }
 
-    // 3. Save separated components to Firestore
+    console.log(`[MEGA UPLOAD SUCCESS] UID: ${userId} | URL: ${fullUrl} | Contains #: ${fullUrl.includes('#')}`);
+
+    // 4. Save components to Firestore
     const { firestore } = initializeFirebase();
     const userRef = doc(firestore, 'users', userId);
     await updateDoc(userRef, {
       megaId,
       megaKey,
-      profileImageUrl: fullUrl, // Keep for legacy, but proxy will use megaId/megaKey
+      profileImageUrl: fullUrl,
       updatedAt: serverTimestamp()
     });
 

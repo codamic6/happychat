@@ -58,7 +58,7 @@ export default function ProfilePage() {
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [imageError, setImageError] = useState(false);
 
-  // Stabilize the image source with a derived memo to prevent duplication loops
+  // Stable image source with cache-busting
   const avatarSrc = useMemo(() => {
     if (!profile?.id) return null;
     const t = profile?.updatedAt?.toMillis?.() || Date.now();
@@ -74,7 +74,7 @@ export default function ProfilePage() {
         phoneNumber: profile.phoneNumber || '',
         isOnline: profile.isOnline ?? true
       });
-      // Only reset error if the image data actually changed
+      // Reset error state when new image data arrives
       setImageError(false);
     }
   }, [profile?.megaId, profile?.updatedAt]);

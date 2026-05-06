@@ -8,8 +8,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Avatar Proxy Route [uid]
- * Reconstructs the MEGA URL server-side using stored ID and Key components.
- * This ensures the decryption fragment (#) is never lost to the browser.
+ * Reconstructs the MEGA URL server-side and streams the decrypted buffer.
  */
 export async function GET(
   request: NextRequest,
@@ -31,11 +30,11 @@ export async function GET(
 
     let finalUrl = '';
 
-    // Priority 1: Use separated components (Modern)
+    // Priority 1: Use internal components
     if (megaId && megaKey) {
       finalUrl = `https://mega.nz/file/${megaId}#${megaKey}`;
     } 
-    // Priority 2: Use legacy profileImageUrl if it has the key
+    // Priority 2: Use legacy profileImageUrl
     else if (profileImageUrl && profileImageUrl.includes('#')) {
       finalUrl = profileImageUrl;
     }
@@ -45,12 +44,15 @@ export async function GET(
       return new NextResponse('No valid image data', { status: 404 });
     }
 
-    console.log(`[AVATAR PROXY] Reconstructing stream for ${uid} from internal components.`);
+    console.log(`[AVATAR PROXY] Fetching: ${finalUrl.split('#')[0]} | Key: ${finalUrl.includes('#')}`);
 
-    // Initialize MEGA file using the raw reconstructed string
+    // Initialize MEGA file
     const file = MegaFile.fromURL(finalUrl);
     
-    // Download the raw decrypted buffer
+    // CRITICAL: Load attributes before downloading to ensure decryption context is initialized
+    await file.loadAttributes();
+    
+    // Download the decrypted buffer
     const buffer = await file.downloadBuffer();
 
     if (!buffer || buffer.length === 0) throw new Error('Empty buffer downloaded');
