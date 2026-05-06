@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -20,6 +21,7 @@ type UserProfile = {
   fullName?: string;
   username: string;
   profileImageUrl?: string;
+  updatedAt?: any;
 };
 
 type StatusUpdate = {
@@ -40,7 +42,6 @@ export function StatusSidebar() {
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 1. Fetch user's contacts first
   const contactsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     return query(collection(db, 'users', user.uid, 'contacts'));
@@ -56,7 +57,6 @@ export function StatusSidebar() {
     return ids;
   }, [contactsData, user]);
 
-  // 2. Fetch active statuses
   const now = new Date();
   const statusQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -70,7 +70,6 @@ export function StatusSidebar() {
 
   const { data: rawStatuses } = useCollection<StatusUpdate>(statusQuery);
 
-  // 3. Group statuses by user and filter by contacts
   const groupedStatuses = useMemo(() => {
     if (!rawStatuses) return [];
     const groups: Record<string, StatusUpdate[]> = {};
@@ -110,7 +109,7 @@ export function StatusSidebar() {
     };
 
     fetchProfiles();
-  }, [rawStatuses, db, contactIds, userProfiles]);
+  }, [rawStatuses, db, contactIds]);
 
   const myStatusGroup = groupedStatuses.find(([uid]) => uid === user?.uid);
   const otherStatusGroups = groupedStatuses.filter(([uid]) => uid !== user?.uid);
@@ -210,7 +209,8 @@ export function StatusSidebar() {
                 if (!profile) return null;
                 const name = profile.displayName || profile.fullName || 'User';
                 const latest = items[items.length - 1];
-                const avatarSrc = `/api/avatar/${profile.id}?t=${latest.createdAt?.toMillis?.() || Date.now()}`;
+                const t = profile.updatedAt?.toMillis?.() || latest.createdAt?.toMillis?.() || Date.now();
+                const avatarSrc = `/api/avatar/${profile.id}?t=${t}`;
 
                 return (
                   <button 
@@ -249,7 +249,6 @@ export function StatusSidebar() {
         </div>
       </ScrollArea>
 
-      {/* Mobile FAB for adding status */}
       <div className="md:hidden absolute bottom-24 right-6 z-50">
         <Button 
           onClick={() => setIsComposerOpen(true)}

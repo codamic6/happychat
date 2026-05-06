@@ -33,6 +33,14 @@
           "description": "URL to the user's profile picture.",
           "format": "uri"
         },
+        "megaId": {
+          "type": "string",
+          "description": "MEGA File ID for the avatar."
+        },
+        "megaKey": {
+          "type": "string",
+          "description": "MEGA decryption key fragment for the avatar."
+        },
         "about": {
           "type": "string",
           "description": "A short bio for the user."
@@ -83,7 +91,7 @@
         "participantIds": { "type": "array", "items": { "type": "string" } },
         "lastMessage": { "type": "string" },
         "updatedAt": { "type": "string", "format": "date-time" },
-        "adminId": { "type": "string" }
+        "unreadCount": { "type": "object" }
       }
     },
     "Message": {
@@ -104,6 +112,9 @@
         "id": { "type": "string" },
         "userId": { "type": "string" },
         "content": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "image"] },
+        "megaId": { "type": "string" },
+        "megaKey": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "expiresAt": { "type": "string", "format": "date-time" }
       }

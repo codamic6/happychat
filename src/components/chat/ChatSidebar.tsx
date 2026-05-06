@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -18,7 +19,10 @@ type UserProfile = {
   fullName?: string;
   username: string;
   email: string;
+  megaId?: string;
+  megaKey?: string;
   profileImageUrl?: string;
+  updatedAt?: any;
 };
 
 type Conversation = {
@@ -56,12 +60,15 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
   const name = profile.displayName || profile.fullName || 'User';
   const initial = name.charAt(0).toUpperCase();
   const messagePreview = manualTruncate(conv.lastMessage || 'Secure chat...', 12);
-  const t = conv.updatedAt?.toMillis?.() || Date.now();
-  const avatarSrc = `/api/avatar/${profile.id}?t=${t}`;
+  
+  const avatarSrc = useMemo(() => {
+    const t = profile.updatedAt?.toMillis?.() || Date.now();
+    return `/api/avatar/${profile.id}?t=${t}`;
+  }, [profile.id, profile.updatedAt]);
 
   useEffect(() => {
     setImageError(false);
-  }, [profile.profileImageUrl, conv.updatedAt]);
+  }, [profile.megaId, profile.updatedAt]);
 
   return (
     <button 
@@ -75,7 +82,7 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
     >
       <div className="relative shrink-0 flex-none">
         <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden bg-[#111] flex items-center justify-center">
-          {!imageError && profile.profileImageUrl ? (
+          {!imageError && avatarSrc ? (
             <img 
               src={avatarSrc} 
               alt={name} 

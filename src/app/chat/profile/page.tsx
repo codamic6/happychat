@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -27,7 +28,9 @@ type UserProfile = {
   email: string;
   phoneNumber: string;
   about: string;
-  profileImageUrl: string;
+  megaId?: string;
+  megaKey?: string;
+  profileImageUrl?: string;
   isOnline: boolean;
   updatedAt: any;
 };
@@ -55,6 +58,13 @@ export default function ProfilePage() {
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [imageError, setImageError] = useState(false);
 
+  // Stabilize the image source with a derived memo to prevent duplication loops
+  const avatarSrc = useMemo(() => {
+    if (!profile?.id) return null;
+    const t = profile?.updatedAt?.toMillis?.() || Date.now();
+    return `/api/avatar/${profile.id}?t=${t}`;
+  }, [profile?.id, profile?.updatedAt]);
+
   useEffect(() => {
     if (profile) {
       setFormData({
@@ -64,10 +74,10 @@ export default function ProfilePage() {
         phoneNumber: profile.phoneNumber || '',
         isOnline: profile.isOnline ?? true
       });
-      // Reset image error only when the profile explicitly changes
+      // Only reset error if the image data actually changed
       setImageError(false);
     }
-  }, [profile?.profileImageUrl, profile?.updatedAt]);
+  }, [profile?.megaId, profile?.updatedAt]);
 
   const handleCheckUsername = async (val: string) => {
     if (!val || val === profile?.username) {
@@ -86,7 +96,7 @@ export default function ProfilePage() {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user || !db) return;
+    if (!file || !user) return;
 
     setIsUploading(true);
     setImageError(false);
@@ -96,10 +106,10 @@ export default function ProfilePage() {
 
     try {
       const result = await uploadProfileImageToMega(megaFormData, user.uid);
-      if (result && 'url' in result) {
-        toast({ title: "Photo Updated", description: "Your profile picture has been synced." });
+      if (result && 'success' in result) {
+        toast({ title: "Photo Updated", description: "Cloud sync complete." });
       } else {
-        toast({ variant: "destructive", title: "Upload Failed", description: result.error });
+        toast({ variant: "destructive", title: "Upload Failed", description: (result as any).error });
       }
     } catch (err: any) {
       toast({ variant: "destructive", title: "Error", description: "Connection failed." });
@@ -129,9 +139,9 @@ export default function ProfilePage() {
         isOnline: formData.isOnline,
         updatedAt: serverTimestamp()
       });
-      toast({ title: "Saved", description: "Changes applied successfully." });
+      toast({ title: "Saved", description: "Changes applied." });
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to update profile." });
+      toast({ variant: "destructive", title: "Error", description: "Update failed." });
     } finally {
       setIsSaving(false);
     }
@@ -147,8 +157,6 @@ export default function ProfilePage() {
 
   const name = profile?.displayName || profile?.fullName || 'User';
   const initial = name.charAt(0).toUpperCase();
-  const t = profile?.updatedAt?.toMillis?.() || Date.now();
-  const avatarSrc = profile?.id ? `/api/avatar/${profile.id}?t=${t}` : null;
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#050505] custom-scrollbar overflow-x-hidden">
@@ -169,13 +177,13 @@ export default function ProfilePage() {
           <Card className="glass p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2rem] lg:col-span-1">
             <div className="relative">
               <div className="w-32 h-32 md:w-44 md:h-44 rounded-full border-4 border-primary/20 bg-[#0d0d0d] overflow-hidden flex items-center justify-center">
-                {!imageError && profile?.profileImageUrl ? (
+                {!imageError && avatarSrc ? (
                   <img 
-                    src={avatarSrc!} 
+                    src={avatarSrc} 
                     alt="Profile" 
                     className="w-full h-full object-cover"
                     onError={() => {
-                      console.error("Profile Image failed to load:", avatarSrc);
+                      console.error("[PROFILE] Image failed to load:", avatarSrc);
                       setImageError(true);
                     }}
                   />

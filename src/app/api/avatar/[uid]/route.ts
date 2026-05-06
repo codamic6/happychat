@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { File as MegaFile } from 'megajs';
 import { doc, getDoc } from 'firebase/firestore';
@@ -7,8 +8,8 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Avatar Proxy Route [uid]
- * Fetches the raw MEGA URL from Firestore server-side to ensure 
- * the decryption key (#fragment) is correctly retrieved and used.
+ * Reconstructs the MEGA URL server-side using stored ID and Key components.
+ * This ensures the decryption fragment (#) is never lost to the browser.
  */
 export async function GET(
   request: NextRequest,
@@ -16,43 +17,43 @@ export async function GET(
 ) {
   const { uid } = await params;
 
-  if (!uid) {
-    return new NextResponse('Missing UID', { status: 400 });
-  }
+  if (!uid) return new NextResponse('Missing UID', { status: 400 });
 
   try {
     const { firestore } = initializeFirebase();
     const userRef = doc(firestore, 'users', uid);
     const userSnap = await getDoc(userRef);
 
-    if (!userSnap.exists()) {
-      return new NextResponse('User not found', { status: 404 });
-    }
+    if (!userSnap.exists()) return new NextResponse('User not found', { status: 404 });
 
     const userData = userSnap.data();
-    const megaUrl = userData?.profileImageUrl;
+    const { megaId, megaKey, profileImageUrl } = userData;
 
-    if (!megaUrl || !megaUrl.includes('mega.nz')) {
-      console.error(`[AVATAR PROXY] No valid MEGA URL found for ${uid}`);
-      return new NextResponse('No profile image URL', { status: 404 });
+    let finalUrl = '';
+
+    // Priority 1: Use separated components (Modern)
+    if (megaId && megaKey) {
+      finalUrl = `https://mega.nz/file/${megaId}#${megaKey}`;
+    } 
+    // Priority 2: Use legacy profileImageUrl if it has the key
+    else if (profileImageUrl && profileImageUrl.includes('#')) {
+      finalUrl = profileImageUrl;
     }
 
-    if (!megaUrl.includes('#')) {
-      console.error(`[AVATAR PROXY] CRITICAL: Stored URL for ${uid} is missing decryption key (#): ${megaUrl}`);
-      return new NextResponse('Incomplete MEGA URL (Missing Decryption Key)', { status: 404 });
+    if (!finalUrl) {
+      console.error(`[AVATAR PROXY] No valid decryption key found for user: ${uid}`);
+      return new NextResponse('No valid image data', { status: 404 });
     }
 
-    console.log(`[AVATAR PROXY] Decrypting: ${megaUrl.split('#')[0]}... for ${uid}`);
+    console.log(`[AVATAR PROXY] Reconstructing stream for ${uid} from internal components.`);
 
-    // megajs fromURL handles the full URL with fragment internally for decryption
-    const file = MegaFile.fromURL(megaUrl);
+    // Initialize MEGA file using the raw reconstructed string
+    const file = MegaFile.fromURL(finalUrl);
     
     // Download the raw decrypted buffer
     const buffer = await file.downloadBuffer();
 
-    if (!buffer || buffer.length === 0) {
-      throw new Error('Empty buffer downloaded from MEGA');
-    }
+    if (!buffer || buffer.length === 0) throw new Error('Empty buffer downloaded');
 
     return new Response(buffer, {
       status: 200,
@@ -63,7 +64,7 @@ export async function GET(
       },
     });
   } catch (error: any) {
-    console.error(`[AVATAR PROXY ERROR] for UID ${uid}:`, error.message);
-    return new NextResponse('Failed to process image', { status: 404 });
+    console.error(`[AVATAR PROXY ERROR] UID ${uid}:`, error.message);
+    return new NextResponse('Image processing failed', { status: 404 });
   }
 }

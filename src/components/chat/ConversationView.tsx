@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -41,6 +42,8 @@ type UserProfile = {
   username: string;
   email: string;
   phoneNumber?: string;
+  megaId?: string;
+  megaKey?: string;
   profileImageUrl?: string;
   about?: string;
   updatedAt?: any;
@@ -91,6 +94,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
   }, [rawMessages]);
 
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
+
+  const avatarSrc = useMemo(() => {
+    if (!otherProfile?.id) return null;
+    const t = otherProfile.updatedAt?.toMillis?.() || Date.now();
+    return `/api/avatar/${otherProfile.id}?t=${t}`;
+  }, [otherProfile?.id, otherProfile?.updatedAt]);
 
   useEffect(() => {
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
@@ -158,8 +167,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   const otherName = otherProfile.displayName || otherProfile.fullName || 'User';
   const initial = otherName.charAt(0).toUpperCase();
-  const t = otherProfile.updatedAt?.toMillis?.() || Date.now();
-  const avatarUrl = `/api/avatar/${otherProfile.id}?t=${t}`;
 
   return (
     <div className="flex flex-col h-full relative bg-[#050505] overflow-hidden">
@@ -168,9 +175,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
           <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground"><ArrowLeft className="w-6 h-6" /></Button>
           <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
             <div className="w-9 h-9 rounded-full border border-primary/20 shadow-lg overflow-hidden shrink-0 flex items-center justify-center bg-[#111]">
-               {!imageError && otherProfile.profileImageUrl ? (
+               {!imageError && avatarSrc ? (
                  <img 
-                    src={avatarUrl} 
+                    src={avatarSrc} 
                     className="w-full h-full object-cover" 
                     alt={otherName} 
                     onError={() => setImageError(true)} 
@@ -241,9 +248,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
               <div className="flex items-center justify-between mb-10"><span className="text-[10px] font-bold uppercase tracking-widest text-primary">About User</span><Button size="icon" variant="ghost" onClick={() => setShowProfile(false)}><X className="w-5 h-5" /></Button></div>
               <div className="flex flex-col items-center text-center space-y-8">
                 <div className="w-36 h-36 md:w-40 md:h-40 border-4 border-primary/20 shadow-2xl bg-[#111] rounded-full overflow-hidden flex items-center justify-center">
-                  {!imageError && otherProfile.profileImageUrl ? (
+                  {!imageError && avatarSrc ? (
                     <img 
-                        src={avatarUrl} 
+                        src={avatarSrc} 
                         className="w-full h-full object-cover" 
                         alt={otherName} 
                         onError={() => setImageError(true)} 
