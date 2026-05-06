@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -60,9 +61,11 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
   const messagePreview = manualTruncate(conv.lastMessage || 'Secure chat...', 12);
 
   // Use the new URL-based proxy with key encoding preserved
-  const avatarSrc = profile.profileImageUrl?.includes('mega.nz') 
-    ? `/api/avatar?url=${encodeURIComponent(profile.profileImageUrl)}&t=${Date.now()}` 
-    : null;
+  const avatarSrc = useMemo(() => {
+    return profile.profileImageUrl?.includes('mega.nz') 
+      ? `/api/avatar?url=${encodeURIComponent(profile.profileImageUrl)}&t=${conv.updatedAt?.toMillis?.() || Date.now()}` 
+      : null;
+  }, [profile.profileImageUrl, conv.updatedAt]);
 
   return (
     <button 

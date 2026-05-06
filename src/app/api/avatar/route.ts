@@ -1,3 +1,4 @@
+
 import { NextRequest } from 'next/server';
 import { File as MegaFile } from 'megajs';
 
@@ -6,7 +7,6 @@ export const dynamic = 'force-dynamic';
 /**
  * Optimized Proxy Route
  * Directly decrypts MEGA buffers based on a URL parameter.
- * This avoids Firestore permission issues on the server.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     return new Response(null, { status: 400 });
   }
 
-  // URL may be double-encoded. We decode it once.
+  // URL may be encoded. Decode to ensure fragments are handled correctly.
   const megaUrl = decodeURIComponent(megaUrlParam);
 
   if (!megaUrl.includes('mega.nz')) {
@@ -29,8 +29,8 @@ export async function GET(request: NextRequest) {
   console.log(`[AVATAR PROXY] Processing: ${megaUrl.split('#')[0]} | Contains Key (#): ${hasKey}`);
 
   if (!hasKey) {
-    console.error('[AVATAR PROXY] Error: MEGA URL is missing decryption key fragment (#)');
-    // We cannot proceed without the key
+    console.error('[AVATAR PROXY] Error: MEGA URL is missing decryption key fragment (#). Decoding attempt:', megaUrl);
+    // We cannot proceed without the key fragment which is essential for decryption
     return new Response(null, { status: 404 });
   }
 
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       throw new Error('Downloaded buffer is empty.');
     }
 
-    // Return the raw image data with appropriate cache and type headers
+    // Return the raw image data with appropriate headers
     return new Response(buffer, {
       status: 200,
       headers: {

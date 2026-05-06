@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -176,10 +177,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const otherName = otherProfile.displayName || otherProfile.fullName || 'User';
   const initial = otherName.charAt(0).toUpperCase();
   
-  // Use the new URL-based proxy for conversation headers with key encoding preserved
-  const otherAvatar = otherProfile.profileImageUrl?.includes('mega.nz') 
-    ? `/api/avatar?url=${encodeURIComponent(otherProfile.profileImageUrl)}&t=${Date.now()}` 
-    : null;
+  // Use a stable proxy URL
+  const otherAvatar = useMemo(() => {
+    return otherProfile.profileImageUrl?.includes('mega.nz') 
+      ? `/api/avatar?url=${encodeURIComponent(otherProfile.profileImageUrl)}&t=${Date.now()}` 
+      : null;
+  }, [otherProfile.profileImageUrl]);
 
   return (
     <div className="flex flex-col h-full relative bg-[#050505] overflow-hidden">
