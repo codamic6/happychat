@@ -65,35 +65,42 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
 
     // 3. Extract ID and Key directly from the file object
     // This is the most stable way to get the components without browser URL issues.
-    let megaId = '';
+    let megaId = uploadedFile.handle || '';
     let megaKey = '';
-    let fullUrl = '';
+    
+    // Attempt to get the key as a string
+    if (uploadedFile.key) {
+      megaKey = Buffer.isBuffer(uploadedFile.key) 
+        ? uploadedFile.key.toString('hex') 
+        : String(uploadedFile.key);
+    }
 
-    // Retry loop to ensure MEGA internal indexing has finished and returned the hash (#)
-    for (let i = 0; i < 5; i++) {
-      fullUrl = await new Promise<string>((resolve) => {
-        uploadedFile.link(true, (err, link) => {
-          if (err) resolve('');
-          else resolve(link || '');
+    // Fallback: Use link(true) to extract key if direct properties are unstable
+    if (!megaKey) {
+      let fullUrl = '';
+      for (let i = 0; i < 5; i++) {
+        fullUrl = await new Promise<string>((resolve) => {
+          uploadedFile.link(true, (err, link) => {
+            if (err) resolve('');
+            else resolve(link || '');
+          });
         });
-      });
 
-      console.log(`[MEGA UPLOAD ATTEMPT ${i}] Generated URL: ${fullUrl} | Has #: ${fullUrl.includes('#')}`);
-
-      if (fullUrl && fullUrl.includes('#')) {
-        const parts = fullUrl.split('#');
-        megaKey = parts[1];
-        megaId = parts[0].split('/').pop() || '';
-        break;
+        if (fullUrl && fullUrl.includes('#')) {
+          const parts = fullUrl.split('#');
+          megaKey = parts[1];
+          megaId = parts[0].split('/').pop() || megaId;
+          break;
+        }
+        await new Promise(r => setTimeout(r, 1500));
       }
-      await new Promise(r => setTimeout(r, 1500));
     }
 
     if (!megaId || !megaKey) {
-      throw new Error('MEGA failed to generate a decryption key fragment (#). Please try again.');
+      throw new Error('MEGA failed to generate a decryption key. Please try again.');
     }
 
-    console.log(`[MEGA UPLOAD SUCCESS] UID: ${userId} | ID: ${megaId} | Key length: ${megaKey.length}`);
+    console.log(`[MEGA UPLOAD SUCCESS] UID: ${userId} | ID: ${megaId} | Key Found: ${!!megaKey}`);
 
     // 4. Save components to Firestore
     const { firestore } = initializeFirebase();
@@ -101,7 +108,7 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
     await updateDoc(userRef, {
       megaId,
       megaKey,
-      profileImageUrl: fullUrl, // Keep for legacy if needed, but proxy will use Id/Key
+      profileImageUrl: `https://mega.nz/file/${megaId}#${megaKey}`, // Keep for legacy, but proxy will use Id/Key
       updatedAt: serverTimestamp()
     });
 

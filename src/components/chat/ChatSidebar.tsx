@@ -60,7 +60,7 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
   const name = profile.displayName || profile.fullName || 'User';
   const initial = name.charAt(0).toUpperCase();
   
-  // Apply manual 12-char truncation
+  // Apply manual 12-char truncation for previews
   const messagePreview = manualTruncate(conv.lastMessage || 'Secure chat...', 12);
   
   const avatarSrc = useMemo(() => {
@@ -84,7 +84,7 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
     >
       <div className="relative shrink-0 flex-none">
         <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden bg-[#111] flex items-center justify-center">
-          {!imageError && avatarSrc ? (
+          {!imageError ? (
             <img 
               src={avatarSrc} 
               alt={name} 

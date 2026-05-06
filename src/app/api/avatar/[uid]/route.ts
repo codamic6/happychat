@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 /**
  * Avatar Proxy Route [uid]
  * Reconstructs the MEGA URL server-side from ID and KEY stored in Firestore.
- * This ensures the decryption key (#fragment) is never lost.
+ * This ensures the decryption key (#fragment) is never lost by browser URL stripping.
  */
 export async function GET(
   request: NextRequest,
@@ -33,6 +33,8 @@ export async function GET(
 
     // Reconstruct the link only on the server to keep the # fragment intact.
     if (megaId && megaKey) {
+      // If megaKey was saved as hex, we might need to handle it, but megajs handles the # string format best.
+      const keyStr = megaKey.includes('-') || megaKey.length > 32 ? megaKey : megaKey; 
       finalUrl = `https://mega.nz/file/${megaId}#${megaKey}`;
     } 
     else if (profileImageUrl && profileImageUrl.includes('#')) {
@@ -44,7 +46,7 @@ export async function GET(
       return new NextResponse('No valid image data', { status: 404 });
     }
 
-    console.log(`[AVATAR PROXY] Decrypting: ${finalUrl.split('#')[0]}...#PRESENT`);
+    console.log(`[AVATAR PROXY] Decrypting: ${finalUrl.split('#')[0]}...#KEY_PRESENT`);
 
     // Initialize MEGA file
     const file = MegaFile.fromURL(finalUrl);
