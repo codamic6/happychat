@@ -43,7 +43,7 @@ function formatShortTime(date: Date) {
 }
 
 /**
- * Manually truncates a string to 12 characters followed by dots.
+ * Hard limit of 12 characters followed by dots.
  */
 function manualTruncate(text: string, limit: number = 12) {
   if (!text) return '';
@@ -56,16 +56,8 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
   const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
   const name = profile.displayName || profile.fullName || 'User';
   const initial = name.charAt(0).toUpperCase();
-  
-  // Apply manual 12-char truncation
   const messagePreview = manualTruncate(conv.lastMessage || 'Secure chat...', 12);
-
-  // Use the new URL-based proxy with key encoding preserved
-  const avatarSrc = useMemo(() => {
-    return profile.profileImageUrl?.includes('mega.nz') 
-      ? `/api/avatar?url=${encodeURIComponent(profile.profileImageUrl)}&t=${conv.updatedAt?.toMillis?.() || Date.now()}` 
-      : null;
-  }, [profile.profileImageUrl, conv.updatedAt]);
+  const avatarUrl = `/api/avatar/${profile.id}?t=${conv.updatedAt?.toMillis?.() || Date.now()}`;
 
   return (
     <button 
@@ -79,12 +71,11 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
     >
       <div className="relative shrink-0 flex-none">
         <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden bg-[#111] flex items-center justify-center">
-          {!imageError && avatarSrc ? (
+          {!imageError && profile.profileImageUrl ? (
             <img 
-              src={avatarSrc} 
+              src={avatarUrl} 
               alt={name} 
               className="w-full h-full object-cover" 
-              loading="lazy"
               onError={() => setImageError(true)}
             />
           ) : (
@@ -198,14 +189,11 @@ export function ChatSidebar() {
     <div className="flex flex-col h-full bg-[#0d0d0d] w-full overflow-hidden border-r border-white/5">
       <div className="p-4 md:p-6 space-y-6 flex-none">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl md:text-2xl font-bold font-headline text-white tracking-tighter uppercase">Chats</h2>
-          </div>
+          <h2 className="text-xl md:text-2xl font-bold font-headline text-white tracking-tighter uppercase">Chats</h2>
           <Button size="icon" variant="ghost" className="rounded-xl hover:bg-white/5 text-muted-foreground">
             <MoreVertical className="w-5 h-5" />
           </Button>
         </div>
-
         <div className="relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 
@@ -216,7 +204,6 @@ export function ChatSidebar() {
           />
         </div>
       </div>
-
       <ScrollArea className="flex-1 w-full overflow-hidden">
         <div className="px-3 pb-24 md:pb-6 space-y-1 w-full min-w-0 overflow-hidden">
           {filteredConversations.map((conv) => {

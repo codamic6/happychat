@@ -4,8 +4,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, Paperclip, Smile, Search, 
-  MoreVertical, X, Info, ShieldCheck, ArrowLeft, Loader2,
-  ShieldAlert
+  MoreVertical, X, Info, ShieldAlert, ArrowLeft, Loader2,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { 
-  doc, query, collection, serverTimestamp, setDoc, 
+  doc, query, collection, serverTimestamp, 
   getDocs, where, addDoc, updateDoc, increment
 } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -95,7 +95,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   useEffect(() => {
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
     if (!uid || !db) return;
-
     const fetchProfile = async () => {
       const userDoc = await getDocs(query(collection(db, 'users'), where('id', '==', uid)));
       if (!userDoc.empty) {
@@ -107,14 +106,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   }, [conversation, targetUid, user, db]);
 
   useEffect(() => {
-    if (conversation && user && db && conversation.unreadCount?.[user.uid] && conversation.unreadCount[user.uid] > 0) {
-      updateDoc(doc(db, 'conversations', conversationId), {
-        [`unreadCount.${user.uid}`]: 0
-      });
-    }
-  }, [conversation, user, db, conversationId]);
-
-  useEffect(() => {
     if (scrollRef.current && messages.length > 0) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
@@ -124,17 +115,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
     if (!inputText.trim() || !user || !db || !otherProfile) return;
     const text = inputText;
     setInputText('');
-
     let activeId = conversationId;
     let participantIds = conversation?.participantIds || [user.uid, otherProfile.id].sort();
 
     if (isNewChat) {
-      const existingQ = query(
-        collection(db, 'conversations'),
-        where('participantIds', '==', participantIds)
-      );
+      const existingQ = query(collection(db, 'conversations'), where('participantIds', '==', participantIds));
       const snap = await getDocs(existingQ);
-      
       if (snap.empty) {
         const newConv = await addDoc(collection(db, 'conversations'), {
           participantIds,
@@ -167,82 +153,50 @@ export function ConversationView({ conversationId }: { conversationId: string })
   };
 
   if (!otherProfile) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-[#050505]">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-      </div>
-    );
+    return <div className="flex-1 flex items-center justify-center bg-[#050505]"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>;
   }
 
   const otherName = otherProfile.displayName || otherProfile.fullName || 'User';
   const initial = otherName.charAt(0).toUpperCase();
-  
-  // Use a stable proxy URL
-  const otherAvatar = useMemo(() => {
-    return otherProfile.profileImageUrl?.includes('mega.nz') 
-      ? `/api/avatar?url=${encodeURIComponent(otherProfile.profileImageUrl)}&t=${Date.now()}` 
-      : null;
-  }, [otherProfile.profileImageUrl]);
+  const avatarUrl = `/api/avatar/${otherProfile.id}?t=${Date.now()}`;
 
   return (
     <div className="flex flex-col h-full relative bg-[#050505] overflow-hidden">
       <header className="flex-none h-16 px-4 md:px-6 border-b border-white/5 flex items-center justify-between bg-black/80 backdrop-blur-3xl z-40 sticky top-0">
         <div className="flex items-center gap-3 overflow-hidden flex-1">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground hover:text-white">
-            <ArrowLeft className="w-6 h-6" />
-          </Button>
+          <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground"><ArrowLeft className="w-6 h-6" /></Button>
           <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
             <div className="w-9 h-9 rounded-full border border-primary/20 shadow-lg overflow-hidden shrink-0 flex items-center justify-center bg-[#111]">
-               {!imageError && otherAvatar ? (
-                 <img 
-                    src={otherAvatar} 
-                    className="w-full h-full object-cover" 
-                    alt={otherName} 
-                    onError={() => {
-                      console.error("Avatar failed in chat view:", otherAvatar);
-                      setImageError(true);
-                    }}
-                  />
+               {!imageError && otherProfile.profileImageUrl ? (
+                 <img src={avatarUrl} className="w-full h-full object-cover" alt={otherName} onError={() => setImageError(true)} />
                ) : (
                  <div className="text-sm font-bold text-primary">{initial}</div>
                )}
             </div>
             <div className="min-w-0 text-left">
-              <h3 className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors">
-                {otherName}
-              </h3>
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                <span className="text-[8px] text-primary uppercase font-bold tracking-widest">Active</span>
-              </div>
+              <h3 className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors">{otherName}</h3>
+              <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-primary" /><span className="text-[8px] text-primary uppercase font-bold tracking-widest">Active</span></div>
             </div>
           </div>
         </div>
-        
         <div className="flex items-center gap-1">
           <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-primary"><Search className="w-5 h-5" /></Button>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button>
-            </DropdownMenuTrigger>
+            <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 bg-[#0d0d0d] border-white/10 text-white rounded-2xl p-1 shadow-2xl">
-              <DropdownMenuItem onClick={() => setShowProfile(true)} className="flex items-center gap-3 p-3 cursor-pointer hover:bg-white/5 rounded-xl">
-                <Info className="w-4 h-4 text-primary" /> <span className="text-xs font-bold uppercase tracking-widest">About</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex items-center gap-3 p-3 cursor-pointer hover:bg-destructive/10 text-destructive rounded-xl">
-                <ShieldAlert className="w-4 h-4" /> <span className="text-xs font-bold uppercase tracking-widest">Block</span>
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowProfile(true)} className="flex items-center gap-3 p-3 cursor-pointer hover:bg-white/5 rounded-xl"><Info className="w-4 h-4 text-primary" /> <span className="text-xs font-bold uppercase tracking-widest">About</span></DropdownMenuItem>
+              <DropdownMenuItem className="flex items-center gap-3 p-3 cursor-pointer hover:bg-destructive/10 text-destructive rounded-xl"><ShieldAlert className="w-4 h-4" /> <span className="text-xs font-bold uppercase tracking-widest">Block</span></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto relative custom-scrollbar">
-        <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-4 pb-12">
+      <ScrollArea className="flex-1 p-4 md:p-8 relative custom-scrollbar">
+        <div className="max-w-4xl mx-auto space-y-4 pb-12">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 opacity-30 space-y-4">
               <ShieldCheck className="w-12 h-12 text-primary/50" />
-              <p className="text-sm font-bold uppercase tracking-widest text-center">Chat with {otherName}</p>
+              <p className="text-sm font-bold uppercase tracking-widest">Secure Chat Active</p>
             </div>
           )}
           {messages.map((msg) => {
@@ -253,39 +207,23 @@ export function ConversationView({ conversationId }: { conversationId: string })
                   <div className={cn("p-3 px-4 rounded-2xl text-sm leading-relaxed shadow-lg border", isOwn ? "bg-primary text-primary-foreground font-medium rounded-tr-none border-primary/20" : "bg-white/5 text-white border-white/10 rounded-tl-none")}>
                     {msg.text}
                   </div>
-                  <div className="flex items-center gap-2 px-1">
-                    <span className="text-[8px] font-bold text-muted-foreground uppercase">
-                      {msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'HH:mm') : ''}
-                    </span>
-                  </div>
+                  <span className="text-[8px] font-bold text-muted-foreground uppercase">{msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'HH:mm') : ''}</span>
                 </div>
               </motion.div>
             );
           })}
           <div ref={scrollRef} />
         </div>
-      </div>
+      </ScrollArea>
 
-      <footer className="flex-none p-4 bg-[#0a0a0a] border-t border-white/5 z-40 sticky bottom-0">
+      <footer className="p-4 bg-[#0a0a0a] border-t border-white/5 sticky bottom-0">
         <div className="flex items-center gap-3 max-w-5xl mx-auto">
-          <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-white shrink-0 bg-white/5 rounded-xl h-11 w-11">
-            <Paperclip className="w-5 h-5" />
-          </Button>
+          <Button size="icon" variant="ghost" className="bg-white/5 rounded-xl h-11 w-11"><Paperclip className="w-5 h-5 text-muted-foreground" /></Button>
           <div className="flex-1 relative">
-            <Input 
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder={`Write a message...`}
-              className="bg-white/5 border-white/10 h-11 pl-4 pr-12 rounded-xl focus-visible:ring-primary focus-visible:ring-offset-0 text-sm"
-            />
-            <Button size="icon" variant="ghost" className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary h-8 w-8">
-              <Smile className="w-5 h-5" />
-            </Button>
+            <Input value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} placeholder="Write a message..." className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary" />
+            <Button size="icon" variant="ghost" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"><Smile className="w-5 h-5 text-muted-foreground" /></Button>
           </div>
-          <Button onClick={handleSendMessage} disabled={!inputText.trim()} className="bg-primary hover:glow-green-bright text-primary-foreground h-11 w-11 rounded-xl shadow-xl transition-all">
-            <Send className="w-5 h-5" />
-          </Button>
+          <Button onClick={handleSendMessage} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 rounded-xl shadow-xl"><Send className="w-5 h-5" /></Button>
         </div>
       </footer>
 
@@ -293,42 +231,18 @@ export function ConversationView({ conversationId }: { conversationId: string })
         {showProfile && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowProfile(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]" />
-            <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className="fixed right-0 top-0 bottom-0 w-full md:w-[350px] bg-[#0d0d0d] border-l border-white/10 z-[120] flex flex-col shadow-2xl overflow-hidden">
-              <div className="p-8 flex flex-col h-full relative overflow-y-auto custom-scrollbar">
-                <div className="flex items-center justify-between mb-10">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary">About User</span>
-                  <Button size="icon" variant="ghost" onClick={() => setShowProfile(false)} className="h-9 w-9 rounded-full"><X className="w-5 h-5" /></Button>
+            <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 bottom-0 w-full md:w-[350px] bg-[#0d0d0d] border-l border-white/10 z-[120] flex flex-col shadow-2xl overflow-y-auto custom-scrollbar p-8">
+              <div className="flex items-center justify-between mb-10"><span className="text-[10px] font-bold uppercase tracking-widest text-primary">About User</span><Button size="icon" variant="ghost" onClick={() => setShowProfile(false)}><X className="w-5 h-5" /></Button></div>
+              <div className="flex flex-col items-center text-center space-y-8">
+                <div className="w-36 h-36 md:w-40 md:h-40 border-4 border-primary/20 shadow-2xl bg-[#111] rounded-full overflow-hidden flex items-center justify-center">
+                  {!imageError && otherProfile.profileImageUrl ? (
+                    <img src={avatarUrl} className="w-full h-full object-cover" alt={otherName} onError={() => setImageError(true)} />
+                  ) : (
+                    <div className="text-5xl font-bold text-primary">{initial}</div>
+                  )}
                 </div>
-                <div className="flex flex-col items-center text-center space-y-8">
-                  <div className="w-36 h-36 md:w-40 md:h-40 border-4 border-primary/20 shadow-2xl bg-[#111] rounded-full overflow-hidden flex items-center justify-center">
-                    {!imageError && otherAvatar ? (
-                      <img 
-                        src={otherAvatar} 
-                        className="w-full h-full object-cover" 
-                        alt={otherName} 
-                        onError={() => setImageError(true)}
-                      />
-                    ) : (
-                      <div className="text-5xl font-bold text-primary">{initial}</div>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <h2 className="text-2xl font-bold font-headline tracking-tight text-white">{otherName}</h2>
-                    <p className="text-primary text-[10px] font-bold uppercase tracking-widest">Verified Identity</p>
-                  </div>
-                  <Card className="w-full bg-white/5 border-white/10 p-5 space-y-5 text-left rounded-2xl backdrop-blur-xl">
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-1">About</p>
-                        <p className="text-xs text-white leading-relaxed">{otherProfile.about || "No bio available."}</p>
-                      </div>
-                      <div>
-                        <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Email</p>
-                        <p className="text-xs text-white truncate">{otherProfile.email}</p>
-                      </div>
-                    </div>
-                  </Card>
-                </div>
+                <div className="space-y-1"><h2 className="text-2xl font-bold font-headline text-white">{otherName}</h2><p className="text-primary text-[10px] font-bold uppercase tracking-widest">Verified Identity</p></div>
+                <Card className="w-full bg-white/5 border-white/10 p-5 space-y-4 text-left rounded-2xl"><p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-1">About</p><p className="text-xs text-white">{otherProfile.about || "No bio available."}</p></Card>
               </div>
             </motion.aside>
           </>
