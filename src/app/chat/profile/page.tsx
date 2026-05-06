@@ -102,12 +102,12 @@ export default function ProfilePage() {
       } else {
         toast({ 
           variant: "destructive", 
-          title: "Error", 
-          description: "Failed to upload photo. Check your account settings." 
+          title: "Upload Failed", 
+          description: result.error || "Could not sync with cloud storage. Please check your credentials." 
         });
       }
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: "Could not connect to storage." });
+      toast({ variant: "destructive", title: "Connection Error", description: "Could not connect to the upload server." });
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

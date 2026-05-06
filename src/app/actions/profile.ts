@@ -11,7 +11,7 @@ async function getMegaStorage(): Promise<Storage> {
   const password = process.env.MEGA_PASSWORD;
 
   if (!email || !password || email === 'your-email@example.com' || email.trim() === '') {
-    throw new Error('MEGA_EMAIL or MEGA_PASSWORD environment variables are missing or invalid.');
+    throw new Error('MEGA_EMAIL or MEGA_PASSWORD environment variables are missing. Please add them to your project environment.');
   }
 
   console.log('[DEBUG] MEGA: Initializing connection for:', email);
