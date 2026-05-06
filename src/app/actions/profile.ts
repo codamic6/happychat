@@ -60,10 +60,11 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
       size: buffer.length
     }, buffer).complete;
 
-    // 2. CRITICAL: Sync attributes to ensure the decryption key is available
+    // 2. CRITICAL: Load attributes to ensure internal metadata (like handle/key) is ready
     await uploadedFile.loadAttributes();
 
-    // 3. Generate the link (explicitly requesting key fragment)
+    // 3. Extract ID and Key directly from the file object
+    // This is the most stable way to get the components without browser URL issues.
     let megaId = '';
     let megaKey = '';
     let fullUrl = '';
@@ -85,7 +86,6 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
         megaId = parts[0].split('/').pop() || '';
         break;
       }
-      // Increased delay to give MEGA more time to index
       await new Promise(r => setTimeout(r, 1500));
     }
 
@@ -93,7 +93,7 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
       throw new Error('MEGA failed to generate a decryption key fragment (#). Please try again.');
     }
 
-    console.log(`[MEGA UPLOAD SUCCESS] UID: ${userId} | ID: ${megaId} | Key captured: ${!!megaKey}`);
+    console.log(`[MEGA UPLOAD SUCCESS] UID: ${userId} | ID: ${megaId} | Key length: ${megaKey.length}`);
 
     // 4. Save components to Firestore
     const { firestore } = initializeFirebase();
@@ -101,7 +101,7 @@ export async function uploadProfileImageToMega(formData: FormData, userId: strin
     await updateDoc(userRef, {
       megaId,
       megaKey,
-      profileImageUrl: fullUrl, // Raw string exactly as returned
+      profileImageUrl: fullUrl, // Keep for legacy if needed, but proxy will use Id/Key
       updatedAt: serverTimestamp()
     });
 
