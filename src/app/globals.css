@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -40,11 +39,11 @@
     -ms-user-select: none;
     user-select: none;
     overflow-x: hidden;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Space Grotesk', sans-serif;
-    font-style: normal !important; /* Forces non-italic */
+    font-style: normal !important;
     font-weight: 700;
   }
 }
