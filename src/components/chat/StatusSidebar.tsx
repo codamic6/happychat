@@ -181,8 +181,12 @@ export function StatusSidebar() {
                   myStatusGroup ? "bg-gradient-to-tr from-primary to-emerald-400 p-[2px] glow-green" : "border-2 border-dashed border-white/10"
                 )}>
                   <div className="w-full h-full rounded-full bg-[#111] overflow-hidden flex items-center justify-center">
-                    {user?.photoURL ? (
-                      <img src={user.photoURL} className="w-full h-full object-cover" alt="Me" />
+                    {user?.uid ? (
+                      <img 
+                        src={`/api/avatar/${user.uid}?t=${Date.now()}`} 
+                        className="w-full h-full object-cover rounded-full" 
+                        alt="Me" 
+                      />
                     ) : (
                       <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
                     )}
@@ -206,8 +210,6 @@ export function StatusSidebar() {
                 if (!profile) return null;
                 const name = profile.displayName || profile.fullName || 'User';
                 const latest = items[items.length - 1];
-                
-                // Unified server-side proxy endpoint
                 const avatarSrc = `/api/avatar/${profile.id}?t=${latest.createdAt?.toMillis?.() || Date.now()}`;
 
                 return (

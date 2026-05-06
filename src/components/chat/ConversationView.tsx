@@ -43,6 +43,7 @@ type UserProfile = {
   phoneNumber?: string;
   profileImageUrl?: string;
   about?: string;
+  updatedAt?: any;
 };
 
 type Conversation = {
@@ -157,7 +158,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   const otherName = otherProfile.displayName || otherProfile.fullName || 'User';
   const initial = otherName.charAt(0).toUpperCase();
-  const avatarUrl = `/api/avatar/${otherProfile.id}?t=${Date.now()}`;
+  const t = otherProfile.updatedAt?.toMillis?.() || Date.now();
+  const avatarUrl = `/api/avatar/${otherProfile.id}?t=${t}`;
 
   return (
     <div className="flex flex-col h-full relative bg-[#050505] overflow-hidden">
@@ -167,7 +169,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
           <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
             <div className="w-9 h-9 rounded-full border border-primary/20 shadow-lg overflow-hidden shrink-0 flex items-center justify-center bg-[#111]">
                {!imageError && otherProfile.profileImageUrl ? (
-                 <img src={avatarUrl} className="w-full h-full object-cover" alt={otherName} onError={() => setImageError(true)} />
+                 <img 
+                    src={avatarUrl} 
+                    className="w-full h-full object-cover" 
+                    alt={otherName} 
+                    onError={() => setImageError(true)} 
+                 />
                ) : (
                  <div className="text-sm font-bold text-primary">{initial}</div>
                )}
@@ -235,7 +242,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
               <div className="flex flex-col items-center text-center space-y-8">
                 <div className="w-36 h-36 md:w-40 md:h-40 border-4 border-primary/20 shadow-2xl bg-[#111] rounded-full overflow-hidden flex items-center justify-center">
                   {!imageError && otherProfile.profileImageUrl ? (
-                    <img src={avatarUrl} className="w-full h-full object-cover" alt={otherName} onError={() => setImageError(true)} />
+                    <img 
+                        src={avatarUrl} 
+                        className="w-full h-full object-cover" 
+                        alt={otherName} 
+                        onError={() => setImageError(true)} 
+                    />
                   ) : (
                     <div className="text-5xl font-bold text-primary">{initial}</div>
                   )}

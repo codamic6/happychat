@@ -64,7 +64,7 @@ export default function ProfilePage() {
         phoneNumber: profile.phoneNumber || '',
         isOnline: profile.isOnline ?? true
       });
-      // Only reset image error if the profile actually exists/updates
+      // Reset image error only when the profile explicitly changes
       setImageError(false);
     }
   }, [profile?.profileImageUrl, profile?.updatedAt]);
@@ -147,7 +147,6 @@ export default function ProfilePage() {
 
   const name = profile?.displayName || profile?.fullName || 'User';
   const initial = name.charAt(0).toUpperCase();
-  // Using a stable cache buster from Firestore timestamp
   const t = profile?.updatedAt?.toMillis?.() || Date.now();
   const avatarSrc = profile?.id ? `/api/avatar/${profile.id}?t=${t}` : null;
 
@@ -172,7 +171,6 @@ export default function ProfilePage() {
               <div className="w-32 h-32 md:w-44 md:h-44 rounded-full border-4 border-primary/20 bg-[#0d0d0d] overflow-hidden flex items-center justify-center">
                 {!imageError && profile?.profileImageUrl ? (
                   <img 
-                    key={avatarSrc}
                     src={avatarSrc!} 
                     alt="Profile" 
                     className="w-full h-full object-cover"

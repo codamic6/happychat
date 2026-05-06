@@ -77,7 +77,6 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
         <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden bg-[#111] flex items-center justify-center">
           {!imageError && profile.profileImageUrl ? (
             <img 
-              key={avatarSrc}
               src={avatarSrc} 
               alt={name} 
               className="w-full h-full object-cover" 
