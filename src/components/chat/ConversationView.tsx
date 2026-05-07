@@ -323,8 +323,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
         </AnimatePresence>
       </header>
 
-      <ScrollArea className="flex-1 p-4 md:p-8 relative custom-scrollbar">
-        <div className="max-w-4xl mx-auto space-y-4 pb-12">
+      <ScrollArea className="flex-1 p-4 md:p-6 relative custom-scrollbar">
+        <div className="max-w-4xl mx-auto space-y-2 pb-12">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 opacity-30 space-y-4">
               <ShieldCheck className="w-12 h-12 text-primary/50" />
@@ -369,19 +369,19 @@ export function ConversationView({ conversationId }: { conversationId: string })
                             e.currentTarget.addEventListener('pointerup', () => clearTimeout(timer), { once: true });
                           }}
                           className={cn(
-                            "group relative p-3 px-4 rounded-2xl text-sm leading-relaxed shadow-lg border transition-all text-left flex flex-col gap-1",
+                            "group relative py-2 px-3 rounded-2xl text-sm leading-snug shadow-lg border transition-all text-left flex flex-col min-w-[60px]",
                             isOwn 
                               ? "bg-primary text-primary-foreground font-medium rounded-tr-none border-primary/20" 
                               : "bg-[#161616] text-white border-white/5 rounded-tl-none",
                             isSelected && "ring-2 ring-white/50 scale-[0.98]"
                           )}
                         >
-                          <span className="pr-10">{msg.text}</span>
+                          <span className="pr-8">{msg.text}</span>
                           <div className={cn(
-                            "absolute bottom-1.5 right-2 flex items-center gap-1 opacity-60 text-[9px] font-bold uppercase tracking-tight",
-                            isOwn ? "text-primary-foreground/80" : "text-muted-foreground"
+                            "absolute bottom-0.5 right-1.5 flex items-center gap-0.5 opacity-70 text-[7px] font-bold uppercase tracking-tight",
+                            isOwn ? "text-primary-foreground/90" : "text-muted-foreground"
                           )}>
-                            {msg.isEdited && <span className="italic mr-1">Edited</span>}
+                            {msg.isEdited && <span className="italic mr-0.5">Edit</span>}
                             <span>{timeStr}</span>
                           </div>
                         </button>
