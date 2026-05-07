@@ -2,16 +2,16 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Loader2, Search, Clock, ArrowLeft } from 'lucide-react';
+import { Plus, Clock, ArrowLeft, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit, where, getDocs } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { StatusComposer } from '@/components/chat/StatusComposer';
 
@@ -20,7 +20,6 @@ type UserProfile = {
   displayName?: string;
   fullName?: string;
   username: string;
-  profileImageUrl?: string;
   updatedAt?: any;
 };
 
@@ -28,7 +27,7 @@ type StatusUpdate = {
   id: string;
   userId: string;
   content: string;
-  type: 'text' | 'image';
+  type: 'text';
   createdAt: any;
   expiresAt: any;
 };
@@ -37,7 +36,6 @@ export function StatusSidebar() {
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
-  const pathname = usePathname();
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile>>({});
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -123,14 +121,6 @@ export function StatusSidebar() {
     });
   }, [otherStatusGroups, searchQuery, userProfiles]);
 
-  const handleMyStatusClick = () => {
-    if (myStatusGroup) {
-      router.push(`/chat/status?uid=${user?.uid}`);
-    } else {
-      setIsComposerOpen(true);
-    }
-  };
-
   return (
     <div className="flex flex-col h-full bg-[#0d0d0d] relative">
       <div className="p-4 md:p-6 space-y-6">
@@ -141,7 +131,7 @@ export function StatusSidebar() {
                 onClick={() => router.push('/chat')}
                 className="md:hidden text-muted-foreground"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="u-5 h-5" />
               </Button>
               <h2 className="text-xl md:text-2xl font-bold font-headline text-white tracking-tighter uppercase">Updates</h2>
           </div>
@@ -171,7 +161,7 @@ export function StatusSidebar() {
           <div className="space-y-4 px-3">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">My Status</h3>
             <button 
-              onClick={handleMyStatusClick}
+              onClick={() => myStatusGroup ? router.push(`/chat/status?uid=${user?.uid}`) : setIsComposerOpen(true)}
               className="w-full flex items-center gap-4 p-2 rounded-2xl hover:bg-white/5 transition-all text-left group"
             >
               <div className="relative shrink-0">
@@ -180,15 +170,7 @@ export function StatusSidebar() {
                   myStatusGroup ? "bg-gradient-to-tr from-primary to-emerald-400 p-[2px] glow-green" : "border-2 border-dashed border-white/10"
                 )}>
                   <div className="w-full h-full rounded-full bg-[#111] overflow-hidden flex items-center justify-center">
-                    {user?.uid ? (
-                      <img 
-                        src={`/api/avatar/${user.uid}?t=${Date.now()}`} 
-                        className="w-full h-full object-cover rounded-full" 
-                        alt="Me" 
-                      />
-                    ) : (
-                      <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                    )}
+                    <div className="text-sm font-bold text-primary">{(profile?.fullName || 'U').charAt(0)}</div>
                   </div>
                 </div>
               </div>
@@ -209,8 +191,6 @@ export function StatusSidebar() {
                 if (!profile) return null;
                 const name = profile.displayName || profile.fullName || 'User';
                 const latest = items[items.length - 1];
-                const t = profile.updatedAt?.toMillis?.() || latest.createdAt?.toMillis?.() || Date.now();
-                const avatarSrc = `/api/avatar/${profile.id}?t=${t}`;
 
                 return (
                   <button 
@@ -222,7 +202,6 @@ export function StatusSidebar() {
                       <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-primary to-emerald-400 p-[2px] glow-green">
                         <div className="w-full h-full rounded-full bg-[#111] overflow-hidden flex items-center justify-center border-2 border-[#0d0d0d]">
                           <Avatar className="w-full h-full">
-                            <AvatarImage src={avatarSrc} />
                             <AvatarFallback className="bg-primary/20 text-primary">{name.charAt(0)}</AvatarFallback>
                           </Avatar>
                         </div>

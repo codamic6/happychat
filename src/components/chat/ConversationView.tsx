@@ -42,9 +42,6 @@ type UserProfile = {
   username: string;
   email: string;
   phoneNumber?: string;
-  megaId?: string;
-  megaKey?: string;
-  profileImageUrl?: string;
   about?: string;
   updatedAt?: any;
 };
@@ -61,7 +58,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const router = useRouter();
   const [inputText, setInputText] = useState('');
   const [showProfile, setShowProfile] = useState(false);
-  const [imageError, setImageError] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const isNewChat = conversationId.startsWith('new-');
@@ -95,12 +91,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
 
-  const avatarSrc = useMemo(() => {
-    if (!otherProfile?.id) return null;
-    const t = otherProfile.updatedAt?.toMillis?.() || Date.now();
-    return `/api/avatar/${otherProfile.id}?t=${t}`;
-  }, [otherProfile?.id, otherProfile?.updatedAt]);
-
   useEffect(() => {
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
     if (!uid || !db) return;
@@ -108,7 +98,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
       const userDoc = await getDocs(query(collection(db, 'users'), where('id', '==', uid)));
       if (!userDoc.empty) {
         setOtherProfile(userDoc.docs[0].data() as UserProfile);
-        setImageError(false);
       }
     };
     fetchProfile();
@@ -174,17 +163,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
         <div className="flex items-center gap-3 overflow-hidden flex-1">
           <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground"><ArrowLeft className="w-6 h-6" /></Button>
           <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
-            <div className="w-9 h-9 rounded-full border border-primary/20 shadow-lg overflow-hidden shrink-0 flex items-center justify-center bg-[#111]">
-               {!imageError && avatarSrc ? (
-                 <img 
-                    src={avatarSrc} 
-                    className="w-full h-full object-cover" 
-                    alt={otherName} 
-                    onError={() => setImageError(true)} 
-                 />
-               ) : (
-                 <div className="text-sm font-bold text-primary">{initial}</div>
-               )}
+            <div className="w-9 h-9 rounded-full border border-primary/20 shadow-lg bg-[#111] flex items-center justify-center shrink-0">
+              <div className="text-sm font-bold text-primary">{initial}</div>
             </div>
             <div className="min-w-0 text-left">
               <h3 className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors">{otherName}</h3>
@@ -247,17 +227,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
             <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 bottom-0 w-full md:w-[350px] bg-[#0d0d0d] border-l border-white/10 z-[120] flex flex-col shadow-2xl overflow-y-auto custom-scrollbar p-8">
               <div className="flex items-center justify-between mb-10"><span className="text-[10px] font-bold uppercase tracking-widest text-primary">About User</span><Button size="icon" variant="ghost" onClick={() => setShowProfile(false)}><X className="w-5 h-5" /></Button></div>
               <div className="flex flex-col items-center text-center space-y-8">
-                <div className="w-36 h-36 md:w-40 md:h-40 border-4 border-primary/20 shadow-2xl bg-[#111] rounded-full overflow-hidden flex items-center justify-center">
-                  {!imageError && avatarSrc ? (
-                    <img 
-                        src={avatarSrc} 
-                        className="w-full h-full object-cover" 
-                        alt={otherName} 
-                        onError={() => setImageError(true)} 
-                    />
-                  ) : (
-                    <div className="text-5xl font-bold text-primary">{initial}</div>
-                  )}
+                <div className="w-36 h-36 md:w-40 md:h-40 border-4 border-primary/20 shadow-2xl bg-[#111] rounded-full flex items-center justify-center">
+                  <div className="text-5xl font-bold text-primary">{initial}</div>
                 </div>
                 <div className="space-y-1"><h2 className="text-2xl font-bold font-headline text-white">{otherName}</h2><p className="text-primary text-[10px] font-bold uppercase tracking-widest">Verified Identity</p></div>
                 <Card className="w-full bg-white/5 border-white/10 p-5 space-y-4 text-left rounded-2xl"><p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-1">About</p><p className="text-xs text-white">{otherProfile.about || "No bio available."}</p></Card>

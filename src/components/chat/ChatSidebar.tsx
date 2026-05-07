@@ -19,9 +19,6 @@ type UserProfile = {
   fullName?: string;
   username: string;
   email: string;
-  megaId?: string;
-  megaKey?: string;
-  profileImageUrl?: string;
   updatedAt?: any;
 };
 
@@ -45,9 +42,6 @@ function formatShortTime(date: Date) {
   return format(date, 'dd/MM/yy');
 }
 
-/**
- * Strict JavaScript-based manual truncation to exactly 12 characters.
- */
 function manualTruncate(text: string, limit: number = 12) {
   if (!text) return '';
   if (text.length <= limit) return text;
@@ -55,22 +49,10 @@ function manualTruncate(text: string, limit: number = 12) {
 }
 
 function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversation, profile: UserProfile, user: any, isSelected: boolean, onClick: () => void }) {
-  const [imageError, setImageError] = useState(false);
   const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
   const name = profile.displayName || profile.fullName || 'User';
   const initial = name.charAt(0).toUpperCase();
-  
-  // Apply manual 12-char truncation for previews
   const messagePreview = manualTruncate(conv.lastMessage || 'Secure chat...', 12);
-  
-  const avatarSrc = useMemo(() => {
-    const t = profile.updatedAt?.toMillis?.() || Date.now();
-    return `/api/avatar/${profile.id}?t=${t}`;
-  }, [profile.id, profile.updatedAt]);
-
-  useEffect(() => {
-    setImageError(false);
-  }, [profile.megaId, profile.updatedAt]);
 
   return (
     <button 
@@ -83,17 +65,8 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
       )}
     >
       <div className="relative shrink-0 flex-none">
-        <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden bg-[#111] flex items-center justify-center">
-          {!imageError ? (
-            <img 
-              src={avatarSrc} 
-              alt={name} 
-              className="w-full h-full object-cover" 
-              onError={() => setImageError(true)}
-            />
-          ) : (
-            <div className="text-xl font-bold text-primary">{initial}</div>
-          )}
+        <div className="w-14 h-14 rounded-full border border-white/10 bg-[#111] flex items-center justify-center">
+          <div className="text-xl font-bold text-primary">{initial}</div>
         </div>
         <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
       </div>

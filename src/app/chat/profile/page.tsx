@@ -1,9 +1,9 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Camera, Loader2, LogOut, Settings, ArrowLeft, CheckCircle2
+  Loader2, LogOut, Settings, ArrowLeft, CheckCircle2, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,9 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useUser, useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
-import { motion } from 'framer-motion';
 import { toast } from '@/hooks/use-toast';
-import { uploadProfileImageToMega } from '@/app/actions/profile';
 import { signOut } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
@@ -28,9 +26,6 @@ type UserProfile = {
   email: string;
   phoneNumber: string;
   about: string;
-  megaId?: string;
-  megaKey?: string;
-  profileImageUrl?: string;
   isOnline: boolean;
   updatedAt: any;
 };
@@ -40,7 +35,6 @@ export default function ProfilePage() {
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const userRef = useMemo(() => (user ? doc(db, 'users', user.uid) : null), [db, user]);
   const { data: profile, isLoading: isProfileLoading } = useDoc<UserProfile>(userRef);
@@ -54,16 +48,7 @@ export default function ProfilePage() {
   });
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
-  const [imageError, setImageError] = useState(false);
-
-  // Stable image source with cache-busting based on updatedAt
-  const avatarSrc = useMemo(() => {
-    if (!profile?.id) return null;
-    const t = profile?.updatedAt?.toMillis?.() || Date.now();
-    return `/api/avatar/${profile.id}?t=${t}`;
-  }, [profile?.id, profile?.updatedAt]);
 
   useEffect(() => {
     if (profile) {
@@ -74,10 +59,8 @@ export default function ProfilePage() {
         phoneNumber: profile.phoneNumber || '',
         isOnline: profile.isOnline ?? true
       });
-      // Reset error state when new profile data is received (likely after upload)
-      setImageError(false);
     }
-  }, [profile?.megaId, profile?.updatedAt]);
+  }, [profile]);
 
   const handleCheckUsername = async (val: string) => {
     if (!val || val === profile?.username) {
@@ -91,31 +74,6 @@ export default function ProfilePage() {
       setUsernameStatus(snap.empty ? 'available' : 'taken');
     } catch (e) {
       setUsernameStatus('idle');
-    }
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-
-    setIsUploading(true);
-    setImageError(false);
-    
-    const megaFormData = new FormData();
-    megaFormData.append('file', file);
-
-    try {
-      const result = await uploadProfileImageToMega(megaFormData, user.uid);
-      if (result && 'success' in result) {
-        toast({ title: "Photo Updated", description: "Cloud sync complete." });
-      } else {
-        toast({ variant: "destructive", title: "Upload Failed", description: (result as any).error });
-      }
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: "Connection failed." });
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -176,30 +134,9 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <Card className="glass p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2rem] lg:col-span-1">
             <div className="relative">
-              <div className="w-32 h-32 md:w-44 md:h-44 rounded-full border-4 border-primary/20 bg-[#0d0d0d] overflow-hidden flex items-center justify-center">
-                {!imageError && avatarSrc ? (
-                  <img 
-                    src={avatarSrc} 
-                    alt="Profile" 
-                    className="w-full h-full object-cover"
-                    onError={() => {
-                      console.error("[PROFILE] Image failed to load:", avatarSrc);
-                      setImageError(true);
-                    }}
-                  />
-                ) : (
-                  <div className="text-5xl font-bold text-primary">{initial}</div>
-                )}
+              <div className="w-32 h-32 md:w-44 md:h-44 rounded-full border-4 border-primary/20 bg-[#0d0d0d] flex items-center justify-center">
+                <div className="text-5xl font-bold text-primary">{initial}</div>
               </div>
-              <button 
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="absolute bottom-1 right-1 w-10 h-10 bg-primary rounded-full border-4 border-[#0a0a0a] flex items-center justify-center text-primary-foreground hover:scale-110 transition-transform active:scale-95 disabled:opacity-50"
-              >
-                {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
-              </button>
-              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
             </div>
 
             <div className="space-y-1">
