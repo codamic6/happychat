@@ -46,6 +46,12 @@ type UserProfile = {
   updatedAt?: any;
 };
 
+type ContactRecord = {
+  id: string;
+  userId: string;
+  customName?: string;
+};
+
 type Conversation = {
   id: string;
   participantIds: string[];
@@ -90,17 +96,26 @@ export function ConversationView({ conversationId }: { conversationId: string })
   }, [rawMessages]);
 
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
+  const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
 
   useEffect(() => {
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
-    if (!uid || !db) return;
-    const fetchProfile = async () => {
+    if (!uid || !db || !user) return;
+
+    const fetchData = async () => {
+      // Fetch Profile
       const userDoc = await getDocs(query(collection(db, 'users'), where('id', '==', uid)));
       if (!userDoc.empty) {
         setOtherProfile(userDoc.docs[0].data() as UserProfile);
       }
+
+      // Fetch Contact Alias
+      const contactDoc = await getDocs(query(collection(db, 'users', user.uid, 'contacts'), where('userId', '==', uid)));
+      if (!contactDoc.empty) {
+        setContactRecord(contactDoc.docs[0].data() as ContactRecord);
+      }
     };
-    fetchProfile();
+    fetchData();
   }, [conversation, targetUid, user, db]);
 
   useEffect(() => {
@@ -154,7 +169,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     return <div className="flex-1 flex items-center justify-center bg-[#050505]"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>;
   }
 
-  const otherName = otherProfile.displayName || otherProfile.fullName || 'User';
+  const otherName = contactRecord?.customName || otherProfile.displayName || otherProfile.fullName || 'User';
   const initial = otherName.charAt(0).toUpperCase();
 
   return (

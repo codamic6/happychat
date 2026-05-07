@@ -22,6 +22,12 @@ type UserProfile = {
   updatedAt?: any;
 };
 
+type ContactRecord = {
+  id: string;
+  userId: string;
+  customName?: string;
+};
+
 type Conversation = {
   id: string;
   participantIds: string[];
@@ -48,10 +54,25 @@ function manualTruncate(text: string, limit: number = 12) {
   return text.substring(0, limit) + '...';
 }
 
-function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversation, profile: UserProfile, user: any, isSelected: boolean, onClick: () => void }) {
+function ChatItem({ 
+  conv, 
+  profile, 
+  contact,
+  user, 
+  isSelected, 
+  onClick 
+}: { 
+  conv: Conversation, 
+  profile: UserProfile, 
+  contact?: ContactRecord,
+  user: any, 
+  isSelected: boolean, 
+  onClick: () => void 
+}) {
   const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
-  const name = profile.displayName || profile.fullName || 'User';
-  const initial = name.charAt(0).toUpperCase();
+  // Prioritize custom alias if it exists
+  const displayName = contact?.customName || profile.displayName || profile.fullName || 'User';
+  const initial = displayName.charAt(0).toUpperCase();
   const messagePreview = manualTruncate(conv.lastMessage || 'Secure chat...', 12);
 
   return (
@@ -74,7 +95,7 @@ function ChatItem({ conv, profile, user, isSelected, onClick }: { conv: Conversa
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden text-left pr-4">
         <div className="flex items-center justify-between gap-2 min-w-0 w-full mb-1">
           <span className="font-bold text-sm text-white truncate min-w-0 flex-1 overflow-hidden whitespace-nowrap">
-            {name}
+            {displayName}
           </span>
           <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter flex-none">
             {conv.updatedAt?.toDate ? formatShortTime(conv.updatedAt.toDate()) : ''}
@@ -115,6 +136,21 @@ export function ChatSidebar() {
   }, [db, user]);
 
   const { data: rawConversations } = useCollection<Conversation>(convQuery);
+
+  const contactsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'users', user.uid, 'contacts'));
+  }, [db, user]);
+
+  const { data: userContacts } = useCollection<ContactRecord>(contactsQuery);
+
+  const contactAliasMap = useMemo(() => {
+    if (!userContacts) return {};
+    return userContacts.reduce((acc, c) => {
+      acc[c.id] = c;
+      return acc;
+    }, {} as Record<string, ContactRecord>);
+  }, [userContacts]);
 
   const conversations = useMemo(() => {
     if (!rawConversations) return [];
@@ -160,14 +196,15 @@ export function ChatSidebar() {
     return conversations.filter(conv => {
       const otherId = conv.participantIds.find(id => id !== user?.uid);
       const profile = otherId ? chatProfiles[otherId] : null;
-      const name = profile?.displayName || profile?.fullName || '';
+      const contact = otherId ? contactAliasMap[otherId] : null;
+      const name = contact?.customName || profile?.displayName || profile?.fullName || '';
       return (
         name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         profile?.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
         conv.lastMessage?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     });
-  }, [conversations, searchQuery, chatProfiles, user]);
+  }, [conversations, searchQuery, chatProfiles, contactAliasMap, user]);
 
   return (
     <div className="flex flex-col h-full bg-[#0d0d0d] w-full overflow-hidden border-r border-white/5">
@@ -200,6 +237,7 @@ export function ChatSidebar() {
                 key={conv.id}
                 conv={conv}
                 profile={profile}
+                contact={otherId ? contactAliasMap[otherId] : undefined}
                 user={user}
                 isSelected={pathname === `/chat/${conv.id}`}
                 onClick={() => router.push(`/chat/${conv.id}`)}

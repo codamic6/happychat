@@ -60,6 +60,10 @@
           "type": "string",
           "description": "The UID of the contact."
         },
+        "customName": {
+          "type": "string",
+          "description": "A personalized name for the contact."
+        },
         "addedAt": {
           "type": "string",
           "format": "date-time"
