@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { 
   MessageSquare, Globe, Users, Sparkles, UserCircle, 
-  Settings, LogOut, UserPlus, Zap
+  LogOut, UserPlus, Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth, useUser } from '@/firebase';
@@ -25,7 +25,7 @@ export function IconRail() {
   const navItems = [
     { id: 'chats', icon: MessageSquare, label: 'Chats', path: '/chat' },
     { id: 'status', icon: Globe, label: 'Updates', path: '/chat/status' },
-    { id: 'contacts', icon: Users, label: 'Contacts', path: '/chat' },
+    { id: 'contacts', icon: Users, label: 'Contacts', path: '/chat/contacts' },
     { id: 'ai', icon: Sparkles, label: 'Assistant', path: '/ai-assistant' },
   ];
 
