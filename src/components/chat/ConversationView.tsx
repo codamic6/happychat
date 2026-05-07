@@ -334,6 +334,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
             const isOwn = msg.senderId === user?.uid;
             const isEditing = editingMessageId === msg.id;
             const isSelected = selectedMessage?.id === msg.id;
+            const timeStr = msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'HH:mm') : '';
 
             return (
               <motion.div 
@@ -342,7 +343,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 animate={{ opacity: 1, y: 0 }} 
                 className={cn("flex group/msg", isOwn ? "justify-end" : "justify-start")}
               >
-                <div className={cn("max-w-[80%] md:max-w-[60%] space-y-1", isOwn ? "items-end" : "items-start")}>
+                <div className={cn("max-w-[85%] md:max-w-[70%]", isOwn ? "items-end" : "items-start")}>
                   {isEditing ? (
                     <div className="flex items-end gap-2">
                       <Input 
@@ -359,38 +360,40 @@ export function ConversationView({ conversationId }: { conversationId: string })
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button
-                          onContextMenu={(e) => { e.preventDefault(); }} // Trigger handled by trigger component behavior or custom logic
+                          onContextMenu={(e) => { e.preventDefault(); }}
                           onPointerDown={(e) => {
-                            // Long press detection for mobile
                             const timer = setTimeout(() => {
                               setSelectedMessage(msg);
                             }, 600);
                             e.currentTarget.addEventListener('pointerup', () => clearTimeout(timer), { once: true });
                           }}
                           className={cn(
-                            "p-3 px-4 rounded-2xl text-sm leading-relaxed shadow-lg border transition-all text-left relative",
-                            isOwn ? "bg-primary text-primary-foreground font-medium rounded-tr-none border-primary/20" : "bg-white/5 text-white border-white/10 rounded-tl-none",
-                            isSelected && "ring-2 ring-white/50 scale-95"
+                            "group relative p-3 px-4 rounded-2xl text-sm leading-relaxed shadow-lg border transition-all text-left flex flex-col gap-1",
+                            isOwn 
+                              ? "bg-primary text-primary-foreground font-medium rounded-tr-none border-primary/20" 
+                              : "bg-[#161616] text-white border-white/5 rounded-tl-none",
+                            isSelected && "ring-2 ring-white/50 scale-[0.98]"
                           )}
                         >
-                          {msg.text}
-                          {msg.isEdited && <span className="text-[7px] italic opacity-50 block mt-1">Edited</span>}
+                          <span className="pr-12">{msg.text}</span>
+                          <div className={cn(
+                            "absolute bottom-2 right-3 flex items-center gap-1 opacity-60 text-[9px] font-bold uppercase tracking-tight",
+                            isOwn ? "text-primary-foreground/80" : "text-muted-foreground"
+                          )}>
+                            {msg.isEdited && <span className="italic mr-1">Edited</span>}
+                            <span>{timeStr}</span>
+                          </div>
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-[#0d0d0d] border-white/10 text-white rounded-xl p-1">
-                        <DropdownMenuItem onClick={() => handleCopy(msg.text)} className="gap-2"><Copy className="w-3.5 h-3.5" /> Copy</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setSelectedMessage(msg); setIsForwardDialogOpen(true); }} className="gap-2"><Forward className="w-3.5 h-3.5" /> Forward</DropdownMenuItem>
+                      <DropdownMenuContent className="bg-[#0d0d0d] border-white/10 text-white rounded-xl p-1 shadow-2xl">
+                        <DropdownMenuItem onClick={() => handleCopy(msg.text)} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Copy className="w-3.5 h-3.5" /> Copy</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setSelectedMessage(msg); setIsForwardDialogOpen(true); }} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Forward className="w-3.5 h-3.5" /> Forward</DropdownMenuItem>
                         {isOwn && (
-                          <>
-                            <DropdownMenuItem onClick={() => startEdit(msg)} className="gap-2"><Pencil className="w-3.5 h-3.5" /> Edit</DropdownMenuItem>
-                          </>
+                          <DropdownMenuItem onClick={() => startEdit(msg)} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Pencil className="w-3.5 h-3.5" /> Edit</DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
-                  <span className="text-[8px] font-bold text-muted-foreground uppercase">
-                    {msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'HH:mm') : ''}
-                  </span>
                 </div>
               </motion.div>
             );
@@ -401,18 +404,18 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
       <footer className="p-4 bg-[#0a0a0a] border-t border-white/5 sticky bottom-0">
         <div className="flex items-center gap-3 max-w-5xl mx-auto">
-          <Button size="icon" variant="ghost" className="bg-white/5 rounded-xl h-11 w-11"><Paperclip className="w-5 h-5 text-muted-foreground" /></Button>
+          <Button size="icon" variant="ghost" className="bg-white/5 rounded-xl h-11 w-11 hover:bg-white/10 transition-colors"><Paperclip className="w-5 h-5 text-muted-foreground" /></Button>
           <div className="flex-1 relative">
             <Input 
               value={inputText} 
               onChange={(e) => setInputText(e.target.value)} 
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} 
               placeholder="Write a message..." 
-              className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary" 
+              className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary focus-visible:ring-offset-0" 
             />
-            <Button size="icon" variant="ghost" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"><Smile className="w-5 h-5 text-muted-foreground" /></Button>
+            <Button size="icon" variant="ghost" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-transparent text-muted-foreground hover:text-primary"><Smile className="w-5 h-5" /></Button>
           </div>
-          <Button onClick={handleSendMessage} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 rounded-xl shadow-xl">
+          <Button onClick={handleSendMessage} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 rounded-xl shadow-xl transition-all active:scale-95">
             <Send className="w-5 h-5" />
           </Button>
         </div>
@@ -420,29 +423,35 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
       {/* Forward Message Dialog */}
       <Dialog open={isForwardDialogOpen} onOpenChange={setIsForwardDialogOpen}>
-        <DialogContent className="bg-[#0a0a0a] border-white/5 text-white rounded-[2.5rem]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="bg-[#0a0a0a] border-white/5 text-white rounded-[2.5rem] shadow-2xl p-0 overflow-hidden">
+          <DialogHeader className="p-8 pb-4">
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold font-headline uppercase tracking-tight text-gradient">
               <Forward className="w-5 h-5 text-primary" /> Forward Message
             </DialogTitle>
-            <DialogDescription className="text-muted-foreground">Choose a contact to forward this message to.</DialogDescription>
+            <DialogDescription className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Choose a contact to forward this message to</DialogDescription>
           </DialogHeader>
-          <ScrollArea className="max-h-[300px] mt-4">
-            <div className="space-y-2">
+          <ScrollArea className="max-h-[300px] px-8 pb-8">
+            <div className="space-y-1">
               {contactsData?.map((contact) => (
                 <button 
                   key={contact.id} 
                   onClick={() => handleForward(contact)}
-                  className="w-full p-3 rounded-2xl hover:bg-white/5 flex items-center gap-3 text-left transition-colors"
+                  className="w-full p-4 rounded-2xl hover:bg-white/5 flex items-center gap-4 text-left transition-all group"
                 >
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold group-hover:bg-primary/20 transition-colors border border-primary/20">
                     {contact.customName?.charAt(0).toUpperCase() || 'U'}
                   </div>
-                  <span className="text-sm font-bold">{contact.customName || 'User'}</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-white">{contact.customName || 'User'}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Active</span>
+                  </div>
                 </button>
               ))}
               {contactsData?.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground text-xs uppercase font-bold tracking-widest">No contacts found</div>
+                <div className="text-center py-12 opacity-30 space-y-2">
+                  <Search className="w-8 h-8 mx-auto" />
+                  <p className="text-[10px] uppercase font-bold tracking-widest">No contacts found</p>
+                </div>
               )}
             </div>
           </ScrollArea>
@@ -454,13 +463,26 @@ export function ConversationView({ conversationId }: { conversationId: string })
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowProfile(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]" />
             <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 bottom-0 w-full md:w-[350px] bg-[#0d0d0d] border-l border-white/10 z-[120] flex flex-col shadow-2xl overflow-y-auto custom-scrollbar p-8">
-              <div className="flex items-center justify-between mb-10"><span className="text-[10px] font-bold uppercase tracking-widest text-primary">About User</span><Button size="icon" variant="ghost" onClick={() => setShowProfile(false)}><X className="w-5 h-5" /></Button></div>
+              <div className="flex items-center justify-between mb-10">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-primary">About User</span>
+                <Button size="icon" variant="ghost" onClick={() => setShowProfile(false)} className="hover:bg-white/5"><X className="w-5 h-5 text-muted-foreground" /></Button>
+              </div>
               <div className="flex flex-col items-center text-center space-y-8">
                 <div className="w-36 h-36 md:w-40 md:h-40 border-4 border-primary/20 shadow-2xl bg-[#111] rounded-full flex items-center justify-center">
                   <div className="text-5xl font-bold text-primary">{initial}</div>
                 </div>
-                <div className="space-y-1"><h2 className="text-2xl font-bold font-headline text-white">{otherName}</h2><p className="text-primary text-[10px] font-bold uppercase tracking-widest">Verified Identity</p></div>
-                <Card className="w-full bg-white/5 border-white/10 p-5 space-y-4 text-left rounded-2xl"><p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-1">About</p><p className="text-xs text-white">{otherProfile.about || "No bio available."}</p></Card>
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase">{otherName}</h2>
+                  <p className="text-primary text-[10px] font-bold uppercase tracking-widest">Verified Identity</p>
+                </div>
+                <Card className="w-full bg-white/5 border-white/10 p-5 space-y-4 text-left rounded-2xl shadow-lg">
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-1">About</p>
+                  <p className="text-xs text-white leading-relaxed">{otherProfile.about || "Digital creator on HappyChat."}</p>
+                </Card>
+                <div className="w-full pt-4 space-y-2">
+                  <Button variant="outline" className="w-full h-12 rounded-xl border-white/10 hover:bg-white/5 font-bold uppercase text-[10px] tracking-widest">View Media</Button>
+                  <Button variant="ghost" className="w-full h-12 rounded-xl text-destructive hover:bg-destructive/10 font-bold uppercase text-[10px] tracking-widest">Report User</Button>
+                </div>
               </div>
             </motion.aside>
           </>
