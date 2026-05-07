@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, Paperclip, Smile, Search, 
   MoreVertical, X, Info, ShieldAlert, ArrowLeft, Loader2,
-  ShieldCheck
+  ShieldCheck, Copy, Forward, Pencil, Check, Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,15 +17,24 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from '@/components/ui/dialog';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { 
   doc, query, collection, serverTimestamp, 
-  getDocs, where, addDoc, updateDoc, increment
+  getDocs, where, addDoc, updateDoc, increment, deleteDoc
 } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 type Message = {
   id: string;
@@ -33,6 +42,7 @@ type Message = {
   text: string;
   timestamp: any;
   conversationParticipantIds: string[];
+  isEdited?: boolean;
 };
 
 type UserProfile = {
@@ -41,9 +51,6 @@ type UserProfile = {
   fullName?: string;
   username: string;
   email: string;
-  phoneNumber?: string;
-  about?: string;
-  updatedAt?: any;
 };
 
 type ContactRecord = {
@@ -55,7 +62,6 @@ type ContactRecord = {
 type Conversation = {
   id: string;
   participantIds: string[];
-  unreadCount?: Record<string, number>;
 };
 
 export function ConversationView({ conversationId }: { conversationId: string }) {
@@ -65,6 +71,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [inputText, setInputText] = useState('');
   const [showProfile, setShowProfile] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Message Actions State
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [isForwardDialogOpen, setIsForwardDialogOpen] = useState(false);
 
   const isNewChat = conversationId.startsWith('new-');
   const targetUid = isNewChat ? conversationId.replace('new-', '') : null;
@@ -98,22 +110,23 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
 
+  // For Forwarding
+  const contactsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'users', user.uid, 'contacts'));
+  }, [db, user]);
+  const { data: contactsData } = useCollection<ContactRecord>(contactsQuery);
+
   useEffect(() => {
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
     if (!uid || !db || !user) return;
 
     const fetchData = async () => {
-      // Fetch Profile
       const userDoc = await getDocs(query(collection(db, 'users'), where('id', '==', uid)));
-      if (!userDoc.empty) {
-        setOtherProfile(userDoc.docs[0].data() as UserProfile);
-      }
+      if (!userDoc.empty) setOtherProfile(userDoc.docs[0].data() as UserProfile);
 
-      // Fetch Contact Alias
       const contactDoc = await getDocs(query(collection(db, 'users', user.uid, 'contacts'), where('userId', '==', uid)));
-      if (!contactDoc.empty) {
-        setContactRecord(contactDoc.docs[0].data() as ContactRecord);
-      }
+      if (!contactDoc.empty) setContactRecord(contactDoc.docs[0].data() as ContactRecord);
     };
     fetchData();
   }, [conversation, targetUid, user, db]);
@@ -165,6 +178,62 @@ export function ConversationView({ conversationId }: { conversationId: string })
     }
   };
 
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copied", description: "Message copied to clipboard." });
+    setSelectedMessage(null);
+  };
+
+  const startEdit = (msg: Message) => {
+    setEditingMessageId(msg.id);
+    setEditValue(msg.text);
+    setSelectedMessage(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editingMessageId || !db || !conversationId) return;
+    const ref = doc(db, 'conversations', conversationId, 'messages', editingMessageId);
+    await updateDoc(ref, {
+      text: editValue,
+      isEdited: true
+    });
+    setEditingMessageId(null);
+    setEditValue('');
+  };
+
+  const handleForward = async (targetContact: ContactRecord) => {
+    if (!selectedMessage || !user || !db) return;
+    
+    // Find or create conversation with target contact
+    const participantIds = [user.uid, targetContact.userId].sort();
+    const q = query(collection(db, 'conversations'), where('participantIds', '==', participantIds));
+    const snap = await getDocs(q);
+    
+    let targetConvId;
+    if (snap.empty) {
+      const newC = await addDoc(collection(db, 'conversations'), {
+        participantIds,
+        updatedAt: serverTimestamp(),
+        lastMessage: selectedMessage.text,
+        unreadCount: { [targetContact.userId]: 1, [user.uid]: 0 }
+      });
+      targetConvId = newC.id;
+    } else {
+      targetConvId = snap.docs[0].id;
+    }
+
+    await addDoc(collection(db, 'conversations', targetConvId, 'messages'), {
+      text: selectedMessage.text,
+      senderId: user.uid,
+      timestamp: serverTimestamp(),
+      conversationParticipantIds: participantIds
+    });
+
+    toast({ title: "Forwarded", description: "Message sent." });
+    setIsForwardDialogOpen(false);
+    setSelectedMessage(null);
+  };
+
   if (!otherProfile) {
     return <div className="flex-1 flex items-center justify-center bg-[#050505]"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>;
   }
@@ -174,29 +243,83 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   return (
     <div className="flex flex-col h-full relative bg-[#050505] overflow-hidden">
-      <header className="flex-none h-16 px-4 md:px-6 border-b border-white/5 flex items-center justify-between bg-black/80 backdrop-blur-3xl z-40 sticky top-0">
-        <div className="flex items-center gap-3 overflow-hidden flex-1">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground"><ArrowLeft className="w-6 h-6" /></Button>
-          <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
-            <div className="w-9 h-9 rounded-full border border-primary/20 shadow-lg bg-[#111] flex items-center justify-center shrink-0">
-              <div className="text-sm font-bold text-primary">{initial}</div>
-            </div>
-            <div className="min-w-0 text-left">
-              <h3 className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors">{otherName}</h3>
-              <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-primary" /><span className="text-[8px] text-primary uppercase font-bold tracking-widest">Active</span></div>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-primary"><Search className="w-5 h-5" /></Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button></DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 bg-[#0d0d0d] border-white/10 text-white rounded-2xl p-1 shadow-2xl">
-              <DropdownMenuItem onClick={() => setShowProfile(true)} className="flex items-center gap-3 p-3 cursor-pointer hover:bg-white/5 rounded-xl"><Info className="w-4 h-4 text-primary" /> <span className="text-xs font-bold uppercase tracking-widest">About</span></DropdownMenuItem>
-              <DropdownMenuItem className="flex items-center gap-3 p-3 cursor-pointer hover:bg-destructive/10 text-destructive rounded-xl"><ShieldAlert className="w-4 h-4" /> <span className="text-xs font-bold uppercase tracking-widest">Block</span></DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+      {/* Header / Selection Mode Navbar */}
+      <header className={cn(
+        "flex-none h-16 px-4 md:px-6 border-b border-white/5 flex items-center justify-between transition-all duration-300 z-50 sticky top-0",
+        selectedMessage ? "bg-primary text-primary-foreground" : "bg-black/80 backdrop-blur-3xl"
+      )}>
+        <AnimatePresence mode="wait">
+          {selectedMessage ? (
+            <motion.div 
+              key="selection-mode"
+              initial={{ opacity: 0, y: -10 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: -10 }}
+              className="flex items-center justify-between w-full"
+            >
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" onClick={() => setSelectedMessage(null)} className="hover:bg-black/10">
+                  <X className="w-6 h-6" />
+                </Button>
+                <span className="font-bold uppercase tracking-widest text-xs">Selected</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={() => handleCopy(selectedMessage.text)} className="hover:bg-black/10">
+                  <Copy className="w-5 h-5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setIsForwardDialogOpen(true)} className="hover:bg-black/10">
+                  <Forward className="w-5 h-5" />
+                </Button>
+                {selectedMessage.senderId === user?.uid && (
+                  <Button variant="ghost" size="icon" onClick={() => startEdit(selectedMessage)} className="hover:bg-black/10">
+                    <Pencil className="w-5 h-5" />
+                  </Button>
+                )}
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="normal-header"
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              className="flex items-center justify-between w-full"
+            >
+              <div className="flex items-center gap-3 overflow-hidden flex-1">
+                <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground">
+                  <ArrowLeft className="w-6 h-6" />
+                </Button>
+                <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
+                  <div className="w-9 h-9 rounded-full border border-primary/20 shadow-lg bg-[#111] flex items-center justify-center shrink-0">
+                    <div className="text-sm font-bold text-primary">{initial}</div>
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <h3 className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors">{otherName}</h3>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      <span className="text-[8px] text-primary uppercase font-bold tracking-widest">Active</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-primary"><Search className="w-5 h-5" /></Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button></DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48 bg-[#0d0d0d] border-white/10 text-white rounded-2xl p-1 shadow-2xl">
+                    <DropdownMenuItem onClick={() => setShowProfile(true)} className="flex items-center gap-3 p-3 cursor-pointer hover:bg-white/5 rounded-xl">
+                      <Info className="w-4 h-4 text-primary" /> 
+                      <span className="text-xs font-bold uppercase tracking-widest">About</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="flex items-center gap-3 p-3 cursor-pointer hover:bg-destructive/10 text-destructive rounded-xl">
+                      <ShieldAlert className="w-4 h-4" /> 
+                      <span className="text-xs font-bold uppercase tracking-widest">Block</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       <ScrollArea className="flex-1 p-4 md:p-8 relative custom-scrollbar">
@@ -209,13 +332,65 @@ export function ConversationView({ conversationId }: { conversationId: string })
           )}
           {messages.map((msg) => {
             const isOwn = msg.senderId === user?.uid;
+            const isEditing = editingMessageId === msg.id;
+            const isSelected = selectedMessage?.id === msg.id;
+
             return (
-              <motion.div key={msg.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className={cn("flex", isOwn ? "justify-end" : "justify-start")}>
+              <motion.div 
+                key={msg.id} 
+                initial={{ opacity: 0, y: 5 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                className={cn("flex group/msg", isOwn ? "justify-end" : "justify-start")}
+              >
                 <div className={cn("max-w-[80%] md:max-w-[60%] space-y-1", isOwn ? "items-end" : "items-start")}>
-                  <div className={cn("p-3 px-4 rounded-2xl text-sm leading-relaxed shadow-lg border", isOwn ? "bg-primary text-primary-foreground font-medium rounded-tr-none border-primary/20" : "bg-white/5 text-white border-white/10 rounded-tl-none")}>
-                    {msg.text}
-                  </div>
-                  <span className="text-[8px] font-bold text-muted-foreground uppercase">{msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'HH:mm') : ''}</span>
+                  {isEditing ? (
+                    <div className="flex items-end gap-2">
+                      <Input 
+                        value={editValue} 
+                        onChange={(e) => setEditValue(e.target.value)} 
+                        className="bg-[#111] border-primary/40 rounded-xl"
+                        autoFocus
+                        onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                      />
+                      <Button size="icon" onClick={saveEdit} className="h-10 w-10 shrink-0 rounded-xl bg-primary"><Check className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => setEditingMessageId(null)} className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground"><X className="w-4 h-4" /></Button>
+                    </div>
+                  ) : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          onContextMenu={(e) => { e.preventDefault(); }} // Trigger handled by trigger component behavior or custom logic
+                          onPointerDown={(e) => {
+                            // Long press detection for mobile
+                            const timer = setTimeout(() => {
+                              setSelectedMessage(msg);
+                            }, 600);
+                            e.currentTarget.addEventListener('pointerup', () => clearTimeout(timer), { once: true });
+                          }}
+                          className={cn(
+                            "p-3 px-4 rounded-2xl text-sm leading-relaxed shadow-lg border transition-all text-left relative",
+                            isOwn ? "bg-primary text-primary-foreground font-medium rounded-tr-none border-primary/20" : "bg-white/5 text-white border-white/10 rounded-tl-none",
+                            isSelected && "ring-2 ring-white/50 scale-95"
+                          )}
+                        >
+                          {msg.text}
+                          {msg.isEdited && <span className="text-[7px] italic opacity-50 block mt-1">Edited</span>}
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-[#0d0d0d] border-white/10 text-white rounded-xl p-1">
+                        <DropdownMenuItem onClick={() => handleCopy(msg.text)} className="gap-2"><Copy className="w-3.5 h-3.5" /> Copy</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setSelectedMessage(msg); setIsForwardDialogOpen(true); }} className="gap-2"><Forward className="w-3.5 h-3.5" /> Forward</DropdownMenuItem>
+                        {isOwn && (
+                          <>
+                            <DropdownMenuItem onClick={() => startEdit(msg)} className="gap-2"><Pencil className="w-3.5 h-3.5" /> Edit</DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  <span className="text-[8px] font-bold text-muted-foreground uppercase">
+                    {msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'HH:mm') : ''}
+                  </span>
                 </div>
               </motion.div>
             );
@@ -228,12 +403,51 @@ export function ConversationView({ conversationId }: { conversationId: string })
         <div className="flex items-center gap-3 max-w-5xl mx-auto">
           <Button size="icon" variant="ghost" className="bg-white/5 rounded-xl h-11 w-11"><Paperclip className="w-5 h-5 text-muted-foreground" /></Button>
           <div className="flex-1 relative">
-            <Input value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} placeholder="Write a message..." className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary" />
+            <Input 
+              value={inputText} 
+              onChange={(e) => setInputText(e.target.value)} 
+              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} 
+              placeholder="Write a message..." 
+              className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary" 
+            />
             <Button size="icon" variant="ghost" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"><Smile className="w-5 h-5 text-muted-foreground" /></Button>
           </div>
-          <Button onClick={handleSendMessage} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 rounded-xl shadow-xl"><Send className="w-5 h-5" /></Button>
+          <Button onClick={handleSendMessage} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 rounded-xl shadow-xl">
+            <Send className="w-5 h-5" />
+          </Button>
         </div>
       </footer>
+
+      {/* Forward Message Dialog */}
+      <Dialog open={isForwardDialogOpen} onOpenChange={setIsForwardDialogOpen}>
+        <DialogContent className="bg-[#0a0a0a] border-white/5 text-white rounded-[2.5rem]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Forward className="w-5 h-5 text-primary" /> Forward Message
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">Choose a contact to forward this message to.</DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[300px] mt-4">
+            <div className="space-y-2">
+              {contactsData?.map((contact) => (
+                <button 
+                  key={contact.id} 
+                  onClick={() => handleForward(contact)}
+                  className="w-full p-3 rounded-2xl hover:bg-white/5 flex items-center gap-3 text-left transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                    {contact.customName?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <span className="text-sm font-bold">{contact.customName || 'User'}</span>
+                </button>
+              ))}
+              {contactsData?.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground text-xs uppercase font-bold tracking-widest">No contacts found</div>
+              )}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
       <AnimatePresence>
         {showProfile && (
