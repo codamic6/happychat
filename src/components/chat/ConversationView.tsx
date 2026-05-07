@@ -51,6 +51,7 @@ type UserProfile = {
   fullName?: string;
   username: string;
   email: string;
+  about?: string;
 };
 
 type ContactRecord = {
@@ -142,7 +143,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     const text = inputText;
     setInputText('');
     let activeId = conversationId;
-    let participantIds = conversation?.participantIds || [user.uid, otherProfile.id].sort();
+    let participantIds = (conversation?.participantIds || [user.uid, otherProfile.id]).sort();
 
     if (isNewChat) {
       const existingQ = query(collection(db, 'conversations'), where('participantIds', '==', participantIds));
@@ -375,9 +376,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
                             isSelected && "ring-2 ring-white/50 scale-[0.98]"
                           )}
                         >
-                          <span className="pr-12">{msg.text}</span>
+                          <span className="pr-10">{msg.text}</span>
                           <div className={cn(
-                            "absolute bottom-2 right-3 flex items-center gap-1 opacity-60 text-[9px] font-bold uppercase tracking-tight",
+                            "absolute bottom-1.5 right-2 flex items-center gap-1 opacity-60 text-[9px] font-bold uppercase tracking-tight",
                             isOwn ? "text-primary-foreground/80" : "text-muted-foreground"
                           )}>
                             {msg.isEdited && <span className="italic mr-1">Edited</span>}
