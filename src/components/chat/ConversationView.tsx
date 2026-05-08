@@ -335,7 +335,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
             const isOwn = msg.senderId === user?.uid;
             const isEditing = editingMessageId === msg.id;
             const isSelected = selectedMessage?.id === msg.id;
-            const timeStr = msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'HH:mm') : '';
+            const timeStr = msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'h:mm a') : '';
 
             return (
               <motion.div 
@@ -369,19 +369,19 @@ export function ConversationView({ conversationId }: { conversationId: string })
                             e.currentTarget.addEventListener('pointerup', () => clearTimeout(timer), { once: true });
                           }}
                           className={cn(
-                            "group relative py-2 px-3 rounded-2xl text-sm leading-snug shadow-lg border transition-all text-left flex flex-col min-w-[60px]",
+                            "group relative pt-1.5 pb-2 px-3 rounded-2xl text-sm leading-tight shadow-lg transition-all text-left flex flex-col min-w-[64px]",
                             isOwn 
-                              ? "bg-primary text-primary-foreground font-medium rounded-tr-none border-primary/20" 
-                              : "bg-[#161616] text-white border-white/5 rounded-tl-none",
-                            isSelected && "ring-2 ring-white/50 scale-[0.98]"
+                              ? "bg-[#202020] text-white rounded-tr-none border border-white/5" 
+                              : "bg-[#262626] text-white rounded-tl-none border border-white/5",
+                            isSelected && "ring-2 ring-primary scale-[0.98]"
                           )}
                         >
-                          <span className="pr-8">{msg.text}</span>
+                          <span className="pr-10">{msg.text}</span>
                           <div className={cn(
-                            "absolute bottom-0.5 right-1.5 flex items-center gap-0.5 opacity-70 text-[7px] font-bold uppercase tracking-tight",
-                            isOwn ? "text-primary-foreground/90" : "text-muted-foreground"
+                            "absolute bottom-1 right-2 flex items-center gap-0.5 opacity-40 text-[9px] font-medium whitespace-nowrap",
+                            isOwn ? "text-white" : "text-white"
                           )}>
-                            {msg.isEdited && <span className="italic mr-0.5">Edit</span>}
+                            {msg.isEdited && <span className="italic mr-0.5">edited</span>}
                             <span>{timeStr}</span>
                           </div>
                         </button>
