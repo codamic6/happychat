@@ -324,7 +324,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
       </header>
 
       <ScrollArea className="flex-1 p-4 md:p-6 relative custom-scrollbar">
-        <div className="max-w-4xl mx-auto space-y-2 pb-12">
+        <div className="max-w-4xl mx-auto space-y-3 pb-12">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 opacity-30 space-y-4">
               <ShieldCheck className="w-12 h-12 text-primary/50" />
@@ -369,17 +369,17 @@ export function ConversationView({ conversationId }: { conversationId: string })
                             e.currentTarget.addEventListener('pointerup', () => clearTimeout(timer), { once: true });
                           }}
                           className={cn(
-                            "group relative pt-1.5 pb-2 px-3 rounded-2xl text-sm leading-tight shadow-lg transition-all text-left flex flex-col min-w-[64px]",
+                            "group relative pt-1.5 pb-2 px-3 rounded-2xl text-[13px] leading-snug shadow-sm transition-all text-left flex flex-col min-w-[70px]",
                             isOwn 
-                              ? "bg-[#202020] text-white rounded-tr-none border border-white/5" 
-                              : "bg-[#262626] text-white rounded-tl-none border border-white/5",
+                              ? "bg-primary text-primary-foreground rounded-tr-none" 
+                              : "bg-white/10 text-white rounded-tl-none border border-white/5",
                             isSelected && "ring-2 ring-primary scale-[0.98]"
                           )}
                         >
                           <span className="pr-10">{msg.text}</span>
                           <div className={cn(
-                            "absolute bottom-1 right-2 flex items-center gap-0.5 opacity-40 text-[9px] font-medium whitespace-nowrap",
-                            isOwn ? "text-white" : "text-white"
+                            "absolute bottom-0.5 right-1.5 flex items-center gap-0.5 opacity-60 text-[8px] font-bold whitespace-nowrap",
+                            isOwn ? "text-primary-foreground" : "text-muted-foreground"
                           )}>
                             {msg.isEdited && <span className="italic mr-0.5">edited</span>}
                             <span>{timeStr}</span>
