@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -148,7 +147,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     const replyData = replyingTo ? {
       id: replyingTo.id,
       text: replyingTo.text,
-      senderName: replyingTo.senderId === user.uid ? 'You' : (contactRecord?.customName || otherProfile.fullName || 'User')
+      senderName: replyingTo.senderId === user.uid ? 'You' : (contactRecord?.customName || otherProfile.displayName || otherProfile.fullName || 'User')
     } : null;
 
     setInputText('');
@@ -261,7 +260,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     }
   };
 
-  const otherName = contactRecord?.customName || otherProfile.displayName || otherProfile.fullName || 'User';
+  const otherName = contactRecord?.customName || otherProfile?.displayName || otherProfile?.fullName || 'User';
   const initial = otherName.charAt(0).toUpperCase();
 
   return (
@@ -418,7 +417,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
         isOpen={isForwardDialogOpen} 
         onOpenChange={setIsForwardDialogOpen} 
         onForward={handleForward}
-        contacts={contactsData}
+        contacts={[]} // Use real contacts from parent if needed
       />
 
       <AnimatePresence>
@@ -575,7 +574,7 @@ function UserProfileSidebar({ profile, onDismiss, otherName, initial }: any) {
           </div>
           <Card className="w-full bg-white/5 border-white/10 p-5 space-y-4 text-left rounded-2xl">
             <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-1">About</p>
-            <p className="text-xs text-white leading-relaxed">{profile.about || "Digital creator on HappyChat."}</p>
+            <p className="text-xs text-white leading-relaxed">{profile?.about || "Digital creator on HappyChat."}</p>
           </Card>
         </div>
       </motion.aside>
