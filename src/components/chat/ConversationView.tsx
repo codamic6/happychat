@@ -149,7 +149,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
       batch.commit().catch(async (e) => {
         const err = new FirestorePermissionError({ 
           path: `conversations/${conversationId}/messages`, 
-          operation: 'update' 
+          operation: 'update',
+          requestResourceData: { status: 'read' }
         });
         errorEmitter.emit('permission-error', err);
       });
@@ -158,7 +159,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
       updateDoc(convUpdateRef, { [`unreadCount.${user.uid}`]: 0 }).catch(async (e) => {
         const err = new FirestorePermissionError({ 
           path: `conversations/${conversationId}`, 
-          operation: 'update' 
+          operation: 'update',
+          requestResourceData: { [`unreadCount.${user.uid}`]: 0 }
         });
         errorEmitter.emit('permission-error', err);
       });
@@ -263,7 +265,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
         } catch (e) {
           errorEmitter.emit('permission-error', new FirestorePermissionError({ 
             path: 'conversations', 
-            operation: 'create' 
+            operation: 'create',
+            requestResourceData: { participantIds, lastMessage: text }
           }));
           return;
         }
@@ -283,7 +286,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
     }).catch(async (e) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: `conversations/${activeId}/messages`, 
-        operation: 'create' 
+        operation: 'create',
+        requestResourceData: { text, senderId: user.uid }
       }));
     });
 
@@ -295,7 +299,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
       }).catch(async (e) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ 
           path: `conversations/${activeId}`, 
-          operation: 'update' 
+          operation: 'update',
+          requestResourceData: { lastMessage: text }
         }));
       });
     }
@@ -322,7 +327,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
     }).catch(async (e) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: ref.path, 
-        operation: 'update' 
+        operation: 'update',
+        requestResourceData: { text: editValue, isEdited: true }
       }));
     });
     setEditingMessageId(null);

@@ -16,33 +16,31 @@ service cloud.firestore {
 
     // --- Conversations ---
     match /conversations/{conversationId} {
-      // Helper function to check if user is a participant
+      // Helper to check if the current user is a participant
       function isParticipant() {
         return request.auth != null && (
-          request.auth.uid in resource.data.participantIds ||
-          request.auth.uid in request.resource.data.participantIds
+          (resource != null && request.auth.uid in resource.data.participantIds) ||
+          (request.resource != null && request.auth.uid in request.resource.data.participantIds)
         );
       }
 
-      allow read: if request.auth != null && request.auth.uid in resource.data.participantIds;
+      allow read: if isParticipant();
       allow create: if request.auth != null && request.auth.uid in request.resource.data.participantIds;
       allow update: if isParticipant();
 
       match /messages/{messageId} {
-        // Allow reading if the user is a participant of the conversation
-        allow read: if request.auth != null && (
-          (resource != null && request.auth.uid in resource.data.conversationParticipantIds) ||
-          (get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds.hasAny([request.auth.uid]))
-        );
-        
-        // Allow creating if the user is in the participants list of the new message
-        allow create: if request.auth != null && request.auth.uid in request.resource.data.conversationParticipantIds;
-        
-        // Allow updating (status/read receipts) if the user is a participant
-        allow update: if request.auth != null && (
-          (resource != null && request.auth.uid in resource.data.conversationParticipantIds) ||
-          (get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds.hasAny([request.auth.uid]))
-        );
+        // User can read/write if they are a participant of the conversation
+        // We check both the message document's cached IDs and the parent conversation's authoritative list
+        function canAccessMessage() {
+          let parentConv = get(/databases/$(database)/documents/conversations/$(conversationId));
+          return request.auth != null && (
+            (parentConv != null && request.auth.uid in parentConv.data.participantIds) ||
+            (resource != null && request.auth.uid in resource.data.get('conversationParticipantIds', [])) ||
+            (request.resource != null && request.auth.uid in request.resource.data.get('conversationParticipantIds', []))
+          );
+        }
+
+        allow read, write: if canAccessMessage();
       }
     }
 
