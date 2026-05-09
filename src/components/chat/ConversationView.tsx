@@ -1,11 +1,11 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, Paperclip, Smile, Search, 
   MoreVertical, X, Info, ShieldAlert, ArrowLeft, Loader2,
-  ShieldCheck, Copy, Forward, Pencil, Check, Trash2
+  ShieldCheck, Copy, Forward, Pencil, Check, Reply
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,9 +27,9 @@ import {
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { 
   doc, query, collection, serverTimestamp, 
-  getDocs, where, addDoc, updateDoc, increment, deleteDoc
+  getDocs, where, addDoc, updateDoc, increment
 } from 'firebase/firestore';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -44,6 +44,11 @@ type Message = {
   timestamp: any;
   conversationParticipantIds: string[];
   isEdited?: boolean;
+  replyTo?: {
+    id: string;
+    text: string;
+    senderName: string;
+  };
 };
 
 type UserProfile = {
@@ -80,6 +85,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [isForwardDialogOpen, setIsForwardDialogOpen] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   
   // Mobile Long Press Timer
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
@@ -116,13 +122,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
 
-  // For Forwarding
-  const contactsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null;
-    return query(collection(db, 'users', user.uid, 'contacts'));
-  }, [db, user]);
-  const { data: contactsData } = useCollection<ContactRecord>(contactsQuery);
-
   useEffect(() => {
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
     if (!uid || !db || !user) return;
@@ -146,7 +145,15 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const handleSendMessage = async () => {
     if (!inputText.trim() || !user || !db || !otherProfile) return;
     const text = inputText;
+    const replyData = replyingTo ? {
+      id: replyingTo.id,
+      text: replyingTo.text,
+      senderName: replyingTo.senderId === user.uid ? 'You' : (contactRecord?.customName || otherProfile.fullName || 'User')
+    } : null;
+
     setInputText('');
+    setReplyingTo(null);
+
     let activeId = conversationId;
     let participantIds = (conversation?.participantIds || [user.uid, otherProfile.id]).sort();
 
@@ -172,7 +179,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
       text,
       senderId: user.uid,
       timestamp: serverTimestamp(),
-      conversationParticipantIds: participantIds
+      conversationParticipantIds: participantIds,
+      replyTo: replyData
     });
 
     if (!isNewChat) {
@@ -239,14 +247,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
     setSelectedMessage(null);
   };
 
-  // MOBILE: Handle Long Press (Hold)
   const handleTouchStart = (msg: Message) => {
     if (!isMobile) return;
     longPressTimer.current = setTimeout(() => {
       setSelectedMessage(msg);
-      // Optional: Vibrate on success
       if (navigator.vibrate) navigator.vibrate(50);
-    }, 500); // 500ms hold
+    }, 500);
   };
 
   const handleTouchEnd = () => {
@@ -255,16 +261,11 @@ export function ConversationView({ conversationId }: { conversationId: string })
     }
   };
 
-  if (!otherProfile) {
-    return <div className="flex-1 flex items-center justify-center bg-[#050505]"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>;
-  }
-
   const otherName = contactRecord?.customName || otherProfile.displayName || otherProfile.fullName || 'User';
   const initial = otherName.charAt(0).toUpperCase();
 
   return (
-    <div className="flex flex-col h-full relative bg-[#050505] overflow-hidden">
-      {/* NAVBAR ACTIONS: Triggers ONLY on Mobile Hold */}
+    <div className="flex-1 flex flex-col relative bg-[#050505] overflow-hidden">
       <header className={cn(
         "flex-none h-16 px-4 md:px-6 border-b border-white/5 flex items-center justify-between transition-all duration-300 z-50 sticky top-0",
         (selectedMessage && isMobile) ? "bg-primary text-primary-foreground" : "bg-black/80 backdrop-blur-3xl"
@@ -285,6 +286,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 <span className="font-bold uppercase tracking-widest text-xs">Selected</span>
               </div>
               <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={() => { setReplyingTo(selectedMessage); setSelectedMessage(null); }} className="hover:bg-black/10">
+                  <Reply className="w-5 h-5" />
+                </Button>
                 <Button variant="ghost" size="icon" onClick={() => handleCopy(selectedMessage.text)} className="hover:bg-black/10">
                   <Copy className="w-5 h-5" />
                 </Button>
@@ -345,91 +349,54 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
       <ScrollArea className="flex-1 p-4 md:p-6 relative custom-scrollbar">
         <div className="max-w-4xl mx-auto space-y-2 pb-12">
-          {messages.map((msg) => {
-            const isOwn = msg.senderId === user?.uid;
-            const isEditing = editingMessageId === msg.id;
-            const timeStr = msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'h:mm a') : '';
-
-            return (
-              <motion.div 
-                key={msg.id} 
-                initial={{ opacity: 0, y: 5 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                className={cn("flex group/msg", isOwn ? "justify-end" : "justify-start")}
-              >
-                <div 
-                  className={cn("max-w-[85%] md:max-w-[70%]", isOwn ? "items-end" : "items-start")}
-                  // MOBILE: Hold trigger
-                  onTouchStart={() => handleTouchStart(msg)}
-                  onTouchEnd={handleTouchEnd}
-                  // PC: Right-click trigger beside bubble
-                  onContextMenu={(e) => {
-                    if (!isMobile) {
-                      // Standard browser right-click behavior for ShadCN Dropdown/ContextMenu
-                      // We rely on DropdownMenuTrigger below for PC
-                    } else {
-                      e.preventDefault(); // Block default browser hold menu on mobile
-                    }
-                  }}
-                  onDoubleClick={(e) => e.preventDefault()} // Explicitly do nothing on double click
-                >
-                  {isEditing ? (
-                    <div className="flex items-end gap-2">
-                      <Input 
-                        value={editValue} 
-                        onChange={(e) => setEditValue(e.target.value)} 
-                        className="bg-[#111] border-primary/40 rounded-xl"
-                        autoFocus
-                        onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                      />
-                      <Button size="icon" onClick={saveEdit} className="h-10 w-10 shrink-0 rounded-xl bg-primary"><Check className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => setEditingMessageId(null)} className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground"><X className="w-4 h-4" /></Button>
-                    </div>
-                  ) : (
-                    /* PC: Local Dropdown Menu beside message */
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild disabled={isMobile}>
-                        <div
-                          className={cn(
-                            "group relative pt-1.5 pb-1 px-3 rounded-xl text-[13px] leading-tight shadow-sm transition-all text-left flex flex-col min-w-[70px] cursor-default",
-                            isOwn 
-                              ? "bg-primary text-primary-foreground rounded-tr-none" 
-                              : "bg-white/10 text-white rounded-tl-none border border-white/5"
-                          )}
-                        >
-                          <span className="pr-10">{msg.text}</span>
-                          <div className={cn(
-                            "absolute bottom-1 right-1.5 flex items-center gap-0.5 opacity-60 text-[8px] font-bold whitespace-nowrap",
-                            isOwn ? "text-primary-foreground" : "text-muted-foreground"
-                          )}>
-                            {msg.isEdited && <span className="italic mr-0.5 font-normal">edited</span>}
-                            <span>{timeStr}</span>
-                          </div>
-                        </div>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent 
-                        side={isOwn ? "left" : "right"} 
-                        align="start" 
-                        className="bg-[#0d0d0d] border-white/10 text-white rounded-xl p-1 shadow-2xl"
-                      >
-                        <DropdownMenuItem onClick={() => handleCopy(msg.text)} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Copy className="w-3.5 h-3.5" /> Copy</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setSelectedMessage(msg); setIsForwardDialogOpen(true); }} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Forward className="w-3.5 h-3.5" /> Forward</DropdownMenuItem>
-                        {isOwn && (
-                          <DropdownMenuItem onClick={() => startEdit(msg)} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Pencil className="w-3.5 h-3.5" /> Edit</DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
+          {messages.map((msg) => (
+            <MessageRow 
+              key={msg.id} 
+              msg={msg} 
+              user={user} 
+              isMobile={isMobile}
+              onDoubleTap={() => setReplyingTo(msg)}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              onCopy={handleCopy}
+              onForward={() => { setSelectedMessage(msg); setIsForwardDialogOpen(true); }}
+              onEdit={startEdit}
+              editingMessageId={editingMessageId}
+              editValue={editValue}
+              setEditValue={setEditValue}
+              saveEdit={saveEdit}
+              cancelEdit={() => setEditingMessageId(null)}
+            />
+          ))}
           <div ref={scrollRef} />
         </div>
       </ScrollArea>
 
-      <footer className="p-4 bg-[#0a0a0a] border-t border-white/5 sticky bottom-0">
-        <div className="flex items-center gap-3 max-w-5xl mx-auto">
+      <footer className="bg-[#0a0a0a] border-t border-white/5 sticky bottom-0 z-[60]">
+        <AnimatePresence>
+          {replyingTo && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="px-6 py-3 bg-white/5 border-b border-white/5 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3 overflow-hidden border-l-2 border-primary pl-3 py-1">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                    Replying to {replyingTo.senderId === user?.uid ? 'You' : otherName}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate max-w-md">{replyingTo.text}</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setReplyingTo(null)} className="h-8 w-8 text-muted-foreground hover:text-white">
+                <X className="w-4 h-4" />
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="p-4 flex items-center gap-3 max-w-5xl mx-auto">
           <Button size="icon" variant="ghost" className="bg-white/5 rounded-xl h-11 w-11 hover:bg-white/10 transition-colors"><Paperclip className="w-5 h-5 text-muted-foreground" /></Button>
           <div className="flex-1 relative">
             <Input 
@@ -447,73 +414,171 @@ export function ConversationView({ conversationId }: { conversationId: string })
         </div>
       </footer>
 
-      {/* Forward Message Dialog */}
-      <Dialog open={isForwardDialogOpen} onOpenChange={setIsForwardDialogOpen}>
-        <DialogContent className="bg-[#0a0a0a] border-white/5 text-white rounded-[2.5rem] shadow-2xl p-0 overflow-hidden">
-          <DialogHeader className="p-8 pb-4">
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold font-headline uppercase tracking-tight text-gradient">
-              <Forward className="w-5 h-5 text-primary" /> Forward Message
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Choose a contact to forward this message to</DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="max-h-[300px] px-8 pb-8">
-            <div className="space-y-1">
-              {contactsData?.map((contact) => (
-                <button 
-                  key={contact.id} 
-                  onClick={() => handleForward(contact)}
-                  className="w-full p-4 rounded-2xl hover:bg-white/5 flex items-center gap-4 text-left transition-all group"
-                >
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold group-hover:bg-primary/20 transition-colors border border-primary/20">
-                    {contact.customName?.charAt(0).toUpperCase() || 'U'}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold text-white">{contact.customName || 'User'}</span>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Active</span>
-                  </div>
-                </button>
-              ))}
-              {contactsData?.length === 0 && (
-                <div className="text-center py-12 opacity-30 space-y-2">
-                  <Search className="w-8 h-8 mx-auto" />
-                  <p className="text-[10px] uppercase font-bold tracking-widest">No contacts found</p>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
+      <ForwardDialog 
+        isOpen={isForwardDialogOpen} 
+        onOpenChange={setIsForwardDialogOpen} 
+        onForward={handleForward}
+        contacts={contactsData}
+      />
 
       <AnimatePresence>
         {showProfile && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowProfile(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]" />
-            <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 bottom-0 w-full md:w-[350px] bg-[#0d0d0d] border-l border-white/10 z-[120] flex flex-col shadow-2xl overflow-y-auto custom-scrollbar p-8">
-              <div className="flex items-center justify-between mb-10">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-primary">About User</span>
-                <Button size="icon" variant="ghost" onClick={() => setShowProfile(false)} className="hover:bg-white/5"><X className="w-5 h-5 text-muted-foreground" /></Button>
-              </div>
-              <div className="flex flex-col items-center text-center space-y-8">
-                <div className="w-36 h-36 md:w-40 md:h-40 border-4 border-primary/20 shadow-2xl bg-[#111] rounded-full flex items-center justify-center">
-                  <div className="text-5xl font-bold text-primary">{initial}</div>
-                </div>
-                <div className="space-y-1">
-                  <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase">{otherName}</h2>
-                  <p className="text-primary text-[10px] font-bold uppercase tracking-widest">Verified Identity</p>
-                </div>
-                <Card className="w-full bg-white/5 border-white/10 p-5 space-y-4 text-left rounded-2xl shadow-lg">
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-1">About</p>
-                  <p className="text-xs text-white leading-relaxed">{otherProfile.about || "Digital creator on HappyChat."}</p>
-                </Card>
-                <div className="w-full pt-4 space-y-2">
-                  <Button variant="outline" className="w-full h-12 rounded-xl border-white/10 hover:bg-white/5 font-bold uppercase text-[10px] tracking-widest">View Media</Button>
-                  <Button variant="ghost" className="w-full h-12 rounded-xl text-destructive hover:bg-destructive/10 font-bold uppercase text-[10px] tracking-widest">Report User</Button>
-                </div>
-              </div>
-            </motion.aside>
-          </>
+          <UserProfileSidebar profile={otherProfile} onDismiss={() => setShowProfile(false)} otherName={otherName} initial={initial} />
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function MessageRow({ 
+  msg, user, isMobile, 
+  onDoubleTap, onTouchStart, onTouchEnd,
+  onCopy, onForward, onEdit,
+  editingMessageId, editValue, setEditValue, saveEdit, cancelEdit
+}: any) {
+  const isOwn = msg.senderId === user?.uid;
+  const isEditing = editingMessageId === msg.id;
+  const timeStr = msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'h:mm a') : '';
+  
+  // Swipe / Drag logic
+  const dragX = useMotionValue(0);
+  const swipeThreshold = 50;
+
+  const handleDragEnd = (_: any, info: any) => {
+    if (isOwn) {
+      if (info.offset.x > swipeThreshold) onDoubleTap();
+    } else {
+      if (info.offset.x < -swipeThreshold) onDoubleTap();
+    }
+  };
+
+  return (
+    <div 
+      className={cn("flex w-full group/row", isOwn ? "justify-end" : "justify-start")}
+      onDoubleClick={() => !isMobile && onDoubleTap()}
+    >
+      <motion.div 
+        drag="x"
+        dragConstraints={{ left: isOwn ? 0 : -100, right: isOwn ? 100 : 0 }}
+        dragElastic={0.1}
+        onDragEnd={handleDragEnd}
+        style={{ x: dragX }}
+        className={cn("max-w-[85%] md:max-w-[70%]", isOwn ? "items-end" : "items-start")}
+        onTouchStart={() => onTouchStart(msg)}
+        onTouchEnd={onTouchEnd}
+      >
+        {isEditing ? (
+          <div className="flex items-end gap-2">
+            <Input 
+              value={editValue} 
+              onChange={(e) => setEditValue(e.target.value)} 
+              className="bg-[#111] border-primary/40 rounded-xl"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+            />
+            <Button size="icon" onClick={saveEdit} className="h-10 w-10 shrink-0 rounded-xl bg-primary"><Check className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={cancelEdit} className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground"><X className="w-4 h-4" /></Button>
+          </div>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild disabled={isMobile}>
+              <div className={cn(
+                "group relative p-2 rounded-xl text-[13px] leading-tight shadow-sm transition-all text-left flex flex-col min-w-[70px] cursor-default",
+                isOwn ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-white/10 text-white rounded-tl-none border border-white/5"
+              )}>
+                {msg.replyTo && (
+                  <div className="mb-2 bg-black/10 p-2 rounded-lg border-l-4 border-black/20 text-[11px] opacity-80 overflow-hidden">
+                    <p className="font-bold truncate text-black/60">{msg.replyTo.senderName}</p>
+                    <p className="truncate italic">{msg.replyTo.text}</p>
+                  </div>
+                )}
+                
+                <span className="pr-10">{msg.text}</span>
+                <div className={cn(
+                  "absolute bottom-1 right-1.5 flex items-center gap-0.5 opacity-60 text-[8px] font-bold whitespace-nowrap",
+                  isOwn ? "text-primary-foreground" : "text-muted-foreground"
+                )}>
+                  {msg.isEdited && <span className="italic mr-0.5 font-normal">edited</span>}
+                  <span>{timeStr}</span>
+                </div>
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+              side={isOwn ? "left" : "right"} 
+              align="start" 
+              className="bg-[#0d0d0d] border-white/10 text-white rounded-xl p-1 shadow-2xl"
+            >
+              <DropdownMenuItem onClick={() => onDoubleTap()} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Reply className="w-3.5 h-3.5" /> Reply</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onCopy(msg.text)} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Copy className="w-3.5 h-3.5" /> Copy</DropdownMenuItem>
+              <DropdownMenuItem onClick={onForward} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Forward className="w-3.5 h-3.5" /> Forward</DropdownMenuItem>
+              {isOwn && (
+                <DropdownMenuItem onClick={() => onEdit(msg)} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Pencil className="w-3.5 h-3.5" /> Edit</DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+function ForwardDialog({ isOpen, onOpenChange, onForward, contacts }: any) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-[#0a0a0a] border-white/5 text-white rounded-[2.5rem] shadow-2xl p-0 overflow-hidden">
+        <DialogHeader className="p-8 pb-4">
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold font-headline uppercase tracking-tight text-gradient">
+            <Forward className="w-5 h-5 text-primary" /> Forward Message
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Choose a contact to forward this message to</DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="max-h-[300px] px-8 pb-8">
+          <div className="space-y-1">
+            {contacts?.map((contact: any) => (
+              <button 
+                key={contact.id} 
+                onClick={() => onForward(contact)}
+                className="w-full p-4 rounded-2xl hover:bg-white/5 flex items-center gap-4 text-left transition-all group"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold group-hover:bg-primary/20 transition-colors border border-primary/20">
+                  {contact.customName?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-white">{contact.customName || 'User'}</span>
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Active</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function UserProfileSidebar({ profile, onDismiss, otherName, initial }: any) {
+  return (
+    <>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onDismiss} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]" />
+      <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 bottom-0 w-full md:w-[350px] bg-[#0d0d0d] border-l border-white/10 z-[120] flex flex-col shadow-2xl overflow-y-auto custom-scrollbar p-8">
+        <div className="flex items-center justify-between mb-10">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-primary">About User</span>
+          <Button size="icon" variant="ghost" onClick={onDismiss} className="hover:bg-white/5"><X className="w-5 h-5 text-muted-foreground" /></Button>
+        </div>
+        <div className="flex flex-col items-center text-center space-y-8">
+          <div className="w-36 h-36 border-4 border-primary/20 shadow-2xl bg-[#111] rounded-full flex items-center justify-center">
+            <div className="text-5xl font-bold text-primary">{initial}</div>
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase">{otherName}</h2>
+            <p className="text-primary text-[10px] font-bold uppercase tracking-widest">Verified Identity</p>
+          </div>
+          <Card className="w-full bg-white/5 border-white/10 p-5 space-y-4 text-left rounded-2xl">
+            <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-1">About</p>
+            <p className="text-xs text-white leading-relaxed">{profile.about || "Digital creator on HappyChat."}</p>
+          </Card>
+        </div>
+      </motion.aside>
+    </>
   );
 }
