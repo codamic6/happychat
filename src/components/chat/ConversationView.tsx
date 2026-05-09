@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   Send, Paperclip, Smile, Search, 
   MoreVertical, X, Info, ShieldAlert, ArrowLeft, Loader2,
@@ -35,6 +35,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type Message = {
   id: string;
@@ -69,6 +70,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [inputText, setInputText] = useState('');
   const [showProfile, setShowProfile] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -78,6 +80,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [isForwardDialogOpen, setIsForwardDialogOpen] = useState(false);
+  
+  // Track last tap for mobile double-tap detection
+  const lastTap = useRef<number>(0);
 
   const isNewChat = conversationId.startsWith('new-');
   const targetUid = isNewChat ? conversationId.replace('new-', '') : null;
@@ -205,7 +210,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const handleForward = async (targetContact: ContactRecord) => {
     if (!selectedMessage || !user || !db) return;
     
-    // Find or create conversation with target contact
     const participantIds = [user.uid, targetContact.userId].sort();
     const q = query(collection(db, 'conversations'), where('participantIds', '==', participantIds));
     const snap = await getDocs(q);
@@ -235,6 +239,18 @@ export function ConversationView({ conversationId }: { conversationId: string })
     setSelectedMessage(null);
   };
 
+  const handleMessageTap = (msg: Message) => {
+    if (!isMobile) return;
+    
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
+      // Double tap detected on mobile
+      setSelectedMessage(msg);
+    }
+    lastTap.current = now;
+  };
+
   if (!otherProfile) {
     return <div className="flex-1 flex items-center justify-center bg-[#050505]"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>;
   }
@@ -244,13 +260,13 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   return (
     <div className="flex flex-col h-full relative bg-[#050505] overflow-hidden">
-      {/* Header / Selection Mode Navbar */}
+      {/* Navbar Actions (Only for Mobile Selection) */}
       <header className={cn(
         "flex-none h-16 px-4 md:px-6 border-b border-white/5 flex items-center justify-between transition-all duration-300 z-50 sticky top-0",
-        selectedMessage ? "bg-primary text-primary-foreground" : "bg-black/80 backdrop-blur-3xl"
+        (selectedMessage && isMobile) ? "bg-primary text-primary-foreground" : "bg-black/80 backdrop-blur-3xl"
       )}>
         <AnimatePresence mode="wait">
-          {selectedMessage ? (
+          {(selectedMessage && isMobile) ? (
             <motion.div 
               key="selection-mode"
               initial={{ opacity: 0, y: -10 }} 
@@ -324,7 +340,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
       </header>
 
       <ScrollArea className="flex-1 p-4 md:p-6 relative custom-scrollbar">
-        <div className="max-w-4xl mx-auto space-y-3 pb-12">
+        <div className="max-w-4xl mx-auto space-y-2 pb-12">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 opacity-30 space-y-4">
               <ShieldCheck className="w-12 h-12 text-primary/50" />
@@ -334,7 +350,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
           {messages.map((msg) => {
             const isOwn = msg.senderId === user?.uid;
             const isEditing = editingMessageId === msg.id;
-            const isSelected = selectedMessage?.id === msg.id;
             const timeStr = msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'h:mm a') : '';
 
             return (
@@ -343,6 +358,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 initial={{ opacity: 0, y: 5 }} 
                 animate={{ opacity: 1, y: 0 }} 
                 className={cn("flex group/msg", isOwn ? "justify-end" : "justify-start")}
+                onClick={() => handleMessageTap(msg)}
               >
                 <div className={cn("max-w-[85%] md:max-w-[70%]", isOwn ? "items-end" : "items-start")}>
                   {isEditing ? (
@@ -361,27 +377,24 @@ export function ConversationView({ conversationId }: { conversationId: string })
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button
-                          onContextMenu={(e) => { e.preventDefault(); }}
-                          onPointerDown={(e) => {
-                            const timer = setTimeout(() => {
-                              setSelectedMessage(msg);
-                            }, 600);
-                            e.currentTarget.addEventListener('pointerup', () => clearTimeout(timer), { once: true });
+                          onContextMenu={(e) => {
+                            if (isMobile) return;
+                            // DropdownMenuTrigger handles the menu correctly for us automatically on PC right-click 
+                            // as long as the trigger wraps the component.
                           }}
                           className={cn(
-                            "group relative pt-1.5 pb-2 px-3 rounded-2xl text-[13px] leading-snug shadow-sm transition-all text-left flex flex-col min-w-[70px]",
+                            "group relative pt-1.5 pb-1 px-3 rounded-xl text-[13px] leading-tight shadow-sm transition-all text-left flex flex-col min-w-[70px]",
                             isOwn 
                               ? "bg-primary text-primary-foreground rounded-tr-none" 
-                              : "bg-white/10 text-white rounded-tl-none border border-white/5",
-                            isSelected && "ring-2 ring-primary scale-[0.98]"
+                              : "bg-white/10 text-white rounded-tl-none border border-white/5"
                           )}
                         >
-                          <span className="pr-10">{msg.text}</span>
+                          <span className="pr-12">{msg.text}</span>
                           <div className={cn(
-                            "absolute bottom-0.5 right-1.5 flex items-center gap-0.5 opacity-60 text-[8px] font-bold whitespace-nowrap",
+                            "absolute bottom-1 right-1.5 flex items-center gap-0.5 opacity-60 text-[8px] font-bold whitespace-nowrap",
                             isOwn ? "text-primary-foreground" : "text-muted-foreground"
                           )}>
-                            {msg.isEdited && <span className="italic mr-0.5">edited</span>}
+                            {msg.isEdited && <span className="italic mr-0.5 font-normal">edited</span>}
                             <span>{timeStr}</span>
                           </div>
                         </button>
