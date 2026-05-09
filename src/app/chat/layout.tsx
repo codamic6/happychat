@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -19,9 +18,18 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  const isAtConversation = (pathname.startsWith('/chat/') && pathname !== '/chat' && pathname !== '/chat/profile' && pathname !== '/chat/status');
+  // Define pages that should NOT be treated as specific conversation views
+  const isExcludedFromConversation = [
+    '/chat',
+    '/chat/profile',
+    '/chat/status',
+    '/chat/contacts'
+  ].includes(pathname);
+
+  const isAtConversation = pathname.startsWith('/chat/') && !isExcludedFromConversation;
   const isProfilePage = pathname === '/chat/profile';
   const isStatusPage = pathname === '/chat/status';
+  const isContactsPage = pathname === '/chat/contacts';
   const isViewingStatus = isStatusPage && !!searchParams.get('uid');
 
   useEffect(() => {
@@ -63,7 +71,7 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
     { label: 'Chats', icon: MessageSquare, href: '/chat' },
     { label: 'Updates', icon: Globe, href: '/chat/status' },
     { label: 'Assistant', icon: Sparkles, href: '/ai-assistant' },
-    { label: 'Contacts', icon: Users, href: '/chat' },
+    { label: 'Contacts', icon: Users, href: '/chat/contacts' },
     { label: 'Profile', icon: UserCircle, href: '/chat/profile' },
   ];
 
@@ -71,7 +79,7 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-screen bg-[#050505] text-white overflow-hidden relative">
       <header className={cn(
         "md:hidden flex items-center justify-between px-6 h-16 border-b border-white/5 bg-[#0a0a0a] shrink-0 z-50",
-        (isAtConversation || isProfilePage || isViewingStatus) && "hidden"
+        (isAtConversation || isProfilePage || isViewingStatus || isContactsPage) && "hidden"
       )}>
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center glow-green">
@@ -95,14 +103,14 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
         <div className="flex flex-1 overflow-hidden h-full relative">
           <aside className={cn(
             "w-full md:w-80 border-r border-white/5 bg-[#0d0d0d] flex flex-col shrink-0 h-full transition-all duration-300",
-            (isAtConversation || isProfilePage || isViewingStatus) ? "hidden md:flex" : "flex"
+            (isAtConversation || isProfilePage || isViewingStatus || isContactsPage) ? "hidden md:flex" : "flex"
           )}>
             {isStatusPage ? <StatusSidebar /> : <ChatSidebar />}
           </aside>
 
           <main className={cn(
             "flex-1 flex flex-col relative bg-[#050505] h-full overflow-hidden",
-            (!isAtConversation && !isProfilePage && !isViewingStatus) && "hidden md:flex"
+            (!isAtConversation && !isProfilePage && !isViewingStatus && !isContactsPage) && "hidden md:flex"
           )}>
             {children}
           </main>
@@ -111,7 +119,7 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
 
       <nav className={cn(
         "md:hidden h-20 bg-[#0d0d0d] border-t border-white/5 flex items-center justify-around px-4 pb-safe shrink-0 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]",
-        (isAtConversation || isProfilePage || isViewingStatus) && "hidden"
+        (isAtConversation || isProfilePage || isViewingStatus || isContactsPage) && "hidden"
       )}>
         {mobileTabs.map((tab, idx) => {
           const isActive = pathname === tab.href;

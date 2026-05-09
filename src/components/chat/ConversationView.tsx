@@ -4,12 +4,13 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, Paperclip, Smile, Search, 
   MoreVertical, X, Info, ShieldAlert, ArrowLeft, Loader2,
-  ShieldCheck, Copy, Forward, Pencil, Check, Reply
+  ShieldCheck, Copy, Forward, Pencil, Check, Reply, UserCircle, Tag, Save
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -26,9 +27,9 @@ import {
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { 
   doc, query, collection, serverTimestamp, 
-  getDocs, where, addDoc, updateDoc, increment
+  getDocs, where, addDoc, updateDoc, increment, setDoc, onSnapshot
 } from 'firebase/firestore';
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -137,14 +138,26 @@ export function ConversationView({ conversationId }: { conversationId: string })
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
     if (!uid || !db || !user) return;
 
-    const fetchData = async () => {
-      const userDoc = await getDocs(query(collection(db, 'users'), where('id', '==', uid)));
-      if (!userDoc.empty) setOtherProfile(userDoc.docs[0].data() as UserProfile);
+    // Listen to profile updates
+    const q = query(collection(db, 'users'), where('id', '==', uid));
+    const unsubProfile = onSnapshot(q, (snap) => {
+      if (!snap.empty) setOtherProfile(snap.docs[0].data() as UserProfile);
+    });
 
-      const contactDoc = await getDocs(query(collection(db, 'users', user.uid, 'contacts'), where('userId', '==', uid)));
-      if (!contactDoc.empty) setContactRecord(contactDoc.docs[0].data() as ContactRecord);
+    // Listen to contact relationship updates (for custom names)
+    const contactRef = doc(db, 'users', user.uid, 'contacts', uid);
+    const unsubContact = onSnapshot(contactRef, (snap) => {
+      if (snap.exists()) {
+        setContactRecord(snap.data() as ContactRecord);
+      } else {
+        setContactRecord(null);
+      }
+    });
+
+    return () => {
+      unsubProfile();
+      unsubContact();
     };
-    fetchData();
   }, [conversation, targetUid, user, db]);
 
   useEffect(() => {
@@ -157,7 +170,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
     if (!inputText.trim() || !user || !db || !otherProfile) return;
     const text = inputText;
     
-    // Logic for capturing real names to save in DB for other participants to see correctly
     let replyData = null;
     if (replyingTo) {
       const originalSenderIsMe = replyingTo.senderId === user.uid;
@@ -283,8 +295,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
     }
   };
 
-  const otherName = contactRecord?.customName || otherProfile?.displayName || otherProfile?.fullName || 'User';
-  const initial = otherName.charAt(0).toUpperCase();
+  const mainName = contactRecord?.customName || otherProfile?.displayName || otherProfile?.fullName || 'User';
+  const subName = contactRecord?.customName ? (otherProfile?.displayName || otherProfile?.fullName) : null;
+  const initial = mainName.charAt(0).toUpperCase();
 
   return (
     <div className="flex-1 flex flex-col relative bg-[#050505] overflow-hidden">
@@ -336,15 +349,24 @@ export function ConversationView({ conversationId }: { conversationId: string })
                   <ArrowLeft className="w-6 h-6" />
                 </Button>
                 <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
-                  <div className="w-9 h-9 rounded-full border border-primary/20 shadow-lg bg-[#111] flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-full border-2 border-primary/20 shadow-lg bg-[#111] flex items-center justify-center shrink-0">
                     <div className="text-sm font-bold text-primary">{initial}</div>
                   </div>
                   <div className="min-w-0 text-left">
-                    <h3 className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors">{otherName}</h3>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                      <span className="text-[8px] text-primary uppercase font-bold tracking-widest">Active</span>
-                    </div>
+                    <h3 className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors leading-tight">
+                      {mainName}
+                    </h3>
+                    {subName && (
+                      <p className="text-[9px] text-muted-foreground truncate uppercase font-bold tracking-widest opacity-60">
+                        {subName}
+                      </p>
+                    )}
+                    {!subName && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                        <span className="text-[8px] text-primary uppercase font-bold tracking-widest">Active</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -355,7 +377,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                   <DropdownMenuContent align="end" className="w-48 bg-[#0d0d0d] border-white/10 text-white rounded-2xl p-1 shadow-2xl">
                     <DropdownMenuItem onClick={() => setShowProfile(true)} className="flex items-center gap-3 p-3 cursor-pointer hover:bg-white/5 rounded-xl">
                       <Info className="w-4 h-4 text-primary" /> 
-                      <span className="text-xs font-bold uppercase tracking-widest">About</span>
+                      <span className="text-xs font-bold uppercase tracking-widest">User Info</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem className="flex items-center gap-3 p-3 cursor-pointer hover:bg-destructive/10 text-destructive rounded-xl">
                       <ShieldAlert className="w-4 h-4" /> 
@@ -440,12 +462,20 @@ export function ConversationView({ conversationId }: { conversationId: string })
         isOpen={isForwardDialogOpen} 
         onOpenChange={setIsForwardDialogOpen} 
         onForward={handleForward}
-        contacts={[]} // Use real contacts from parent if needed
+        contacts={[]} // Should fetch real contacts in a real scenario
       />
 
       <AnimatePresence>
         {showProfile && (
-          <UserProfileSidebar profile={otherProfile} onDismiss={() => setShowProfile(false)} otherName={otherName} initial={initial} />
+          <UserProfileSidebar 
+            profile={otherProfile} 
+            contactRecord={contactRecord}
+            onDismiss={() => setShowProfile(false)} 
+            otherName={otherProfile?.fullName || 'User'} 
+            initial={initial}
+            user={user}
+            db={db}
+          />
         )}
       </AnimatePresence>
     </div>
@@ -462,14 +492,12 @@ function MessageRow({
   const isEditing = editingMessageId === msg.id;
   const timeStr = msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'h:mm a') : '';
   
-  // Logic to determine name in referenced quote
   const replySenderDisplayName = msg.replyTo ? (msg.replyTo.senderId === user?.uid ? 'You' : msg.replyTo.senderName) : '';
 
   const dragX = useMotionValue(0);
   const swipeThreshold = 50;
 
   const handleDragEnd = (_: any, info: any) => {
-    // If we drag far enough, trigger reply then snap back
     if (isOwn) {
       if (info.offset.x > swipeThreshold) onDoubleTap();
     } else {
@@ -484,7 +512,7 @@ function MessageRow({
     >
       <motion.div 
         drag="x"
-        dragConstraints={{ left: 0, right: 0 }} // Snap back to origin
+        dragConstraints={{ left: 0, right: 0 }} 
         dragSnapToOrigin={true}
         dragElastic={0.2}
         onDragEnd={handleDragEnd}
@@ -589,27 +617,112 @@ function ForwardDialog({ isOpen, onOpenChange, onForward, contacts }: any) {
   );
 }
 
-function UserProfileSidebar({ profile, onDismiss, otherName, initial }: any) {
+function UserProfileSidebar({ profile, contactRecord, onDismiss, otherName, initial, user, db }: any) {
+  const [nickname, setNickname] = useState(contactRecord?.customName || '');
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    if (contactRecord) setNickname(contactRecord.customName || '');
+  }, [contactRecord]);
+
+  const handleUpdateNickname = async () => {
+    if (!user || !db || !profile) return;
+    setIsUpdating(true);
+    try {
+      const contactRef = doc(db, 'users', user.uid, 'contacts', profile.id);
+      await setDoc(contactRef, {
+        userId: profile.id,
+        customName: nickname.trim(),
+        addedAt: contactRecord?.addedAt || serverTimestamp()
+      }, { merge: true });
+      
+      toast({ title: "Nickname Updated", description: "Identity sync complete." });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Update Failed", description: "Could not sync nickname." });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onDismiss} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]" />
       <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 bottom-0 w-full md:w-[350px] bg-[#0d0d0d] border-l border-white/10 z-[120] flex flex-col shadow-2xl overflow-y-auto custom-scrollbar p-8">
         <div className="flex items-center justify-between mb-10">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-primary">About User</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Secure User Profile</span>
           <Button size="icon" variant="ghost" onClick={onDismiss} className="hover:bg-white/5"><X className="w-5 h-5 text-muted-foreground" /></Button>
         </div>
+        
         <div className="flex flex-col items-center text-center space-y-8">
-          <div className="w-36 h-36 border-4 border-primary/20 shadow-2xl bg-[#111] rounded-full flex items-center justify-center">
-            <div className="text-5xl font-bold text-primary">{initial}</div>
+          <div className="relative">
+            <div className="w-32 h-32 border-4 border-primary/20 shadow-[0_0_30px_rgba(0,200,83,0.15)] bg-[#111] rounded-full flex items-center justify-center">
+              <div className="text-5xl font-bold text-primary">{initial}</div>
+            </div>
+            <div className="absolute -bottom-2 -right-2 bg-primary p-2 rounded-full border-4 border-[#0d0d0d]">
+              <ShieldCheck className="w-4 h-4 text-black" />
+            </div>
           </div>
+
           <div className="space-y-1">
-            <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase">{otherName}</h2>
-            <p className="text-primary text-[10px] font-bold uppercase tracking-widest">Verified Identity</p>
+            <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase leading-none">
+              {contactRecord?.customName || profile?.fullName || 'User'}
+            </h2>
+            {contactRecord?.customName && (
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-60">
+                {profile?.fullName}
+              </p>
+            )}
+            <p className="text-primary text-[9px] font-bold uppercase tracking-[0.2em] mt-2 bg-primary/10 py-1 px-3 rounded-full">
+              Verified Identity
+            </p>
           </div>
-          <Card className="w-full bg-white/5 border-white/10 p-5 space-y-4 text-left rounded-2xl">
-            <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-1">About</p>
-            <p className="text-xs text-white leading-relaxed">{profile?.about || "Digital creator on HappyChat."}</p>
-          </Card>
+
+          <div className="w-full space-y-6 pt-4">
+            <div className="space-y-3 text-left">
+              <Label className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary ml-1 flex items-center gap-2">
+                <Tag className="w-3 h-3" /> Manage Identity
+              </Label>
+              <div className="flex gap-2">
+                <Input 
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  placeholder="Set custom nickname..."
+                  className="bg-white/5 border-white/10 h-12 rounded-xl text-sm focus:ring-primary"
+                />
+                <Button 
+                  onClick={handleUpdateNickname}
+                  disabled={isUpdating}
+                  className="bg-primary h-12 w-12 rounded-xl hover:glow-green shrink-0"
+                >
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+              </div>
+              <p className="text-[9px] text-muted-foreground font-medium italic px-1">
+                Custom names only visible to you.
+              </p>
+            </div>
+
+            <Card className="w-full bg-white/5 border-white/10 p-5 space-y-4 text-left rounded-2xl">
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-primary mb-1">Username</p>
+                <p className="text-xs text-white">@{profile?.username}</p>
+              </div>
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-primary mb-1">About</p>
+                <p className="text-xs text-white leading-relaxed">{profile?.about || "Digital creator on HappyChat."}</p>
+              </div>
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-primary mb-1">Network Identity</p>
+                <p className="text-[10px] font-mono text-muted-foreground break-all">{profile?.id}</p>
+              </div>
+            </Card>
+          </div>
+
+          <div className="w-full pt-8 space-y-3">
+             <Button variant="outline" className="w-full h-12 rounded-xl border-white/10 text-destructive hover:bg-destructive/10 hover:border-destructive/30 font-bold uppercase text-[10px] tracking-widest">
+               <ShieldAlert className="w-4 h-4 mr-2" /> Report User
+             </Button>
+          </div>
         </div>
       </motion.aside>
     </>
