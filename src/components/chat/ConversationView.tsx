@@ -131,6 +131,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
 
+  // Handle marking messages as read
   useEffect(() => {
     if (!db || isNewChat || !user || !rawMessages || rawMessages.length === 0) return;
 
@@ -144,26 +145,34 @@ export function ConversationView({ conversationId }: { conversationId: string })
         const msgRef = doc(db, 'conversations', conversationId, 'messages', msg.id);
         batch.update(msgRef, { status: 'read' });
       });
+      
       batch.commit().catch(async (e) => {
-        const err = new FirestorePermissionError({ path: `conversations/${conversationId}/messages`, operation: 'write' });
+        const err = new FirestorePermissionError({ 
+          path: `conversations/${conversationId}/messages`, 
+          operation: 'update' 
+        });
         errorEmitter.emit('permission-error', err);
       });
       
       const convUpdateRef = doc(db, 'conversations', conversationId);
       updateDoc(convUpdateRef, { [`unreadCount.${user.uid}`]: 0 }).catch(async (e) => {
-        const err = new FirestorePermissionError({ path: `conversations/${conversationId}`, operation: 'update' });
+        const err = new FirestorePermissionError({ 
+          path: `conversations/${conversationId}`, 
+          operation: 'update' 
+        });
         errorEmitter.emit('permission-error', err);
       });
     }
   }, [db, conversationId, isNewChat, user, rawMessages]);
 
+  // Handle typing indicator
   useEffect(() => {
     if (!db || isNewChat || !user) return;
     const typingRef = doc(db, 'conversations', conversationId);
     const status = inputText.trim().length > 0;
     
-    updateDoc(typingRef, { [`typing.${user.uid}`]: status }).catch(async (e) => {
-       // Silently fail or handle typing permission errors
+    updateDoc(typingRef, { [`typing.${user.uid}`]: status }).catch(() => {
+      // Silently fail for typing indicators to avoid noisy error screens
     });
 
     return () => {
@@ -173,6 +182,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     };
   }, [inputText, db, conversationId, isNewChat, user]);
 
+  // Fetch current user's profile
   useEffect(() => {
     if (!db || !user) return;
     const fetchMyProfile = async () => {
@@ -183,6 +193,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     fetchMyProfile();
   }, [db, user]);
 
+  // Fetch other participant's profile and contact record
   useEffect(() => {
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
     if (!uid || !db || !user) return;
@@ -218,7 +229,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     if (replyingTo) {
       const originalSenderIsMe = replyingTo.senderId === user.uid;
       const originalSenderName = originalSenderIsMe 
-        ? (currentUserProfile?.displayName || currentUserProfile?.fullName || 'User')
+        ? (currentUserProfile?.displayName || currentUserProfile?.fullName || 'You')
         : (contactRecord?.customName || otherProfile?.displayName || otherProfile?.fullName || 'User');
 
       replyData = {
@@ -250,7 +261,10 @@ export function ConversationView({ conversationId }: { conversationId: string })
           activeId = newConv.id;
           router.replace(`/chat/${activeId}`);
         } catch (e) {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'conversations', operation: 'create' }));
+          errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+            path: 'conversations', 
+            operation: 'create' 
+          }));
           return;
         }
       } else {
@@ -267,7 +281,10 @@ export function ConversationView({ conversationId }: { conversationId: string })
       status: 'sent',
       replyTo: replyData
     }).catch(async (e) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `conversations/${activeId}/messages`, operation: 'create' }));
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+        path: `conversations/${activeId}/messages`, 
+        operation: 'create' 
+      }));
     });
 
     if (!isNewChat) {
@@ -276,7 +293,10 @@ export function ConversationView({ conversationId }: { conversationId: string })
         updatedAt: serverTimestamp(),
         [`unreadCount.${otherProfile.id}`]: increment(1)
       }).catch(async (e) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `conversations/${activeId}`, operation: 'update' }));
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+          path: `conversations/${activeId}`, 
+          operation: 'update' 
+        }));
       });
     }
   };
@@ -300,7 +320,10 @@ export function ConversationView({ conversationId }: { conversationId: string })
       text: editValue,
       isEdited: true
     }).catch(async (e) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: ref.path, operation: 'update' }));
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+        path: ref.path, 
+        operation: 'update' 
+      }));
     });
     setEditingMessageId(null);
     setEditValue('');
@@ -414,7 +437,15 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
       <AnimatePresence>
         {showProfile && (
-          <UserProfileSidebar profile={otherProfile} contactRecord={contactRecord} onDismiss={() => setShowProfile(false)} otherName={mainName} initial={initial} user={user} db={db} />
+          <UserProfileSidebar 
+            profile={otherProfile} 
+            contactRecord={contactRecord} 
+            onDismiss={() => setShowProfile(false)} 
+            otherName={mainName} 
+            initial={initial} 
+            user={user} 
+            db={db} 
+          />
         )}
       </AnimatePresence>
     </div>
@@ -507,7 +538,10 @@ function UserProfileSidebar({ profile, contactRecord, onDismiss, otherName, init
       customName: nickname.trim(),
       addedAt: contactRecord?.addedAt || serverTimestamp()
     }, { merge: true }).catch(async (e) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: contactRef.path, operation: 'write' }));
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+        path: contactRef.path, 
+        operation: 'write' 
+      }));
     }).finally(() => setIsUpdating(false));
     
     toast({ title: "Nickname Updated", description: "Identity sync complete." });
