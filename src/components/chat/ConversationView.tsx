@@ -46,6 +46,7 @@ type Message = {
   replyTo?: {
     id: string;
     text: string;
+    senderId: string;
     senderName: string;
   };
 };
@@ -120,6 +121,17 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    if (!db || !user) return;
+    const fetchMyProfile = async () => {
+      const q = query(collection(db, 'users'), where('id', '==', user.uid));
+      const snap = await getDocs(q);
+      if (!snap.empty) setCurrentUserProfile(snap.docs[0].data() as UserProfile);
+    };
+    fetchMyProfile();
+  }, [db, user]);
 
   useEffect(() => {
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
@@ -144,11 +156,22 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const handleSendMessage = async () => {
     if (!inputText.trim() || !user || !db || !otherProfile) return;
     const text = inputText;
-    const replyData = replyingTo ? {
-      id: replyingTo.id,
-      text: replyingTo.text,
-      senderName: replyingTo.senderId === user.uid ? 'You' : (contactRecord?.customName || otherProfile.displayName || otherProfile.fullName || 'User')
-    } : null;
+    
+    // Logic for capturing real names to save in DB for other participants to see correctly
+    let replyData = null;
+    if (replyingTo) {
+      const originalSenderIsMe = replyingTo.senderId === user.uid;
+      const originalSenderName = originalSenderIsMe 
+        ? (currentUserProfile?.displayName || currentUserProfile?.fullName || 'User')
+        : (contactRecord?.customName || otherProfile?.displayName || otherProfile?.fullName || 'User');
+
+      replyData = {
+        id: replyingTo.id,
+        text: replyingTo.text,
+        senderId: replyingTo.senderId,
+        senderName: originalSenderName
+      };
+    }
 
     setInputText('');
     setReplyingTo(null);
@@ -383,7 +406,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
               <div className="flex items-center gap-3 overflow-hidden border-l-2 border-primary pl-3 py-1">
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold text-primary uppercase tracking-widest">
-                    Replying to {replyingTo.senderId === user?.uid ? 'You' : otherName}
+                    Replying to {replyingTo.senderId === user?.uid ? 'You' : (otherProfile?.fullName || 'User')}
                   </p>
                   <p className="text-xs text-muted-foreground truncate max-w-md">{replyingTo.text}</p>
                 </div>
@@ -439,11 +462,14 @@ function MessageRow({
   const isEditing = editingMessageId === msg.id;
   const timeStr = msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'h:mm a') : '';
   
-  // Swipe / Drag logic
+  // Logic to determine name in referenced quote
+  const replySenderDisplayName = msg.replyTo ? (msg.replyTo.senderId === user?.uid ? 'You' : msg.replyTo.senderName) : '';
+
   const dragX = useMotionValue(0);
   const swipeThreshold = 50;
 
   const handleDragEnd = (_: any, info: any) => {
+    // If we drag far enough, trigger reply then snap back
     if (isOwn) {
       if (info.offset.x > swipeThreshold) onDoubleTap();
     } else {
@@ -458,8 +484,9 @@ function MessageRow({
     >
       <motion.div 
         drag="x"
-        dragConstraints={{ left: isOwn ? 0 : -100, right: isOwn ? 100 : 0 }}
-        dragElastic={0.1}
+        dragConstraints={{ left: 0, right: 0 }} // Snap back to origin
+        dragSnapToOrigin={true}
+        dragElastic={0.2}
         onDragEnd={handleDragEnd}
         style={{ x: dragX }}
         className={cn("max-w-[85%] md:max-w-[70%]", isOwn ? "items-end" : "items-start")}
@@ -482,13 +509,20 @@ function MessageRow({
           <DropdownMenu>
             <DropdownMenuTrigger asChild disabled={isMobile}>
               <div className={cn(
-                "group relative p-2 rounded-xl text-[13px] leading-tight shadow-sm transition-all text-left flex flex-col min-w-[70px] cursor-default",
+                "group relative p-2 rounded-xl text-[13px] leading-tight shadow-sm transition-all text-left flex flex-col min-w-[80px] cursor-default",
                 isOwn ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-white/10 text-white rounded-tl-none border border-white/5"
               )}>
                 {msg.replyTo && (
-                  <div className="mb-2 bg-black/10 p-2 rounded-lg border-l-4 border-black/20 text-[11px] opacity-80 overflow-hidden">
-                    <p className="font-bold truncate text-black/60">{msg.replyTo.senderName}</p>
-                    <p className="truncate italic">{msg.replyTo.text}</p>
+                  <div className={cn(
+                    "mb-2 p-2 rounded-lg border-l-4 text-[11px] opacity-90 overflow-hidden",
+                    isOwn ? "bg-black/20 border-black/30" : "bg-white/5 border-primary"
+                  )}>
+                    <p className={cn("font-bold truncate mb-0.5", isOwn ? "text-white" : "text-primary")}>
+                      {replySenderDisplayName}
+                    </p>
+                    <p className={cn("truncate italic", isOwn ? "text-white/80" : "text-white/60")}>
+                      {msg.replyTo.text}
+                    </p>
                   </div>
                 )}
                 
