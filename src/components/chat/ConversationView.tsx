@@ -96,8 +96,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [isForwardDialogOpen, setIsForwardDialogOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
-
   const isNewChat = conversationId.startsWith('new-');
   const targetUid = isNewChat ? conversationId.replace('new-', '') : null;
 
@@ -131,7 +129,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
 
-  // Handle marking messages as read
   useEffect(() => {
     if (!db || isNewChat || !user || !rawMessages || rawMessages.length === 0) return;
 
@@ -147,35 +144,32 @@ export function ConversationView({ conversationId }: { conversationId: string })
       });
       
       batch.commit().catch(async (e) => {
-        const err = new FirestorePermissionError({ 
-          path: `conversations/${conversationId}/messages`, 
+        const permissionError = new FirestorePermissionError({ 
+          path: `conversations/${conversationId}/messages/${unreadMessages[0].id}`, 
           operation: 'update',
           requestResourceData: { status: 'read' }
         });
-        errorEmitter.emit('permission-error', err);
+        errorEmitter.emit('permission-error', permissionError);
       });
       
       const convUpdateRef = doc(db, 'conversations', conversationId);
       updateDoc(convUpdateRef, { [`unreadCount.${user.uid}`]: 0 }).catch(async (e) => {
-        const err = new FirestorePermissionError({ 
+        const permissionError = new FirestorePermissionError({ 
           path: `conversations/${conversationId}`, 
           operation: 'update',
           requestResourceData: { [`unreadCount.${user.uid}`]: 0 }
         });
-        errorEmitter.emit('permission-error', err);
+        errorEmitter.emit('permission-error', permissionError);
       });
     }
   }, [db, conversationId, isNewChat, user, rawMessages]);
 
-  // Handle typing indicator
   useEffect(() => {
     if (!db || isNewChat || !user) return;
     const typingRef = doc(db, 'conversations', conversationId);
     const status = inputText.trim().length > 0;
     
-    updateDoc(typingRef, { [`typing.${user.uid}`]: status }).catch(() => {
-      // Silently fail for typing indicators to avoid noisy error screens
-    });
+    updateDoc(typingRef, { [`typing.${user.uid}`]: status }).catch(() => {});
 
     return () => {
       if (!isNewChat) {
@@ -184,7 +178,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
     };
   }, [inputText, db, conversationId, isNewChat, user]);
 
-  // Fetch current user's profile
   useEffect(() => {
     if (!db || !user) return;
     const fetchMyProfile = async () => {
@@ -195,7 +188,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
     fetchMyProfile();
   }, [db, user]);
 
-  // Fetch other participant's profile and contact record
   useEffect(() => {
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
     if (!uid || !db || !user) return;
