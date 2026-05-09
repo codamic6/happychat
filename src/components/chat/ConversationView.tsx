@@ -81,8 +81,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [editValue, setEditValue] = useState('');
   const [isForwardDialogOpen, setIsForwardDialogOpen] = useState(false);
   
-  // Track last tap for mobile double-tap detection
-  const lastTap = useRef<number>(0);
+  // Mobile Long Press Timer
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const isNewChat = conversationId.startsWith('new-');
   const targetUid = isNewChat ? conversationId.replace('new-', '') : null;
@@ -239,16 +239,20 @@ export function ConversationView({ conversationId }: { conversationId: string })
     setSelectedMessage(null);
   };
 
-  const handleMessageTap = (msg: Message) => {
+  // MOBILE: Handle Long Press (Hold)
+  const handleTouchStart = (msg: Message) => {
     if (!isMobile) return;
-    
-    const now = Date.now();
-    const DOUBLE_TAP_DELAY = 300;
-    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
-      // Double tap detected on mobile
+    longPressTimer.current = setTimeout(() => {
       setSelectedMessage(msg);
+      // Optional: Vibrate on success
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 500); // 500ms hold
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
     }
-    lastTap.current = now;
   };
 
   if (!otherProfile) {
@@ -260,7 +264,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   return (
     <div className="flex flex-col h-full relative bg-[#050505] overflow-hidden">
-      {/* Navbar Actions (Only for Mobile Selection) */}
+      {/* NAVBAR ACTIONS: Triggers ONLY on Mobile Hold */}
       <header className={cn(
         "flex-none h-16 px-4 md:px-6 border-b border-white/5 flex items-center justify-between transition-all duration-300 z-50 sticky top-0",
         (selectedMessage && isMobile) ? "bg-primary text-primary-foreground" : "bg-black/80 backdrop-blur-3xl"
@@ -341,12 +345,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
       <ScrollArea className="flex-1 p-4 md:p-6 relative custom-scrollbar">
         <div className="max-w-4xl mx-auto space-y-2 pb-12">
-          {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 opacity-30 space-y-4">
-              <ShieldCheck className="w-12 h-12 text-primary/50" />
-              <p className="text-sm font-bold uppercase tracking-widest">Secure Chat Active</p>
-            </div>
-          )}
           {messages.map((msg) => {
             const isOwn = msg.senderId === user?.uid;
             const isEditing = editingMessageId === msg.id;
@@ -358,9 +356,23 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 initial={{ opacity: 0, y: 5 }} 
                 animate={{ opacity: 1, y: 0 }} 
                 className={cn("flex group/msg", isOwn ? "justify-end" : "justify-start")}
-                onClick={() => handleMessageTap(msg)}
               >
-                <div className={cn("max-w-[85%] md:max-w-[70%]", isOwn ? "items-end" : "items-start")}>
+                <div 
+                  className={cn("max-w-[85%] md:max-w-[70%]", isOwn ? "items-end" : "items-start")}
+                  // MOBILE: Hold trigger
+                  onTouchStart={() => handleTouchStart(msg)}
+                  onTouchEnd={handleTouchEnd}
+                  // PC: Right-click trigger beside bubble
+                  onContextMenu={(e) => {
+                    if (!isMobile) {
+                      // Standard browser right-click behavior for ShadCN Dropdown/ContextMenu
+                      // We rely on DropdownMenuTrigger below for PC
+                    } else {
+                      e.preventDefault(); // Block default browser hold menu on mobile
+                    }
+                  }}
+                  onDoubleClick={(e) => e.preventDefault()} // Explicitly do nothing on double click
+                >
                   {isEditing ? (
                     <div className="flex items-end gap-2">
                       <Input 
@@ -374,22 +386,18 @@ export function ConversationView({ conversationId }: { conversationId: string })
                       <Button variant="ghost" size="icon" onClick={() => setEditingMessageId(null)} className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground"><X className="w-4 h-4" /></Button>
                     </div>
                   ) : (
+                    /* PC: Local Dropdown Menu beside message */
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          onContextMenu={(e) => {
-                            if (isMobile) return;
-                            // DropdownMenuTrigger handles the menu correctly for us automatically on PC right-click 
-                            // as long as the trigger wraps the component.
-                          }}
+                      <DropdownMenuTrigger asChild disabled={isMobile}>
+                        <div
                           className={cn(
-                            "group relative pt-1.5 pb-1 px-3 rounded-xl text-[13px] leading-tight shadow-sm transition-all text-left flex flex-col min-w-[70px]",
+                            "group relative pt-1.5 pb-1 px-3 rounded-xl text-[13px] leading-tight shadow-sm transition-all text-left flex flex-col min-w-[70px] cursor-default",
                             isOwn 
                               ? "bg-primary text-primary-foreground rounded-tr-none" 
                               : "bg-white/10 text-white rounded-tl-none border border-white/5"
                           )}
                         >
-                          <span className="pr-12">{msg.text}</span>
+                          <span className="pr-10">{msg.text}</span>
                           <div className={cn(
                             "absolute bottom-1 right-1.5 flex items-center gap-0.5 opacity-60 text-[8px] font-bold whitespace-nowrap",
                             isOwn ? "text-primary-foreground" : "text-muted-foreground"
@@ -397,9 +405,13 @@ export function ConversationView({ conversationId }: { conversationId: string })
                             {msg.isEdited && <span className="italic mr-0.5 font-normal">edited</span>}
                             <span>{timeStr}</span>
                           </div>
-                        </button>
+                        </div>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-[#0d0d0d] border-white/10 text-white rounded-xl p-1 shadow-2xl">
+                      <DropdownMenuContent 
+                        side={isOwn ? "left" : "right"} 
+                        align="start" 
+                        className="bg-[#0d0d0d] border-white/10 text-white rounded-xl p-1 shadow-2xl"
+                      >
                         <DropdownMenuItem onClick={() => handleCopy(msg.text)} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Copy className="w-3.5 h-3.5" /> Copy</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => { setSelectedMessage(msg); setIsForwardDialogOpen(true); }} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Forward className="w-3.5 h-3.5" /> Forward</DropdownMenuItem>
                         {isOwn && (
