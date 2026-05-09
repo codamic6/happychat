@@ -129,6 +129,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
 
+  // Synchronization of read status
   useEffect(() => {
     if (!db || isNewChat || !user || !rawMessages || rawMessages.length === 0) return;
 
