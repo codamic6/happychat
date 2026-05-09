@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Loader2, LogOut, Settings, ArrowLeft, CheckCircle2, User
+  Loader2, LogOut, Settings, ArrowLeft, CheckCircle2, User, Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,6 +27,7 @@ type UserProfile = {
   phoneNumber: string;
   about: string;
   isOnline: boolean;
+  showOnlineStatus: boolean;
   updatedAt: any;
 };
 
@@ -44,7 +45,7 @@ export default function ProfilePage() {
     username: '',
     about: '',
     phoneNumber: '',
-    isOnline: true
+    showOnlineStatus: true
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -57,7 +58,7 @@ export default function ProfilePage() {
         username: profile.username || '',
         about: profile.about || '',
         phoneNumber: profile.phoneNumber || '',
-        isOnline: profile.isOnline ?? true
+        showOnlineStatus: profile.showOnlineStatus ?? true
       });
     }
   }, [profile]);
@@ -94,10 +95,11 @@ export default function ProfilePage() {
         username: formData.username.toLowerCase().trim(),
         about: formData.about,
         phoneNumber: formData.phoneNumber,
-        isOnline: formData.isOnline,
+        showOnlineStatus: formData.showOnlineStatus,
+        isOnline: formData.showOnlineStatus ? true : false,
         updatedAt: serverTimestamp()
       });
-      toast({ title: "Saved", description: "Changes applied." });
+      toast({ title: "Saved", description: "Account settings updated." });
     } catch (err) {
       toast({ variant: "destructive", title: "Error", description: "Update failed." });
     } finally {
@@ -145,9 +147,15 @@ export default function ProfilePage() {
             </div>
 
             <div className="w-full pt-4 space-y-3">
-              <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white">Online Status</span>
-                <Switch checked={formData.isOnline} onCheckedChange={(val) => setFormData(prev => ({ ...prev, isOnline: val }))} />
+              <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group transition-all hover:bg-white/10">
+                <div className="flex flex-col items-start gap-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white">Online Visibility</span>
+                  <p className="text-[8px] text-muted-foreground uppercase">Show when active</p>
+                </div>
+                <Switch 
+                  checked={formData.showOnlineStatus} 
+                  onCheckedChange={(val) => setFormData(prev => ({ ...prev, showOnlineStatus: val }))} 
+                />
               </div>
               <Button 
                 variant="ghost" 

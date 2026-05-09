@@ -32,6 +32,14 @@
           "type": "string",
           "description": "A short bio for the user."
         },
+        "isOnline": {
+          "type": "boolean",
+          "description": "Current online status of the user."
+        },
+        "showOnlineStatus": {
+          "type": "boolean",
+          "description": "Privacy setting to show or hide online status."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time"
@@ -82,7 +90,8 @@
         "participantIds": { "type": "array", "items": { "type": "string" } },
         "lastMessage": { "type": "string" },
         "updatedAt": { "type": "string", "format": "date-time" },
-        "unreadCount": { "type": "object" }
+        "unreadCount": { "type": "object" },
+        "typing": { "type": "object", "description": "Map of userIds to typing boolean status." }
       }
     },
     "Message": {
@@ -93,6 +102,7 @@
         "text": { "type": "string" },
         "senderId": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["sent", "delivered", "read"] },
         "conversationParticipantIds": { "type": "array", "items": { "type": "string" } }
       }
     },

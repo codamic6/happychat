@@ -1,10 +1,12 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, Paperclip, Smile, Search, 
   MoreVertical, X, Info, ShieldAlert, ArrowLeft, Loader2,
-  ShieldCheck, Copy, Forward, Pencil, Check, Reply, UserCircle, Tag, Save
+  ShieldCheck, Copy, Forward, Pencil, Check, Reply, UserCircle, Tag, Save,
+  CheckCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +29,7 @@ import {
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { 
   doc, query, collection, serverTimestamp, 
-  getDocs, where, addDoc, updateDoc, increment, setDoc, onSnapshot
+  getDocs, where, addDoc, updateDoc, increment, setDoc, onSnapshot, writeBatch
 } from 'firebase/firestore';
 import { motion, AnimatePresence, useMotionValue } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -44,6 +46,7 @@ type Message = {
   timestamp: any;
   conversationParticipantIds: string[];
   isEdited?: boolean;
+  status?: 'sent' | 'delivered' | 'read';
   replyTo?: {
     id: string;
     text: string;
@@ -59,6 +62,8 @@ type UserProfile = {
   username: string;
   email: string;
   about?: string;
+  isOnline?: boolean;
+  showOnlineStatus?: boolean;
 };
 
 type ContactRecord = {
@@ -70,6 +75,7 @@ type ContactRecord = {
 type Conversation = {
   id: string;
   participantIds: string[];
+  typing?: Record<string, boolean>;
 };
 
 export function ConversationView({ conversationId }: { conversationId: string }) {
@@ -123,6 +129,44 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
+
+  // Mark messages as read when viewing
+  useEffect(() => {
+    if (!db || isNewChat || !user || !rawMessages || rawMessages.length === 0) return;
+
+    const unreadMessages = rawMessages.filter(
+      msg => msg.senderId !== user.uid && msg.status !== 'read'
+    );
+
+    if (unreadMessages.length > 0) {
+      const batch = writeBatch(db);
+      unreadMessages.forEach(msg => {
+        const msgRef = doc(db, 'conversations', conversationId, 'messages', msg.id);
+        batch.update(msgRef, { status: 'read' });
+      });
+      batch.commit().catch(e => console.error("Error updating read status", e));
+      
+      // Also reset unread count for current user
+      const convRef = doc(db, 'conversations', conversationId);
+      updateDoc(convRef, { [`unreadCount.${user.uid}`]: 0 });
+    }
+  }, [db, conversationId, isNewChat, user, rawMessages]);
+
+  // Typing status handling
+  useEffect(() => {
+    if (!db || isNewChat || !user) return;
+    const typingRef = doc(db, 'conversations', conversationId);
+    
+    if (inputText.trim().length > 0) {
+      updateDoc(typingRef, { [`typing.${user.uid}`]: true });
+    } else {
+      updateDoc(typingRef, { [`typing.${user.uid}`]: false });
+    }
+
+    return () => {
+      if (!isNewChat) updateDoc(typingRef, { [`typing.${user.uid}`]: false });
+    };
+  }, [inputText, db, conversationId, isNewChat, user]);
 
   useEffect(() => {
     if (!db || !user) return;
@@ -199,7 +243,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
           participantIds,
           updatedAt: serverTimestamp(),
           lastMessage: text,
-          unreadCount: { [otherProfile.id]: 1, [user.uid]: 0 }
+          unreadCount: { [otherProfile.id]: 1, [user.uid]: 0 },
+          typing: { [user.uid]: false, [otherProfile.id]: false }
         });
         activeId = newConv.id;
         router.replace(`/chat/${activeId}`);
@@ -214,6 +259,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
       senderId: user.uid,
       timestamp: serverTimestamp(),
       conversationParticipantIds: participantIds,
+      status: 'sent',
       replyTo: replyData
     });
 
@@ -273,7 +319,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
       text: selectedMessage.text,
       senderId: user.uid,
       timestamp: serverTimestamp(),
-      conversationParticipantIds: participantIds
+      conversationParticipantIds: participantIds,
+      status: 'sent'
     });
 
     toast({ title: "Forwarded", description: "Message sent." });
@@ -298,6 +345,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const mainName = contactRecord?.customName || otherProfile?.displayName || otherProfile?.fullName || 'User';
   const subName = contactRecord?.customName ? (otherProfile?.displayName || otherProfile?.fullName) : null;
   const initial = mainName.charAt(0).toUpperCase();
+  const isOtherTyping = otherProfile ? conversation?.typing?.[otherProfile.id] : false;
+  const showOnline = otherProfile?.showOnlineStatus !== false && otherProfile?.isOnline;
 
   return (
     <div className="flex-1 flex flex-col relative bg-[#050505] overflow-hidden">
@@ -356,17 +405,18 @@ export function ConversationView({ conversationId }: { conversationId: string })
                     <h3 className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors leading-tight">
                       {mainName}
                     </h3>
-                    {subName && (
-                      <p className="text-[9px] text-muted-foreground truncate uppercase font-bold tracking-widest opacity-60">
-                        {subName}
-                      </p>
-                    )}
-                    {!subName && (
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                        <span className="text-[8px] text-primary uppercase font-bold tracking-widest">Active</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {isOtherTyping ? (
+                        <span className="text-[9px] text-primary animate-pulse font-black uppercase tracking-widest">Typing...</span>
+                      ) : showOnline ? (
+                        <>
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                          <span className="text-[8px] text-primary uppercase font-bold tracking-widest">Online</span>
+                        </>
+                      ) : (
+                        <span className="text-[8px] text-muted-foreground uppercase font-bold tracking-widest">Offline</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -554,13 +604,24 @@ function MessageRow({
                   </div>
                 )}
                 
-                <span className="pr-10">{msg.text}</span>
+                <span className="pr-12">{msg.text}</span>
                 <div className={cn(
-                  "absolute bottom-1 right-1.5 flex items-center gap-0.5 opacity-60 text-[8px] font-bold whitespace-nowrap",
+                  "absolute bottom-1 right-1.5 flex items-center gap-1.5 opacity-60 text-[8px] font-bold whitespace-nowrap",
                   isOwn ? "text-primary-foreground" : "text-muted-foreground"
                 )}>
                   {msg.isEdited && <span className="italic mr-0.5 font-normal">edited</span>}
                   <span>{timeStr}</span>
+                  {isOwn && (
+                    <div className="flex items-center -ml-0.5">
+                      {msg.status === 'read' ? (
+                        <CheckCheck className="w-2.5 h-2.5 text-blue-400" />
+                      ) : msg.status === 'delivered' ? (
+                        <CheckCheck className="w-2.5 h-2.5 text-white/50" />
+                      ) : (
+                        <Check className="w-2.5 h-2.5 text-white/50" />
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </DropdownMenuTrigger>

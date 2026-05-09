@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, getDocs, where } from 'firebase/firestore';
+import { collection, query, getDocs, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { format, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
@@ -19,6 +19,8 @@ type UserProfile = {
   fullName?: string;
   username: string;
   email: string;
+  isOnline?: boolean;
+  showOnlineStatus?: boolean;
   updatedAt?: any;
 };
 
@@ -70,10 +72,10 @@ function ChatItem({
   onClick: () => void 
 }) {
   const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
-  // Prioritize custom alias if it exists
   const displayName = contact?.customName || profile.displayName || profile.fullName || 'User';
   const initial = displayName.charAt(0).toUpperCase();
   const messagePreview = manualTruncate(conv.lastMessage || 'Secure chat...', 12);
+  const showOnline = profile.showOnlineStatus !== false && profile.isOnline;
 
   return (
     <button 
@@ -89,7 +91,9 @@ function ChatItem({
         <div className="w-14 h-14 rounded-full border border-white/10 bg-[#111] flex items-center justify-center">
           <div className="text-xl font-bold text-primary">{initial}</div>
         </div>
-        <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
+        {showOnline && (
+          <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
+        )}
       </div>
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden text-left pr-4">
@@ -126,6 +130,28 @@ export function ChatSidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Handle online status heartbeat
+  useEffect(() => {
+    if (!db || !user) return;
+    const userRef = doc(db, 'users', user.uid);
+    
+    // Set online on mount
+    updateDoc(userRef, { isOnline: true });
+
+    // Try to set offline on unmount/tab close
+    const handleUnload = () => {
+      // Note: This is not guaranteed in all browsers, 
+      // but standard for small-scale projects.
+      updateDoc(userRef, { isOnline: false });
+    };
+
+    window.addEventListener('beforeunload', handleUnload);
+    return () => {
+      updateDoc(userRef, { isOnline: false });
+      window.removeEventListener('beforeunload', handleUnload);
+    };
+  }, [db, user]);
 
   const convQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
@@ -166,27 +192,21 @@ export function ChatSidebar() {
   useEffect(() => {
     if (!conversations || !db || !user) return;
 
-    const fetchOtherParticipantProfiles = async () => {
-      const newProfiles = { ...chatProfiles };
-      let changed = false;
+    const unsubs: (() => void)[] = [];
 
-      for (const conv of conversations) {
-        const otherId = conv.participantIds.find(id => id !== user.uid);
-        if (otherId && !newProfiles[otherId]) {
-          const userDoc = await getDocs(query(collection(db, 'users'), where('id', '==', otherId)));
-          if (!userDoc.empty) {
-            newProfiles[otherId] = userDoc.docs[0].data() as UserProfile;
-            changed = true;
+    conversations.forEach(conv => {
+      const otherId = conv.participantIds.find(id => id !== user.uid);
+      if (otherId && !chatProfiles[otherId]) {
+        const unsub = onSnapshot(doc(db, 'users', otherId), (snap) => {
+          if (snap.exists()) {
+            setChatProfiles(prev => ({ ...prev, [otherId]: snap.data() as UserProfile }));
           }
-        }
+        });
+        unsubs.push(unsub);
       }
+    });
 
-      if (changed) {
-        setChatProfiles(newProfiles);
-      }
-    };
-
-    fetchOtherParticipantProfiles();
+    return () => unsubs.forEach(u => u());
   }, [conversations, db, user]);
 
   const filteredConversations = useMemo(() => {
