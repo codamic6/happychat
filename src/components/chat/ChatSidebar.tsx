@@ -10,8 +10,9 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebas
 import { collection, query, getDocs, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { format, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
+import { format, differenceInSeconds, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type UserProfile = {
   id: string;
@@ -38,19 +39,28 @@ type Conversation = {
   unreadCount?: Record<string, number>;
 };
 
-function formatShortTime(date: Date) {
+function formatShortTime(date: Date, isMobile: boolean) {
   const now = new Date();
+  const diffSec = differenceInSeconds(now, date);
   const diffMin = differenceInMinutes(now, date);
   const diffHour = differenceInHours(now, date);
   const diffDay = differenceInDays(now, date);
 
-  if (diffMin < 1) return 'now';
-  if (diffMin < 60) return `${diffMin}min`;
-  if (diffHour < 24) return `${diffHour}h`;
-  return format(date, 'dd/MM/yy');
+  if (diffSec < 60) return 'JUST NOW';
+
+  if (isMobile) {
+    if (diffMin < 60) return `${diffMin}m`;
+    if (diffHour < 24) return `${diffHour}h`;
+    return `${diffDay}d`;
+  } else {
+    if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? 's' : ''}`;
+    if (diffHour < 24) return `${diffHour} hour${diffHour !== 1 ? 's' : ''}`;
+    if (diffDay < 7) return `${diffDay} day${diffDay !== 1 ? 's' : ''}`;
+    return format(date, 'dd/MM/yy');
+  }
 }
 
-function manualTruncate(text: string, limit: number = 12) {
+function manualTruncate(text: string, limit: number = 20) {
   if (!text) return '';
   if (text.length <= limit) return text;
   return text.substring(0, limit) + '...';
@@ -62,19 +72,21 @@ function ChatItem({
   contact,
   user, 
   isSelected, 
-  onClick 
+  onClick,
+  isMobile
 }: { 
   conv: Conversation, 
   profile: UserProfile, 
   contact?: ContactRecord,
   user: any, 
   isSelected: boolean, 
-  onClick: () => void 
+  onClick: () => void,
+  isMobile: boolean
 }) {
   const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
   const displayName = contact?.customName || profile.displayName || profile.fullName || 'User';
   const initial = displayName.charAt(0).toUpperCase();
-  const messagePreview = manualTruncate(conv.lastMessage || 'Secure chat...', 12);
+  const messagePreview = manualTruncate(conv.lastMessage || 'Secure chat...', 20);
   const showOnline = profile.showOnlineStatus !== false && profile.isOnline;
 
   return (
@@ -102,7 +114,7 @@ function ChatItem({
             {displayName}
           </span>
           <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter flex-none">
-            {conv.updatedAt?.toDate ? formatShortTime(conv.updatedAt.toDate()) : ''}
+            {conv.updatedAt?.toDate ? formatShortTime(conv.updatedAt.toDate(), isMobile) : ''}
           </span>
         </div>
         
@@ -129,20 +141,16 @@ export function ChatSidebar() {
   const db = useFirestore();
   const router = useRouter();
   const pathname = usePathname();
+  const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Handle online status heartbeat
   useEffect(() => {
     if (!db || !user) return;
     const userRef = doc(db, 'users', user.uid);
-    
-    // Set online on mount
     updateDoc(userRef, { isOnline: true });
 
-    // Try to set offline on unmount/tab close
     const handleUnload = () => {
-      // Note: This is not guaranteed in all browsers, 
-      // but standard for small-scale projects.
       updateDoc(userRef, { isOnline: false });
     };
 
@@ -191,9 +199,7 @@ export function ChatSidebar() {
 
   useEffect(() => {
     if (!conversations || !db || !user) return;
-
     const unsubs: (() => void)[] = [];
-
     conversations.forEach(conv => {
       const otherId = conv.participantIds.find(id => id !== user.uid);
       if (otherId && !chatProfiles[otherId]) {
@@ -205,14 +211,12 @@ export function ChatSidebar() {
         unsubs.push(unsub);
       }
     });
-
     return () => unsubs.forEach(u => u());
   }, [conversations, db, user]);
 
   const filteredConversations = useMemo(() => {
     if (!conversations) return [];
     if (!searchQuery.trim()) return conversations;
-    
     return conversations.filter(conv => {
       const otherId = conv.participantIds.find(id => id !== user?.uid);
       const profile = otherId ? chatProfiles[otherId] : null;
@@ -261,6 +265,7 @@ export function ChatSidebar() {
                 user={user}
                 isSelected={pathname === `/chat/${conv.id}`}
                 onClick={() => router.push(`/chat/${conv.id}`)}
+                isMobile={isMobile}
               />
             );
           })}

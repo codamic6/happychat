@@ -10,10 +10,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, limit, where, getDocs, doc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
-import { formatDistanceToNow } from 'date-fns';
+import { differenceInSeconds, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { StatusComposer } from '@/components/chat/StatusComposer';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type UserProfile = {
   id: string;
@@ -32,6 +33,26 @@ type StatusUpdate = {
   expiresAt: any;
   viewedBy?: string[];
 };
+
+function formatStatusTime(date: Date, isMobile: boolean) {
+  const now = new Date();
+  const diffSec = differenceInSeconds(now, date);
+  const diffMin = differenceInMinutes(now, date);
+  const diffHour = differenceInHours(now, date);
+  const diffDay = differenceInDays(now, date);
+
+  if (diffSec < 60) return "JUST NOW";
+
+  if (isMobile) {
+    if (diffMin < 60) return `${diffMin}m`;
+    if (diffHour < 24) return `${diffHour}h`;
+    return `${diffDay}d`;
+  } else {
+    if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? 's' : ''}`;
+    if (diffHour < 24) return `${diffHour} hour${diffHour !== 1 ? 's' : ''}`;
+    return `${diffDay} day${diffDay !== 1 ? 's' : ''}`;
+  }
+}
 
 function SegmentedRing({ count, hasUnseen, size = 56 }: { count: number, hasUnseen: boolean, size?: number }) {
   const radius = (size / 2) - 4;
@@ -55,7 +76,7 @@ function SegmentedRing({ count, hasUnseen, size = 56 }: { count: number, hasUnse
           fill="none"
           stroke={color}
           strokeWidth="2.5"
-          strokeDasharray={`${segmentLength} ${gap + (count === 1 ? 0 : 0)}`}
+          strokeDasharray={`${segmentLength} ${gap}`}
           strokeDashoffset={-(i * (segmentLength + gap))}
           strokeLinecap="round"
           className="transition-all duration-500"
@@ -69,6 +90,7 @@ export function StatusSidebar() {
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile>>({});
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -91,12 +113,11 @@ export function StatusSidebar() {
     return ids;
   }, [contactsData, user]);
 
-  const now = new Date();
   const statusQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(
       collection(db, 'statuses'),
-      where('expiresAt', '>', now),
+      where('expiresAt', '>', new Date()),
       orderBy('expiresAt', 'desc'),
       limit(100)
     );
@@ -116,7 +137,6 @@ export function StatusSidebar() {
     });
     
     return Object.entries(groups).map(([uid, items]) => {
-      // A group is "seen" if every single status in it has been viewed by current user
       const hasUnseen = items.some(item => !item.viewedBy?.includes(user.uid));
       return { uid, items, hasUnseen };
     });
@@ -256,7 +276,7 @@ export function StatusSidebar() {
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-sm text-white truncate font-headline">{name}</p>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
-                          {latest.createdAt?.toDate ? formatDistanceToNow(latest.createdAt.toDate(), { addSuffix: true }) : ''}
+                          {latest.createdAt?.toDate ? formatStatusTime(latest.createdAt.toDate(), isMobile) : ''}
                         </p>
                       </div>
                     </button>
@@ -292,7 +312,7 @@ export function StatusSidebar() {
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-sm text-white truncate font-headline">{name}</p>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
-                          {latest.createdAt?.toDate ? formatDistanceToNow(latest.createdAt.toDate(), { addSuffix: true }) : ''}
+                          {latest.createdAt?.toDate ? formatStatusTime(latest.createdAt.toDate(), isMobile) : ''}
                         </p>
                       </div>
                     </button>
