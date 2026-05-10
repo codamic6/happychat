@@ -393,7 +393,7 @@ export function ChatSidebar() {
       </header>
 
       <ScrollArea className="flex-1 w-full">
-        <div className="px-3 pb-24 md:pb-6 space-y-1">
+        <div className="px-3 pb-24 md:pb-6 space-y-2">
           {filteredConversations.map((conv) => {
             const otherId = conv.participantIds.find(id => id !== user?.uid);
             const profile = otherId ? chatProfiles[otherId] : null;
@@ -408,7 +408,7 @@ export function ChatSidebar() {
             return (
               <div 
                 key={conv.id}
-                className="relative group/item"
+                className="relative group/item w-full"
                 onPointerDown={() => handlePointerDown(conv.id)}
                 onPointerUp={handlePointerUp}
                 onPointerLeave={handlePointerUp}
@@ -424,9 +424,9 @@ export function ChatSidebar() {
                     }
                   }}
                   className={cn(
-                    "w-full p-4 rounded-3xl flex items-center gap-4 transition-all border border-transparent overflow-hidden relative cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d0d0d]",
+                    "w-full p-4 rounded-[2rem] flex items-center gap-4 transition-all border border-transparent overflow-hidden relative cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d0d0d]",
                     isSelected 
-                      ? (isSelectionMode ? "bg-primary/20 border-primary/40 shadow-xl" : "bg-primary/10 border-primary/20 shadow-md") 
+                      ? (isSelectionMode ? "bg-primary/25 border-primary/40 shadow-[0_8px_32px_rgba(0,0,0,0.4)]" : "bg-primary/10 border-primary/20 shadow-[0_4px_24px_rgba(0,0,0,0.3)]") 
                       : "hover:bg-white/5"
                   )}
                 >
@@ -438,21 +438,21 @@ export function ChatSidebar() {
                       <div className="text-xl font-bold text-primary">{displayName.charAt(0).toUpperCase()}</div>
                     </div>
                     {profile.showOnlineStatus !== false && profile.isOnline && (
-                      <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green z-20" />
+                      <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green z-20" />
                     )}
                   </div>
                   
-                  <div className="flex-1 flex flex-col min-w-0 text-left pr-4">
+                  <div className="flex-1 flex flex-col min-w-0 text-left pr-1">
                     <div className="flex items-center justify-between gap-2 min-w-0 w-full mb-1">
                       <span className={cn(
-                        "font-bold text-sm text-white truncate min-w-0 flex-1",
+                        "font-bold text-[14px] text-white truncate min-w-0 flex-1",
                         isPinned && "flex items-center gap-1.5"
                       )}>
                         {isPinned && <Pin className="w-3 h-3 text-primary fill-primary" />}
                         {displayName}
                       </span>
                       <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">
+                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-tight whitespace-nowrap">
                           {conv.updatedAt?.toDate ? formatShortTime(conv.updatedAt.toDate(), isMobile) : ''}
                         </span>
                         
@@ -491,7 +491,7 @@ export function ChatSidebar() {
                     <div className="flex items-center justify-between gap-3 min-w-0 w-full overflow-hidden">
                       <p className={cn(
                         "text-[11px] min-w-0 flex-1 truncate",
-                        unreadCount > 0 ? "text-white font-bold" : "text-muted-foreground"
+                        unreadCount > 0 ? "text-white font-bold" : "text-muted-foreground/70"
                       )}>
                         {conv.lastMessage || 'Secure chat...'}
                       </p>
