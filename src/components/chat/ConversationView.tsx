@@ -131,28 +131,21 @@ export function ConversationView({ conversationId }: { conversationId: string })
     );
 
     if (unreadMessages.length > 0) {
-      console.log(`[Firestore DEBUG] TRACE: Updating ${unreadMessages.length} messages to 'read'.`);
-      console.log(`[Firestore DEBUG] User UID: ${user.uid}`);
-      console.log(`[Firestore DEBUG] Conversation Path: conversations/${conversationId}`);
-
+      console.log(`[Firestore TRACE] Updating ${unreadMessages.length} messages to 'read'`);
       const batch = writeBatch(db);
       unreadMessages.forEach(msg => {
         const msgRef = doc(db, 'conversations', conversationId, 'messages', msg.id);
-        console.log(`[Firestore DEBUG] Queuing update for message: ${msgRef.path}`);
         batch.update(msgRef, { 
           status: 'read',
           updatedAt: serverTimestamp()
         });
       });
       
-      batch.commit().then(() => {
-        console.log(`[Firestore DEBUG] Batch read-status update successful.`);
-      }).catch(async (e) => {
-        console.error(`[Firestore DEBUG] Batch read-status update FAILED:`, e);
+      batch.commit().catch(async (e) => {
         const permissionError = new FirestorePermissionError({ 
           path: `conversations/${conversationId}/messages/${unreadMessages[0].id}`, 
           operation: 'update',
-          requestResourceData: { status: 'read', updatedAt: 'serverTimestamp' }
+          requestResourceData: { status: 'read' }
         });
         errorEmitter.emit('permission-error', permissionError);
       });
@@ -177,7 +170,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     };
   }, [inputText, db, conversationId, isNewChat, user, isUserLoading]);
 
-  // Profiles and Contact loading
+  // Profiles loading
   useEffect(() => {
     if (!db || !user) return;
     const fetchMyProfile = async () => {
@@ -245,24 +238,17 @@ export function ConversationView({ conversationId }: { conversationId: string })
       const snap = await getDocs(existingQ);
       if (snap.empty) {
         try {
-          console.log(`[Firestore DEBUG] TRACE: Creating NEW conversation. User: ${user.uid}`);
-          const newConvData = {
+          const newConv = await addDoc(collection(db, 'conversations'), {
             participantIds,
             updatedAt: serverTimestamp(),
             lastMessage: text,
             unreadCount: { [otherProfile.id]: 1, [user.uid]: 0 },
             typing: { [user.uid]: false, [otherProfile.id]: false }
-          };
-          console.log(`[Firestore DEBUG] Payload:`, newConvData);
-          const newConv = await addDoc(collection(db, 'conversations'), newConvData);
+          });
           activeId = newConv.id;
           router.replace(`/chat/${activeId}`);
         } catch (e) {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({ 
-            path: 'conversations', 
-            operation: 'create',
-            requestResourceData: { participantIds, lastMessage: text }
-          }));
+          errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'conversations', operation: 'create' }));
           return;
         }
       } else {
@@ -281,11 +267,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
       replyTo: replyData
     };
 
-    console.log(`[Firestore DEBUG] TRACE: Adding message to ${activeId}. Path: conversations/${activeId}/messages`);
-    console.log(`[Firestore DEBUG] Payload:`, messagePayload);
-
-    addDoc(collection(db, 'conversations', activeId, 'messages'), messagePayload).catch(async (e) => {
-      console.error(`[Firestore DEBUG] Add message FAILED:`, e);
+    console.log(`[Firestore TRACE] addDoc to conversations/${activeId}/messages`, messagePayload);
+    addDoc(collection(db, 'conversations', activeId, 'messages'), messagePayload).catch((e) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: `conversations/${activeId}/messages`, 
         operation: 'create',
@@ -298,12 +281,10 @@ export function ConversationView({ conversationId }: { conversationId: string })
         lastMessage: text,
         updatedAt: serverTimestamp(),
         [`unreadCount.${otherProfile.id}`]: increment(1)
-      }).catch(async (e) => {
-        console.error(`[Firestore DEBUG] Update conversation meta FAILED:`, e);
+      }).catch((e) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ 
           path: `conversations/${activeId}`, 
-          operation: 'update',
-          requestResourceData: { lastMessage: text }
+          operation: 'update' 
         }));
       });
     }
@@ -324,22 +305,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const saveEdit = async () => {
     if (!editingMessageId || !db || !conversationId) return;
     const ref = doc(db, 'conversations', conversationId, 'messages', editingMessageId);
-    
-    console.log(`[Firestore DEBUG] TRACE: Editing message ${editingMessageId}. Path: ${ref.path}`);
-    const editPayload = {
+    updateDoc(ref, {
       text: editValue,
       isEdited: true,
       updatedAt: serverTimestamp()
-    };
-    console.log(`[Firestore DEBUG] Payload:`, editPayload);
-
-    updateDoc(ref, editPayload).catch(async (e) => {
-      console.error(`[Firestore DEBUG] Edit message FAILED:`, e);
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
-        path: ref.path, 
-        operation: 'update',
-        requestResourceData: editPayload
-      }));
+    }).catch((e) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: ref.path, operation: 'update' }));
     });
     setEditingMessageId(null);
     setEditValue('');
@@ -516,8 +487,14 @@ function MessageRow({
                   {msg.isEdited && <span className="italic mr-0.5 font-normal">edited</span>}
                   <span>{timeStr}</span>
                   {isOwn && (
-                    <div className="flex items-center">
-                      {msg.status === 'read' ? <CheckCheck className="w-3 h-3 text-blue-400" /> : msg.status === 'delivered' ? <CheckCheck className="w-3 h-3 text-white/50" /> : <Check className="w-3 h-3 text-white/50" />}
+                    <div className="flex items-center ml-1">
+                      {msg.status === 'read' ? (
+                        <CheckCheck className="w-3.5 h-3.5 text-[#38bdf8] stroke-[3]" />
+                      ) : msg.status === 'delivered' ? (
+                        <CheckCheck className="w-3.5 h-3.5 text-white/70 stroke-[3]" />
+                      ) : (
+                        <Check className="w-3.5 h-3.5 text-white/70 stroke-[3]" />
+                      )}
                     </div>
                   )}
                 </div>
@@ -547,21 +524,12 @@ function UserProfileSidebar({ profile, contactRecord, onDismiss, otherName, init
     if (!user || !db || !profile) return;
     setIsUpdating(true);
     const contactRef = doc(db, 'users', user.uid, 'contacts', profile.id);
-    
-    console.log(`[Firestore DEBUG] TRACE: Updating contact nickname. Path: ${contactRef.path}`);
-    const nicknamePayload = {
+    setDoc(contactRef, {
       userId: profile.id,
       customName: nickname.trim(),
       addedAt: contactRecord?.addedAt || serverTimestamp()
-    };
-    console.log(`[Firestore DEBUG] Payload:`, nicknamePayload);
-
-    setDoc(contactRef, nicknamePayload, { merge: true }).catch(async (e) => {
-      console.error(`[Firestore DEBUG] Update nickname FAILED:`, e);
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
-        path: contactRef.path, 
-        operation: 'write' 
-      }));
+    }, { merge: true }).catch((e) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: contactRef.path, operation: 'write' }));
     }).finally(() => setIsUpdating(false));
     
     toast({ title: "Nickname Updated", description: "Identity sync complete." });
