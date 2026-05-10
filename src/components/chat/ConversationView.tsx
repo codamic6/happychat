@@ -134,7 +134,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
 
-  // Read status effect
   useEffect(() => {
     if (!db || isNewChat || !user || !rawMessages || isUserLoading) return;
     const unreadMessages = rawMessages.filter(m => m.senderId !== user.uid && m.status !== 'read');
@@ -148,7 +147,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
     }
   }, [db, conversationId, isNewChat, user, rawMessages, isUserLoading]);
 
-  // Profiles and contacts
   useEffect(() => {
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
     if (!uid || !db || !user) return;
@@ -322,6 +320,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
               onReply={() => setReplyingTo(msg)}
               onSelect={() => setSelectedMessage(msg)}
               isSelected={selectedMessage?.id === msg.id}
+              otherProfile={otherProfile}
+              contactRecord={contactRecord}
             />
           ))}
           <div ref={scrollRef} />
@@ -383,7 +383,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   );
 }
 
-function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, isSelected }: any) {
+function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, isSelected, otherProfile, contactRecord }: any) {
   const isOwn = msg.senderId === user?.uid;
   const isSystem = msg.isDeleted;
   const router = useRouter();
@@ -399,7 +399,7 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
     holdTimerRef.current = setTimeout(() => {
       onSelect();
       if (window.navigator.vibrate) window.navigator.vibrate(50);
-    }, 1500); // 1.5 seconds hold
+    }, 700); // 0.7 seconds hold
   };
 
   const handlePointerUp = () => {
@@ -492,17 +492,16 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
           {isOwn && !isSystem && (
             <div className="flex items-center ml-1">
               {msg.status === 'read' ? (
-                <CheckCheck className="w-4 h-4 text-sky-400 stroke-[3.5]" />
+                <CheckCheck className="w-4 h-4 text-primary-foreground stroke-[3.5]" />
               ) : msg.status === 'delivered' ? (
-                <CheckCheck className="w-4 h-4 text-muted-foreground/50 stroke-[3.5]" />
+                <CheckCheck className="w-4 h-4 text-primary-foreground/50 stroke-[3.5]" />
               ) : (
-                <Check className="w-4 h-4 text-muted-foreground/30 stroke-[3.5]" />
+                <Check className="w-4 h-4 text-primary-foreground/30 stroke-[3.5]" />
               )}
             </div>
           )}
         </div>
 
-        {/* Desktop Menu - Hidden on mobile */}
         {!isSystem && !isMobile && (
           <div className={cn(
             "absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity z-10",

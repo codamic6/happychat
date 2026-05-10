@@ -70,7 +70,6 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
   const mobileTabs = [
     { label: 'Chats', icon: MessageSquare, href: '/chat' },
     { label: 'Updates', icon: Globe, href: '/chat/status' },
-    { label: 'Assistant', icon: Sparkles, href: '/ai-assistant' },
     { label: 'Contacts', icon: Users, href: '/chat/contacts' },
     { label: 'Profile', icon: UserCircle, href: '/chat/profile' },
   ];

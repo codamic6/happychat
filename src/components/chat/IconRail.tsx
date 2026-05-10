@@ -1,9 +1,8 @@
-
 'use client';
 
 import React, { useState } from 'react';
 import { 
-  MessageSquare, Globe, Users, Sparkles, UserCircle, 
+  MessageSquare, Globe, Users, UserCircle, 
   LogOut, UserPlus, Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,7 +25,6 @@ export function IconRail() {
     { id: 'chats', icon: MessageSquare, label: 'Chats', path: '/chat' },
     { id: 'status', icon: Globe, label: 'Updates', path: '/chat/status' },
     { id: 'contacts', icon: Users, label: 'Contacts', path: '/chat/contacts' },
-    { id: 'ai', icon: Sparkles, label: 'Assistant', path: '/ai-assistant' },
   ];
 
   const handleSignOut = async () => {

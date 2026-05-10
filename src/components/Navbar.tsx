@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Zap, Menu, X, Sparkles, Shield, Info, Home } from 'lucide-react';
+import { Zap, Menu, X, Shield, Info, Home } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetTitle, SheetDescription, SheetHeader } from '@/components/ui/sheet';
 import { useState } from 'react';
 
@@ -13,7 +13,6 @@ export function Navbar() {
     { href: '/', label: 'Home', icon: Home },
     { href: '/features', label: 'Features', icon: Zap },
     { href: '/security', label: 'Security', icon: Shield },
-    { href: '/ai-assistant', label: 'AI Assistant', icon: Sparkles },
     { href: '/help', label: 'Help', icon: Info },
   ];
 
