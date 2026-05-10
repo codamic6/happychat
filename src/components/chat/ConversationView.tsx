@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -149,13 +148,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
     }
   }, [db, conversationId, isNewChat, user, rawMessages, isUserLoading]);
 
-  // Typing effect
-  useEffect(() => {
-    if (!db || isNewChat || !user || isUserLoading) return;
-    const typingRef = doc(db, 'conversations', conversationId);
-    updateDoc(typingRef, { [`typing.${user.uid}`]: inputText.trim().length > 0 }).catch(() => {});
-  }, [inputText, db, conversationId, isNewChat, user, isUserLoading]);
-
   // Profiles and contacts
   useEffect(() => {
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
@@ -252,7 +244,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   return (
     <div className="flex-1 flex flex-col relative bg-[#050505] overflow-hidden">
-      <header className="flex-none h-16 px-4 border-b border-white/5 flex items-center justify-between z-50 sticky top-0 bg-black/80 backdrop-blur-3xl">
+      <header className="flex-none h-16 px-4 border-b border-white/5 flex items-center justify-between z-[60] sticky top-0 bg-black/80 backdrop-blur-3xl">
         <AnimatePresence mode="wait">
           {selectedMessage && isMobile ? (
             <motion.div 
@@ -325,10 +317,10 @@ export function ConversationView({ conversationId }: { conversationId: string })
           {messages.map((msg) => (
             <MessageRow 
               key={msg.id} msg={msg} user={user} isMobile={isMobile}
-              onVote={(idx) => handleVote(msg, idx)}
-              onDelete={(mode) => deleteMessage(msg.id, msg.senderId, mode)}
+              onVote={(idx: number) => handleVote(msg, idx)}
+              onDelete={(mode: 'me' | 'everyone') => deleteMessage(msg.id, msg.senderId, mode)}
               onReply={() => setReplyingTo(msg)}
-              onSelect={() => isMobile && setSelectedMessage(msg)}
+              onSelect={() => setSelectedMessage(msg)}
               isSelected={selectedMessage?.id === msg.id}
             />
           ))}
@@ -370,7 +362,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                     <UserPlus className="w-4 h-4 text-primary" /> <span className="text-xs font-bold uppercase tracking-widest">Share Contact</span>
                   </DropdownMenuItem>
                 </DialogTrigger>
-                <ContactPicker onPicked={(c) => { handleSendMessage({ sharedContact: c }); setIsContactDialogOpen(false); }} currentUserId={user?.uid} />
+                <ContactPicker onPicked={(c: any) => { handleSendMessage({ sharedContact: c }); setIsContactDialogOpen(false); }} currentUserId={user?.uid} />
               </Dialog>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -395,43 +387,53 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
   const isOwn = msg.senderId === user?.uid;
   const isSystem = msg.isDeleted;
   const router = useRouter();
+  const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Drag to reply logic
+  // Swipe to reply logic
   const x = useMotionValue(0);
-  const swipeThreshold = 50;
-  const swipeOpacity = useTransform(x, [0, swipeThreshold], [0, 1]);
+  const swipeThreshold = 60;
+  const replyIconOpacity = useTransform(x, [0, swipeThreshold], [0, 1]);
 
-  useEffect(() => {
-    return x.on("change", (latest) => {
-      if (latest >= swipeThreshold) {
-        onReply();
-        x.set(0);
-      }
-    });
-  }, [x, onReply]);
+  const handlePointerDown = () => {
+    if (!isMobile) return;
+    holdTimerRef.current = setTimeout(() => {
+      onSelect();
+      if (window.navigator.vibrate) window.navigator.vibrate(50);
+    }, 1500); // 1.5 seconds hold
+  };
+
+  const handlePointerUp = () => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  };
 
   return (
     <div className={cn("flex w-full group relative px-2", isOwn ? "justify-end" : "justify-start")}>
       {!isOwn && !isSystem && (
         <motion.div 
-          style={{ opacity: swipeOpacity }}
-          className="absolute left-[-20px] top-1/2 -translate-y-1/2 text-primary"
+          style={{ opacity: replyIconOpacity }}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-primary pointer-events-none"
         >
-          <Reply className="w-4 h-4" />
+          <Reply className="w-5 h-5" />
         </motion.div>
       )}
 
       <motion.div
-        drag="x"
-        dragConstraints={{ left: 0, right: isOwn ? 0 : 100 }}
-        dragElastic={0.2}
-        style={{ x }}
-        onPointerDown={(e) => {
-          const timer = setTimeout(onSelect, 500);
-          e.currentTarget.addEventListener('pointerup', () => clearTimeout(timer), { once: true });
+        drag={isOwn || isSystem ? false : "x"}
+        dragConstraints={{ left: 0, right: 100 }}
+        dragElastic={0.1}
+        onDragEnd={(event, info) => {
+          if (info.offset.x > swipeThreshold) {
+            onReply();
+          }
         }}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
         className={cn(
-          "max-w-[85%] md:max-w-[70%] p-3 rounded-2xl text-[13px] relative group transition-all duration-300",
+          "max-w-[85%] md:max-w-[70%] p-3 rounded-2xl text-[13px] relative transition-all duration-300",
           isSelected && "scale-[1.02] ring-2 ring-primary ring-offset-2 ring-offset-[#050505]",
           isSystem ? "bg-white/5 text-muted-foreground italic border border-white/5 text-center px-8" : 
           isOwn ? "bg-primary text-primary-foreground rounded-tr-none shadow-lg" : "bg-[#161616] text-white rounded-tl-none border border-white/5 shadow-md"
@@ -489,7 +491,13 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
           <span className="opacity-60">{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
           {isOwn && !isSystem && (
             <div className="flex items-center ml-1">
-              {msg.status === 'read' ? <CheckCheck className="w-3.5 h-3.5 text-sky-400 stroke-[3.5]" /> : <Check className="w-3.5 h-3.5 text-white/40 stroke-[3.5]" />}
+              {msg.status === 'read' ? (
+                <CheckCheck className="w-4 h-4 text-sky-400 stroke-[3.5]" />
+              ) : msg.status === 'delivered' ? (
+                <CheckCheck className="w-4 h-4 text-muted-foreground/50 stroke-[3.5]" />
+              ) : (
+                <Check className="w-4 h-4 text-muted-foreground/30 stroke-[3.5]" />
+              )}
             </div>
           )}
         </div>
