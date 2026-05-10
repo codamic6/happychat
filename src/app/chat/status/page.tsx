@@ -1,19 +1,19 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, updateDoc, arrayUnion, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, ChevronLeft, ChevronRight, Play, Pause, 
-  Send, ArrowLeft, Loader2, Sparkles
+  Send, ArrowLeft, Loader2, Sparkles, Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 type StatusUpdate = {
   id: string;
@@ -36,6 +36,8 @@ export default function StatusImmersivePage() {
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [sendSuccess, setSendSuccess] = useState(false);
 
   const contactsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
@@ -87,6 +89,70 @@ export default function StatusImmersivePage() {
       setProgress(0);
     }
   }, [currentIndex]);
+
+  const handleSendReply = async () => {
+    if (!replyText.trim() || !user || !db || !currentStatus || isSending) return;
+
+    setIsSending(true);
+    setIsPaused(true);
+
+    try {
+      const targetUid = currentStatus.userId;
+      const participantIds = [user.uid, targetUid].sort();
+      
+      // Find or create conversation
+      const convsQuery = query(
+        collection(db, 'conversations'),
+        where('participantIds', '==', participantIds)
+      );
+      const convsSnap = await getDocs(convsQuery);
+      
+      let conversationId;
+      if (convsSnap.empty) {
+        const newConv = await addDoc(collection(db, 'conversations'), {
+          participantIds,
+          updatedAt: serverTimestamp(),
+          lastMessage: replyText,
+          unreadCount: { [targetUid]: 1, [user.uid]: 0 }
+        });
+        conversationId = newConv.id;
+      } else {
+        conversationId = convsSnap.docs[0].id;
+        await updateDoc(doc(db, 'conversations', conversationId), {
+          lastMessage: replyText,
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      // Add message as a status reply
+      await addDoc(collection(db, 'conversations', conversationId, 'messages'), {
+        conversationId,
+        senderId: user.uid,
+        text: replyText,
+        createdAt: serverTimestamp(),
+        status: 'sent',
+        replyTo: {
+          isStatus: true,
+          statusUid: targetUid,
+          text: currentStatus.content,
+          senderName: 'STATUS'
+        }
+      });
+
+      setSendSuccess(true);
+      setReplyText('');
+      setTimeout(() => {
+        setSendSuccess(false);
+        setIsSending(false);
+        setIsPaused(false);
+      }, 2000);
+    } catch (err) {
+      console.error(err);
+      toast({ variant: 'destructive', title: 'Failed to send reply' });
+      setIsSending(false);
+      setIsPaused(false);
+    }
+  };
 
   // Track status view
   useEffect(() => {
@@ -205,6 +271,30 @@ export default function StatusImmersivePage() {
 
         {/* Status Content */}
         <div className="flex-1 flex flex-col items-center justify-center relative group p-10 select-none">
+          {/* Sending Feedback Overlay */}
+          <AnimatePresence>
+            {(isSending || sendSuccess) && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="absolute top-24 left-1/2 -translate-x-1/2 z-[60] bg-black/60 backdrop-blur-xl px-6 py-2 rounded-full border border-white/10 flex items-center gap-2"
+              >
+                {sendSuccess ? (
+                  <>
+                    <Check className="w-4 h-4 text-primary" />
+                    <span className="text-[10px] font-bold text-white uppercase tracking-widest">Message Sent!</span>
+                  </>
+                ) : (
+                  <>
+                    <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                    <span className="text-[10px] font-bold text-white uppercase tracking-widest">Sending Reply...</span>
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <AnimatePresence mode="wait">
             <motion.div 
               key={currentStatus.id} 
@@ -232,11 +322,19 @@ export default function StatusImmersivePage() {
               <Input 
                 value={replyText} 
                 onChange={(e) => setReplyText(e.target.value)} 
+                onFocus={() => setIsPaused(true)}
+                onBlur={() => !isSending && setIsPaused(false)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendReply()}
                 placeholder="Reply to Moment..." 
                 className="bg-white/10 border-white/10 rounded-full h-12 text-sm text-white placeholder:text-white/30 focus-visible:ring-primary focus-visible:ring-offset-0 px-6" 
               />
             </div>
-            <Button size="icon" className="h-12 w-12 rounded-full bg-primary hover:glow-green text-primary-foreground shrink-0 active:scale-90 transition-all">
+            <Button 
+              size="icon" 
+              onClick={handleSendReply}
+              disabled={!replyText.trim() || isSending}
+              className="h-12 w-12 rounded-full bg-primary hover:glow-green text-primary-foreground shrink-0 active:scale-90 transition-all"
+            >
               <Send className="w-5 h-5" />
             </Button>
           </div>

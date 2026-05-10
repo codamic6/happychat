@@ -51,10 +51,12 @@ type Message = {
   status?: 'sent' | 'delivered' | 'read';
   updatedAt?: any;
   replyTo?: {
-    id: string;
+    id?: string;
     text: string;
-    senderId: string;
+    senderId?: string;
     senderName: string;
+    isStatus?: boolean;
+    statusUid?: string;
   };
   poll?: {
     question: string;
@@ -399,13 +401,19 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
     holdTimerRef.current = setTimeout(() => {
       onSelect();
       if (window.navigator.vibrate) window.navigator.vibrate(50);
-    }, 700); // 0.7 seconds hold
+    }, 700); 
   };
 
   const handlePointerUp = () => {
     if (holdTimerRef.current) {
       clearTimeout(holdTimerRef.current);
       holdTimerRef.current = null;
+    }
+  };
+
+  const handleReplyClick = () => {
+    if (msg.replyTo?.isStatus && msg.replyTo.statusUid) {
+      router.push(`/chat/status?uid=${msg.replyTo.statusUid}`);
     }
   };
 
@@ -440,8 +448,14 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
         )}
       >
         {msg.replyTo && (
-          <div className="mb-2 p-2 bg-black/20 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate">
-            <p className="font-bold text-primary mb-0.5">{msg.replyTo.senderName}</p>
+          <div 
+            onClick={handleReplyClick}
+            className={cn(
+              "mb-2 p-2 bg-black/20 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate",
+              msg.replyTo.isStatus && "cursor-pointer hover:bg-black/40 transition-colors"
+            )}
+          >
+            <p className="font-bold text-primary mb-0.5">{msg.replyTo.isStatus ? 'STATUS' : msg.replyTo.senderName}</p>
             {msg.replyTo.text}
           </div>
         )}
@@ -461,7 +475,7 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
                   <div className="absolute inset-0 bg-primary/20 transition-all duration-500" style={{ width: `${percent}%` }} />
                   <div className="relative z-10 px-4 flex justify-between items-center h-full font-bold uppercase text-[9px] tracking-widest">
                     <span className="truncate mr-2">{opt}</span>
-                    <span className="flex items-center gap-1 shrink-0">{votes.length} {hasVoted && <Check className="w-3 h-3 text-primary stroke-[3]" />}</span>
+                    <span className="flex items-center gap-1 shrink-0">{votes.length} {hasVoted && <Check className="w-3 h-3 text-white stroke-[3.5]" />}</span>
                   </div>
                 </button>
               );
@@ -492,11 +506,11 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
           {isOwn && !isSystem && (
             <div className="flex items-center ml-1">
               {msg.status === 'read' ? (
-                <CheckCheck className="w-4 h-4 text-primary-foreground stroke-[3.5]" />
+                <CheckCheck className="w-4 h-4 text-white stroke-[3.5]" />
               ) : msg.status === 'delivered' ? (
-                <CheckCheck className="w-4 h-4 text-primary-foreground/50 stroke-[3.5]" />
+                <CheckCheck className="w-4 h-4 text-white/50 stroke-[3.5]" />
               ) : (
-                <Check className="w-4 h-4 text-primary-foreground/30 stroke-[3.5]" />
+                <Check className="w-4 h-4 text-white/30 stroke-[3.5]" />
               )}
             </div>
           )}
