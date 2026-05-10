@@ -298,75 +298,80 @@ export function ChatSidebar() {
 
   return (
     <div className="flex flex-col h-full bg-[#0d0d0d] w-full overflow-hidden border-r border-white/5">
-      <AnimatePresence mode="wait">
-        {isSelectionMode && isMobile ? (
-          <motion.header 
-            key="selection-header"
-            initial={{ y: -50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -50, opacity: 0 }}
-            className="flex-none h-16 md:h-20 px-4 flex items-center justify-between bg-primary/20 backdrop-blur-3xl border-b border-primary/20 z-[100]"
-          >
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => { setIsSelectionMode(false); setSelectedConvId(null); }} className="text-primary hover:bg-primary/20">
-                <X className="w-5 h-5" />
-              </Button>
-              <span className="text-xs font-black uppercase tracking-widest text-primary italic font-headline">Selected</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => {
-                  const conv = filteredConversations.find(c => c.id === selectedConvId);
-                  if (conv) togglePin(conv.id, !!conv.pinnedBy?.includes(user?.uid || ''));
-                }}
-                className="text-primary hover:bg-primary/20"
+      <header className="flex-none p-4 md:p-6 space-y-6">
+        <div className="h-10 relative">
+          <AnimatePresence mode="wait">
+            {isSelectionMode && isMobile ? (
+              <motion.div 
+                key="selection-tools"
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -20, opacity: 0 }}
+                className="absolute inset-0 flex items-center justify-between bg-primary/20 backdrop-blur-3xl border border-primary/20 rounded-2xl px-4 z-50"
               >
-                {filteredConversations.find(c => c.id === selectedConvId)?.pinnedBy?.includes(user?.uid || '') ? <PinOff className="w-5 h-5" /> : <Pin className="w-5 h-5" />}
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => {
-                  const conv = filteredConversations.find(c => c.id === selectedConvId);
-                  const otherId = conv?.participantIds.find(id => id !== user?.uid);
-                  if (otherId) handleOpenProfile(otherId);
-                }}
-                className="text-primary hover:bg-primary/20"
+                <div className="flex items-center gap-3">
+                  <Button variant="ghost" size="icon" onClick={() => { setIsSelectionMode(false); setSelectedConvId(null); }} className="h-8 w-8 text-primary hover:bg-primary/20">
+                    <X className="w-4 h-4" />
+                  </Button>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary italic font-headline">Selected</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => {
+                      const conv = filteredConversations.find(c => c.id === selectedConvId);
+                      if (conv) togglePin(conv.id, !!conv.pinnedBy?.includes(user?.uid || ''));
+                    }}
+                    className="h-8 w-8 text-primary hover:bg-primary/20"
+                  >
+                    {filteredConversations.find(c => c.id === selectedConvId)?.pinnedBy?.includes(user?.uid || '') ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => {
+                      if (selectedConvId) {
+                        setIsSelectionMode(false);
+                        setSelectedConvId(null);
+                        router.push(`/chat/${selectedConvId}?info=true`);
+                      }
+                    }}
+                    className="h-8 w-8 text-primary hover:bg-primary/20"
+                  >
+                    <Info className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => selectedConvId && deleteChat(selectedConvId)} className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="normal-header"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center justify-between"
               >
-                <Info className="w-5 h-5" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => selectedConvId && deleteChat(selectedConvId)} className="text-destructive hover:bg-destructive/10">
-                <Trash2 className="w-5 h-5" />
-              </Button>
-            </div>
-          </motion.header>
-        ) : (
-          <motion.header 
-            key="normal-header"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="p-4 md:p-6 space-y-6 flex-none"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl md:text-2xl font-bold font-headline text-white tracking-tighter uppercase">Chats</h2>
-              <Button size="icon" variant="ghost" className="rounded-xl hover:bg-white/5 text-muted-foreground">
-                <MoreVertical className="w-5 h-5" />
-              </Button>
-            </div>
-            <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..." 
-                className="bg-white/5 border-white/10 pl-12 h-12 text-sm rounded-full focus-visible:ring-primary"
-              />
-            </div>
-          </motion.header>
-        )}
-      </AnimatePresence>
+                <h2 className="text-xl md:text-2xl font-bold font-headline text-white tracking-tighter uppercase">Chats</h2>
+                <Button size="icon" variant="ghost" className="rounded-xl hover:bg-white/5 text-muted-foreground">
+                  <MoreVertical className="w-5 h-5" />
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="relative group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search..." 
+            className="bg-white/5 border-white/10 pl-12 h-12 text-sm rounded-full focus-visible:ring-primary"
+          />
+        </div>
+      </header>
 
       <ScrollArea className="flex-1 w-full">
         <div className="px-3 pb-24 md:pb-6 space-y-1">
@@ -389,78 +394,86 @@ export function ChatSidebar() {
                 onPointerUp={handlePointerUp}
                 onPointerLeave={handlePointerUp}
               >
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button 
-                      onClick={() => handleChatClick(conv.id)}
-                      onContextMenu={(e) => {
-                        if (isMobile) return;
-                        // Dropdown handles context trigger
-                      }}
-                      className={cn(
-                        "w-full p-4 rounded-3xl flex items-center gap-4 transition-all border border-transparent overflow-hidden relative",
-                        isSelected 
-                          ? (isSelectionMode ? "bg-primary/20 border-primary/40 shadow-xl" : "bg-primary/10 border-primary/20 shadow-md") 
-                          : "hover:bg-white/5"
-                      )}
-                    >
-                      <div className="relative shrink-0 flex-none flex items-center justify-center w-14 h-14">
-                        {statusInfo && statusInfo.count > 0 && (
-                          <SegmentedRing count={statusInfo.count} hasUnseen={statusInfo.hasUnseen} size={56} />
-                        )}
-                        <div className="w-12 h-12 rounded-full border border-white/10 bg-[#111] flex items-center justify-center overflow-hidden z-0">
-                          <div className="text-xl font-bold text-primary">{displayName.charAt(0).toUpperCase()}</div>
-                        </div>
-                        {profile.showOnlineStatus !== false && profile.isOnline && (
-                          <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green z-20" />
-                        )}
-                      </div>
-                      
-                      <div className="flex-1 flex flex-col min-w-0 text-left pr-4">
-                        <div className="flex items-center justify-between gap-2 min-w-0 w-full mb-1">
-                          <span className={cn(
-                            "font-bold text-sm text-white truncate min-w-0 flex-1",
-                            isPinned && "flex items-center gap-1.5"
-                          )}>
-                            {isPinned && <Pin className="w-3 h-3 text-primary fill-primary" />}
-                            {displayName}
-                          </span>
-                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">
-                            {conv.updatedAt?.toDate ? formatShortTime(conv.updatedAt.toDate(), isMobile) : ''}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between gap-3 min-w-0 w-full overflow-hidden">
-                          <p className={cn(
-                            "text-[11px] min-w-0 flex-1 truncate",
-                            unreadCount > 0 ? "text-white font-bold" : "text-muted-foreground"
-                          )}>
-                            {conv.lastMessage || 'Secure chat...'}
-                          </p>
-                          {unreadCount > 0 && (
-                            <Badge className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center">
-                              {unreadCount > 99 ? '99+' : unreadCount}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  </DropdownMenuTrigger>
-                  {!isMobile && (
-                    <DropdownMenuContent className="bg-[#0d0d0d] border-white/10 min-w-[180px] rounded-2xl p-2 shadow-2xl z-[100]">
-                      <DropdownMenuItem onClick={() => togglePin(conv.id, isPinned)} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-primary/10 text-white text-[10px] font-bold uppercase tracking-widest">
-                        {isPinned ? <><PinOff className="w-4 h-4" /> Unpin Chat</> : <><Pin className="w-4 h-4" /> Pin Chat</>}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => otherId && handleOpenProfile(otherId)} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-primary/10 text-white text-[10px] font-bold uppercase tracking-widest">
-                        <User className="w-4 h-4" /> View Contact
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator className="bg-white/5" />
-                      <DropdownMenuItem onClick={() => deleteChat(conv.id)} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-destructive/10 text-destructive text-[10px] font-bold uppercase tracking-widest">
-                        <Trash2 className="w-4 h-4" /> Delete Chat
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
+                <button 
+                  onClick={() => handleChatClick(conv.id)}
+                  className={cn(
+                    "w-full p-4 rounded-3xl flex items-center gap-4 transition-all border border-transparent overflow-hidden relative",
+                    isSelected 
+                      ? (isSelectionMode ? "bg-primary/20 border-primary/40 shadow-xl" : "bg-primary/10 border-primary/20 shadow-md") 
+                      : "hover:bg-white/5"
                   )}
-                </DropdownMenu>
+                >
+                  <div className="relative shrink-0 flex-none flex items-center justify-center w-14 h-14">
+                    {statusInfo && statusInfo.count > 0 && (
+                      <SegmentedRing count={statusInfo.count} hasUnseen={statusInfo.hasUnseen} size={56} />
+                    )}
+                    <div className="w-12 h-12 rounded-full border border-white/10 bg-[#111] flex items-center justify-center overflow-hidden z-0">
+                      <div className="text-xl font-bold text-primary">{displayName.charAt(0).toUpperCase()}</div>
+                    </div>
+                    {profile.showOnlineStatus !== false && profile.isOnline && (
+                      <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green z-20" />
+                    )}
+                  </div>
+                  
+                  <div className="flex-1 flex flex-col min-w-0 text-left pr-4">
+                    <div className="flex items-center justify-between gap-2 min-w-0 w-full mb-1">
+                      <span className={cn(
+                        "font-bold text-sm text-white truncate min-w-0 flex-1",
+                        isPinned && "flex items-center gap-1.5"
+                      )}>
+                        {isPinned && <Pin className="w-3 h-3 text-primary fill-primary" />}
+                        {displayName}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">
+                          {conv.updatedAt?.toDate ? formatShortTime(conv.updatedAt.toDate(), isMobile) : ''}
+                        </span>
+                        
+                        {/* PC Hover Dots */}
+                        {!isMobile && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={(e) => e.stopPropagation()} 
+                                className="h-6 w-6 rounded-full opacity-0 group-hover/item:opacity-100 transition-opacity bg-white/5 hover:bg-white/10"
+                              >
+                                <MoreVertical className="w-3 h-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="bg-[#0d0d0d] border-white/10 min-w-[180px] rounded-2xl p-2 shadow-2xl z-[100]">
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); togglePin(conv.id, isPinned); }} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-primary/10 text-white text-[10px] font-bold uppercase tracking-widest">
+                                {isPinned ? <><PinOff className="w-4 h-4" /> Unpin Chat</> : <><Pin className="w-4 h-4" /> Pin Chat</>}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); otherId && handleOpenProfile(otherId); }} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-primary/10 text-white text-[10px] font-bold uppercase tracking-widest">
+                                <User className="w-4 h-4" /> View Contact
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator className="bg-white/5" />
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); deleteChat(conv.id); }} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-destructive/10 text-destructive text-[10px] font-bold uppercase tracking-widest">
+                                <Trash2 className="w-4 h-4" /> Delete Chat
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between gap-3 min-w-0 w-full overflow-hidden">
+                      <p className={cn(
+                        "text-[11px] min-w-0 flex-1 truncate",
+                        unreadCount > 0 ? "text-white font-bold" : "text-muted-foreground"
+                      )}>
+                        {conv.lastMessage || 'Secure chat...'}
+                      </p>
+                      {unreadCount > 0 && (
+                        <Badge className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </button>
               </div>
             );
           })}
@@ -477,8 +490,8 @@ export function ChatSidebar() {
       {/* Profile Info Dialog (Shared) */}
       <Dialog open={!!viewingProfile} onOpenChange={() => setViewingProfile(null)}>
         <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-0 rounded-[2.5rem] overflow-hidden max-w-md shadow-2xl">
-          <DialogHeader className="sr-only">
-            <DialogTitle>User Profile</DialogTitle>
+          <DialogHeader className="p-8 pb-0">
+            <DialogTitle className="text-xl font-bold font-headline uppercase tracking-tight text-gradient">User Profile</DialogTitle>
           </DialogHeader>
           <div className="p-8 flex flex-col items-center text-center space-y-6">
             <div className="relative">
@@ -515,3 +528,4 @@ export function ChatSidebar() {
     </div>
   );
 }
+

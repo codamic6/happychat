@@ -34,7 +34,7 @@ import {
   arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -100,6 +100,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isMobile = useIsMobile();
   const [inputText, setInputText] = useState('');
   const [showProfile, setShowProfile] = useState(false);
@@ -137,6 +138,13 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
+
+  // Auto-open info if requested by query param
+  useEffect(() => {
+    if (searchParams.get('info') === 'true') {
+      setShowProfile(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!db || isNewChat || !user || !rawMessages || isUserLoading) return;
@@ -193,13 +201,11 @@ export function ConversationView({ conversationId }: { conversationId: string })
       } else {
         activeId = existing.docs[0].id;
         router.replace(`/chat/${activeId}`);
-        // Ensure it's not hidden if starting from contacts
         await updateDoc(doc(db, 'conversations', activeId), {
           hiddenFor: arrayRemove(user.uid)
         });
       }
     } else {
-      // If hidden, unhide for both when a new message is sent
       await updateDoc(doc(db, 'conversations', activeId), {
         hiddenFor: []
       });
@@ -319,6 +325,10 @@ export function ConversationView({ conversationId }: { conversationId: string })
                   </div>
                 </div>
               </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary"><Search className="w-5 h-5" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setShowProfile(true)} className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -342,6 +352,41 @@ export function ConversationView({ conversationId }: { conversationId: string })
         </div>
       </ScrollArea>
 
+      <AnimatePresence>
+        {showProfile && otherProfile && (
+          <motion.aside 
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            className="absolute inset-y-0 right-0 w-full md:w-80 bg-[#0a0a0a] border-l border-white/5 z-[100] flex flex-col shadow-2xl"
+          >
+            <div className="p-6 flex items-center justify-between border-b border-white/5">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">User Details</h3>
+              <Button size="icon" variant="ghost" onClick={() => setShowProfile(false)} className="h-8 w-8 rounded-full"><X className="w-4 h-4" /></Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center text-center space-y-6">
+              <div className="w-32 h-32 rounded-full border-4 border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden">
+                <span className="text-4xl font-black text-primary uppercase">{initial}</span>
+              </div>
+              <div>
+                <h2 className="text-2xl font-black font-headline tracking-tighter uppercase">{mainName}</h2>
+                <p className="text-primary text-[10px] font-bold uppercase tracking-widest">@{otherProfile.username}</p>
+              </div>
+              <div className="w-full bg-white/5 rounded-2xl p-6 border border-white/5 text-left space-y-4">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">About</span>
+                  <p className="text-sm">{otherProfile.about || "Secure HappyChat User"}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Email</span>
+                  <p className="text-sm text-primary truncate">{otherProfile.email}</p>
+                </div>
+              </div>
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
       <footer className="bg-[#0a0a0a] border-t border-white/5 p-4 sticky bottom-0 z-50">
         <AnimatePresence>
           {replyingTo && (
@@ -360,7 +405,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
             <DropdownMenuTrigger asChild>
               <Button size="icon" variant="ghost" className="bg-white/5 rounded-xl h-11 w-11"><MoreHorizontal className="w-5 h-5 text-muted-foreground" /></Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="start" className="w-56 bg-[#0d0d0d] border-white/10 p-2 rounded-2xl shadow-2xl z-[100]">
+            <DropdownMenuContent side="top" align="start" className="w-56 bg-[#0d0d0d] border-white/10 p-2 rounded-2xl shadow-2xl z-[110]">
               <Dialog open={isPollDialogOpen} onOpenChange={setIsPollDialogOpen}>
                 <DialogTrigger asChild>
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-primary/10 text-white">
@@ -696,3 +741,4 @@ function ContactPicker({ onPicked, currentUserId }: any) {
     </DialogContent>
   );
 }
+
