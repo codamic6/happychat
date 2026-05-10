@@ -6,7 +6,7 @@ import {
   Send, MoreHorizontal, Smile, Search, 
   MoreVertical, X, Info, ArrowLeft, Loader2,
   Check, Reply, CheckCheck, Trash2, BarChart2, UserPlus, MessageSquare,
-  Forward, ChevronRight, Share2, Pencil
+  Forward, ChevronRight, Share2, Pencil, Plus, ArrowLeftCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -104,13 +104,14 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const isMobile = useIsMobile();
   const [inputText, setInputText] = useState('');
   const [showProfile, setShowProfile] = useState(false);
-  const [isPollDialogOpen, setIsPollDialogOpen] = useState(false);
-  const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Selection & Tools State
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  
+  // Action Tray State
+  const [activeTool, setActiveTool] = useState<'none' | 'menu' | 'poll' | 'contact'>('none');
   
   const isNewChat = conversationId.startsWith('new-');
   const targetUid = isNewChat ? conversationId.replace('new-', '') : null;
@@ -139,7 +140,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
 
-  // Auto-open info if requested by query param
   useEffect(() => {
     if (searchParams.get('info') === 'true') {
       setShowProfile(true);
@@ -182,6 +182,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
     setInputText('');
     setReplyingTo(null);
+    setActiveTool('none'); // Close tools on send
 
     let activeId = conversationId;
     let pIds = (conversation?.participantIds || [user.uid, otherProfile.id]).sort();
@@ -268,7 +269,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
             <motion.div 
               key="selection-header"
               initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
+              animate={{ y: 0, opacity: 1 }}
               exit={{ opacity: 0, y: -20 }}
               className="flex items-center justify-between w-full"
             >
@@ -390,41 +391,99 @@ export function ConversationView({ conversationId }: { conversationId: string })
       <footer className="bg-[#0a0a0a] border-t border-white/5 p-4 sticky bottom-0 z-50">
         <AnimatePresence>
           {replyingTo && (
-            <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="px-4 py-2 bg-white/5 border-l-2 border-primary mb-2 flex justify-between items-center rounded-r-xl">
+            <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="px-4 py-2 bg-white/5 border-l-2 border-primary mb-2 flex justify-between items-center rounded-r-xl overflow-hidden">
               <div className="min-w-0">
                 <p className="text-[9px] font-bold text-primary uppercase">Replying to {replyingTo.senderId === user?.uid ? 'You' : (otherProfile?.fullName || 'User')}</p>
                 <p className="text-xs text-muted-foreground truncate">{replyingTo.text}</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setReplyingTo(null)} className="h-6 w-6"><X className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => setReplyingTo(null)} className="h-6 w-6 shrink-0"><X className="w-4 h-4" /></Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Dynamic Action Tray */}
+        <AnimatePresence mode="wait">
+          {activeTool !== 'none' && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="bg-[#0d0d0d] border border-white/5 rounded-2xl mb-4 overflow-hidden shadow-2xl"
+            >
+              <div className="p-4">
+                {activeTool === 'menu' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <button 
+                      onClick={() => setActiveTool('poll')}
+                      className="flex flex-col items-center gap-2 p-6 rounded-2xl bg-white/5 hover:bg-primary/10 transition-all group"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                        <BarChart2 className="w-6 h-6" />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Create Poll</span>
+                    </button>
+                    <button 
+                      onClick={() => setActiveTool('contact')}
+                      className="flex flex-col items-center gap-2 p-6 rounded-2xl bg-white/5 hover:bg-primary/10 transition-all group"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                        <UserPlus className="w-6 h-6" />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Share Contact</span>
+                    </button>
+                  </div>
+                )}
+
+                {activeTool === 'poll' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => setActiveTool('menu')} className="h-8 w-8 text-primary">
+                          <ArrowLeftCircle className="w-5 h-5" />
+                        </Button>
+                        <span className="text-xs font-bold uppercase tracking-widest">New Poll</span>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => setActiveTool('none')} className="h-8 w-8">
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <PollComposerInline onCreated={(p) => handleSendMessage({ poll: p })} />
+                  </div>
+                )}
+
+                {activeTool === 'contact' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => setActiveTool('menu')} className="h-8 w-8 text-primary">
+                          <ArrowLeftCircle className="w-5 h-5" />
+                        </Button>
+                        <span className="text-xs font-bold uppercase tracking-widest">Share Contact</span>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => setActiveTool('none')} className="h-8 w-8">
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <ContactPickerInline onPicked={(c: any) => handleSendMessage({ sharedContact: c })} currentUserId={user?.uid} />
+                  </div>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         <div className="flex items-center gap-3 max-w-5xl mx-auto">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="icon" variant="ghost" className="bg-white/5 rounded-xl h-11 w-11"><MoreHorizontal className="w-5 h-5 text-muted-foreground" /></Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="start" className="w-56 bg-[#0d0d0d] border-white/10 p-2 rounded-2xl shadow-2xl z-[110]">
-              <Dialog open={isPollDialogOpen} onOpenChange={setIsPollDialogOpen}>
-                <DialogTrigger asChild>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-primary/10 text-white">
-                    <BarChart2 className="w-4 h-4 text-primary" /> <span className="text-xs font-bold uppercase tracking-widest">Create Poll</span>
-                  </DropdownMenuItem>
-                </DialogTrigger>
-                <PollComposer onCreated={(p) => { handleSendMessage({ poll: p }); setIsPollDialogOpen(false); }} />
-              </Dialog>
-              
-              <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
-                <DialogTrigger asChild>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-primary/10 text-white">
-                    <UserPlus className="w-4 h-4 text-primary" /> <span className="text-xs font-bold uppercase tracking-widest">Share Contact</span>
-                  </DropdownMenuItem>
-                </DialogTrigger>
-                <ContactPicker onPicked={(c: any) => { handleSendMessage({ sharedContact: c }); setIsContactDialogOpen(false); }} currentUserId={user?.uid} />
-              </Dialog>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            onClick={() => setActiveTool(activeTool === 'none' ? 'menu' : 'none')}
+            className={cn(
+              "rounded-xl h-11 w-11 transition-all",
+              activeTool !== 'none' ? "bg-primary text-primary-foreground" : "bg-white/5 text-muted-foreground"
+            )}
+          >
+            {activeTool === 'none' ? <MoreHorizontal className="w-5 h-5" /> : <X className="w-5 h-5" />}
+          </Button>
 
           <div className="flex-1 relative">
             <Input 
@@ -448,7 +507,6 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
   const router = useRouter();
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Swipe to reply logic
   const x = useMotionValue(0);
   const swipeThreshold = 60;
   const replyIconOpacity = useTransform(x, [0, swipeThreshold], [0, 1]);
@@ -622,7 +680,7 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
   );
 }
 
-function PollComposer({ onCreated }: { onCreated: (poll: any) => void }) {
+function PollComposerInline({ onCreated }: { onCreated: (poll: any) => void }) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
 
@@ -637,60 +695,52 @@ function PollComposer({ onCreated }: { onCreated: (poll: any) => void }) {
   const isInvalid = !question.trim() || options.some(o => !o.trim());
 
   return (
-    <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-8 rounded-[2rem] shadow-2xl z-[110]">
-      <DialogHeader>
-        <DialogTitle className="text-2xl font-headline uppercase tracking-tight flex items-center gap-3 text-gradient">
-          <BarChart2 className="w-7 h-7 text-primary" /> Create Poll
-        </DialogTitle>
-      </DialogHeader>
-      <div className="space-y-6 py-6">
-        <div className="space-y-2">
-          <Label className="text-[10px] font-bold uppercase tracking-widest text-primary ml-1">Question</Label>
-          <Input 
-            value={question} 
-            onChange={(e) => setQuestion(e.target.value)} 
-            placeholder="What's on your mind?" 
-            className="bg-white/5 border-white/10 h-14 text-sm focus:ring-primary focus-visible:ring-offset-0 rounded-xl" 
-          />
-        </div>
-        <div className="space-y-3">
-          <Label className="text-[10px] font-bold uppercase tracking-widest text-primary ml-1">Options</Label>
-          {options.map((opt, i) => (
-            <Input 
-              key={i} 
-              value={opt} 
-              onChange={(e) => handleOptionChange(i, e.target.value)} 
-              placeholder={`Option ${i+1}`} 
-              className="bg-white/5 border-white/10 h-12 text-sm focus:ring-primary focus-visible:ring-offset-0 rounded-xl" 
-            />
-          ))}
-          <Button 
-            variant="ghost" 
-            onClick={handleAddOption} 
-            className="w-full text-[10px] font-bold uppercase tracking-[0.2em] text-primary hover:bg-primary/10 rounded-xl h-10"
-          >
-            Add Option +
-          </Button>
-        </div>
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <Label className="text-[9px] font-black uppercase tracking-widest text-primary ml-1">Question</Label>
+        <Input 
+          value={question} 
+          onChange={(e) => setQuestion(e.target.value)} 
+          placeholder="What's the topic?" 
+          className="bg-white/5 border-white/5 h-11 text-xs focus:ring-primary focus-visible:ring-offset-0 rounded-xl" 
+        />
       </div>
-      <DialogFooter>
+      <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
+        {options.map((opt, i) => (
+          <Input 
+            key={i} 
+            value={opt} 
+            onChange={(e) => handleOptionChange(i, e.target.value)} 
+            placeholder={`Option ${i+1}`} 
+            className="bg-white/5 border-white/5 h-10 text-xs focus:ring-primary focus-visible:ring-offset-0 rounded-xl" 
+          />
+        ))}
         <Button 
-          onClick={() => onCreated({ question, options, votes: {} })} 
-          disabled={isInvalid} 
-          className="w-full h-14 bg-primary hover:glow-green uppercase font-bold tracking-widest text-primary-foreground rounded-xl transition-all"
+          variant="ghost" 
+          size="sm"
+          onClick={handleAddOption} 
+          className="w-full text-[9px] font-bold uppercase tracking-[0.2em] text-primary hover:bg-primary/10 rounded-xl h-8"
         >
-          Share with Chat
+          Add Option +
         </Button>
-      </DialogFooter>
-    </DialogContent>
+      </div>
+      <Button 
+        onClick={() => onCreated({ question, options, votes: {} })} 
+        disabled={isInvalid} 
+        className="w-full h-11 bg-primary hover:glow-green uppercase font-black text-[10px] tracking-widest text-primary-foreground rounded-xl transition-all"
+      >
+        Share with Chat
+      </Button>
+    </div>
   );
 }
 
-function ContactPicker({ onPicked, currentUserId }: any) {
+function ContactPickerInline({ onPicked, currentUserId }: any) {
   const db = useFirestore();
   const contactsQuery = useMemoFirebase(() => currentUserId && db ? query(collection(db, 'users', currentUserId, 'contacts')) : null, [db, currentUserId]);
   const { data: contacts, isLoading } = useCollection<ContactRecord>(contactsQuery);
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (!contacts || !db) return;
@@ -705,40 +755,47 @@ function ContactPicker({ onPicked, currentUserId }: any) {
     fetchAll();
   }, [contacts, db]);
 
+  const filtered = profiles.filter(p => 
+    p.fullName?.toLowerCase().includes(search.toLowerCase()) || 
+    p.username?.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
-    <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-0 rounded-[2.5rem] overflow-hidden shadow-2xl z-[110]">
-      <DialogHeader className="p-8 pb-4">
-        <DialogTitle className="text-2xl font-headline uppercase tracking-tight flex items-center gap-3 text-gradient">
-          <UserPlus className="w-7 h-7 text-primary" /> Share Contact
-        </DialogTitle>
-      </DialogHeader>
-      <ScrollArea className="h-[400px] px-4 pb-8">
-        <div className="space-y-2">
-          {profiles.map(p => (
+    <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+        <Input 
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search Network..." 
+          className="bg-white/5 border-white/5 pl-9 h-10 text-[11px] rounded-xl focus:ring-primary"
+        />
+      </div>
+      <ScrollArea className="h-[180px]">
+        <div className="space-y-1">
+          {filtered.map(p => (
             <button 
               key={p.id} 
               onClick={() => onPicked({ uid: p.id, name: p.fullName || p.displayName, username: p.username })} 
-              className="w-full p-4 rounded-2xl flex items-center gap-4 hover:bg-white/5 transition-all text-left group"
+              className="w-full p-2.5 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-all text-left group"
             >
-              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary group-hover:scale-110 transition-transform">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xs group-hover:scale-110 transition-transform">
                 {(p.fullName || p.displayName || 'U').charAt(0)}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm text-white truncate">{p.fullName || p.displayName}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">@{p.username}</p>
+                <p className="font-bold text-xs text-white truncate">{p.fullName || p.displayName}</p>
+                <p className="text-[8px] text-muted-foreground uppercase tracking-widest">@{p.username}</p>
               </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+              <ChevronRight className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-all" />
             </button>
           ))}
-          {profiles.length === 0 && !isLoading && (
-            <div className="py-20 text-center opacity-30">
-              <UserPlus className="w-12 h-12 mx-auto mb-4" />
-              <p className="text-[10px] font-bold uppercase tracking-widest">No contacts to share</p>
+          {filtered.length === 0 && !isLoading && (
+            <div className="py-10 text-center opacity-30">
+              <p className="text-[9px] font-bold uppercase tracking-widest">No matching contacts</p>
             </div>
           )}
         </div>
       </ScrollArea>
-    </DialogContent>
+    </div>
   );
 }
-
