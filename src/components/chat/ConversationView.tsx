@@ -6,7 +6,8 @@ import {
   Send, MoreHorizontal, Smile, Search, 
   MoreVertical, X, Info, ShieldAlert, ArrowLeft, Loader2,
   ShieldCheck, Copy, Pencil, Check, Reply, Save,
-  CheckCheck, Tag, Trash2, BarChart2, UserPlus, MessageSquare
+  CheckCheck, Tag, Trash2, BarChart2, UserPlus, MessageSquare,
+  Forward, ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +19,10 @@ import {
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger,
-  DropdownMenuSeparator
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent
 } from '@/components/ui/dropdown-menu';
 import { 
   Dialog, 
@@ -36,7 +40,7 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { motion, AnimatePresence, useMotionValue } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -63,7 +67,7 @@ type Message = {
   poll?: {
     question: string;
     options: string[];
-    votes: Record<string, string[]>; // optionIndex -> userIds[]
+    votes: Record<string, string[]>; 
   };
   sharedContact?: {
     uid: string;
@@ -138,47 +142,26 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
-  const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
 
-  // Synchronization of read status
   useEffect(() => {
     if (!db || isNewChat || !user || !rawMessages || isUserLoading) return;
     const unreadMessages = rawMessages.filter(m => m.senderId !== user.uid && m.status !== 'read');
     if (unreadMessages.length > 0) {
-      console.log(`[Firestore TRACE] Attempting to mark ${unreadMessages.length} messages as read for user ${user.uid}`);
       const batch = writeBatch(db);
       unreadMessages.forEach(m => {
         const mRef = doc(db, 'conversations', conversationId, 'messages', m.id);
         batch.update(mRef, { status: 'read', updatedAt: serverTimestamp() });
       });
       
-      batch.commit().catch(async (e) => {
-        const permissionError = new FirestorePermissionError({ 
-          path: `conversations/${conversationId}/messages/${unreadMessages[0].id}`, 
-          operation: 'update',
-          requestResourceData: { status: 'read' }
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
+      batch.commit().catch(() => {});
     }
   }, [db, conversationId, isNewChat, user, rawMessages, isUserLoading]);
 
-  // Typing status sync
   useEffect(() => {
     if (!db || isNewChat || !user || isUserLoading) return;
     const typingRef = doc(db, 'conversations', conversationId);
     updateDoc(typingRef, { [`typing.${user.uid}`]: inputText.trim().length > 0 }).catch(() => {});
   }, [inputText, db, conversationId, isNewChat, user, isUserLoading]);
-
-  useEffect(() => {
-    if (!db || !user) return;
-    const fetchProfiles = async () => {
-      const q = query(collection(db, 'users'), where('id', '==', user.uid));
-      const snap = await getDocs(q);
-      if (!snap.empty) setCurrentUserProfile(snap.docs[0].data() as UserProfile);
-    };
-    fetchProfiles();
-  }, [db, user]);
 
   useEffect(() => {
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
@@ -208,7 +191,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
     let pIds = (conversation?.participantIds || [user.uid, otherProfile.id]).sort();
 
     if (isNewChat) {
-      console.log(`[Firestore TRACE] Creating new conversation between ${user.uid} and ${otherProfile.id}`);
       const existing = await getDocs(query(collection(db, 'conversations'), where('participantIds', '==', pIds)));
       if (existing.empty) {
         const newConv = await addDoc(collection(db, 'conversations'), {
@@ -235,31 +217,23 @@ export function ConversationView({ conversationId }: { conversationId: string })
       ...payloadOverride
     };
 
-    console.log(`[Firestore TRACE] Sending message to ${activeId}`, msg);
-    addDoc(collection(db, 'conversations', activeId, 'messages'), msg).catch(async (e) => {
-      const err = new FirestorePermissionError({ path: `conversations/${activeId}/messages`, operation: 'create', requestResourceData: msg });
-      errorEmitter.emit('permission-error', err);
-    });
+    addDoc(collection(db, 'conversations', activeId, 'messages'), msg).catch(() => {});
 
     updateDoc(doc(db, 'conversations', activeId), {
       lastMessage: text || 'Media Shared',
       updatedAt: serverTimestamp(),
       [`unreadCount.${otherProfile.id}`]: increment(1)
-    }).catch(async (e) => {
-      const err = new FirestorePermissionError({ path: `conversations/${activeId}`, operation: 'update' });
-      errorEmitter.emit('permission-error', err);
-    });
+    }).catch(() => {});
   };
 
-  const deleteMessage = async (msg: Message, mode: 'me' | 'everyone') => {
+  const deleteMessage = async (msgId: string, senderId: string, mode: 'me' | 'everyone') => {
     if (!user || !db) return;
-    const ref = doc(db, 'conversations', conversationId, 'messages', msg.id);
+    const ref = doc(db, 'conversations', conversationId, 'messages', msgId);
     if (mode === 'me') {
       updateDoc(ref, { deletedFor: arrayUnion(user.uid) });
-    } else if (mode === 'everyone' && msg.senderId === user.uid) {
+    } else if (mode === 'everyone' && senderId === user.uid) {
       updateDoc(ref, { isDeleted: true, text: 'This message was deleted', poll: null, sharedContact: null });
     }
-    setSelectedMessage(null);
     toast({ title: "Message Deleted", description: mode === 'me' ? "Removed from your view." : "Removed for everyone." });
   };
 
@@ -269,7 +243,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
     const currentVotes = votes[optionIndex] || [];
     if (currentVotes.includes(user.uid)) return;
 
-    // Remove user from all other options
     const newVotes = { ...votes };
     Object.keys(newVotes).forEach(idx => {
       newVotes[idx] = (newVotes[idx] || []).filter(uid => uid !== user.uid);
@@ -284,39 +257,19 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   return (
     <div className="flex-1 flex flex-col relative bg-[#050505] overflow-hidden">
-      <header className={cn(
-        "flex-none h-16 px-4 border-b border-white/5 flex items-center justify-between z-50 sticky top-0",
-        selectedMessage ? "bg-primary text-primary-foreground" : "bg-black/80 backdrop-blur-3xl"
-      )}>
-        {selectedMessage ? (
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => setSelectedMessage(null)} className="text-white hover:bg-white/10"><X className="w-6 h-6" /></Button>
-              <span className="font-bold uppercase tracking-widest text-[10px]">Selected</span>
+      <header className="flex-none h-16 px-4 border-b border-white/5 flex items-center justify-between z-50 sticky top-0 bg-black/80 backdrop-blur-3xl">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground"><ArrowLeft className="w-6 h-6" /></Button>
+          <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
+            <div className="w-10 h-10 rounded-full border border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden shrink-0">
+              <span className="text-sm font-bold text-primary">{initial}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" onClick={() => deleteMessage(selectedMessage, 'me')} className="text-white hover:bg-white/10"><Trash2 className="w-5 h-5" /></Button>
-              {selectedMessage.senderId === user?.uid && !selectedMessage.isDeleted && (
-                <Button variant="ghost" size="icon" onClick={() => deleteMessage(selectedMessage, 'everyone')} className="text-white hover:bg-white/10"><Trash2 className="w-5 h-5 fill-current" /></Button>
-              )}
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-white truncate">{mainName}</h3>
+              <p className="text-[10px] text-primary uppercase font-bold tracking-widest">{otherProfile?.isOnline ? 'Online' : 'Offline'}</p>
             </div>
           </div>
-        ) : (
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground"><ArrowLeft className="w-6 h-6" /></Button>
-              <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
-                <div className="w-10 h-10 rounded-full border border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden shrink-0">
-                  <span className="text-sm font-bold text-primary">{initial}</span>
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-white truncate">{mainName}</h3>
-                  <p className="text-[10px] text-primary uppercase font-bold tracking-widest">{otherProfile?.isOnline ? 'Online' : 'Offline'}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </header>
 
       <ScrollArea className="flex-1 p-4 custom-scrollbar">
@@ -324,9 +277,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
           {messages.map((msg) => (
             <MessageRow 
               key={msg.id} msg={msg} user={user} isMobile={isMobile}
-              onSelect={() => setSelectedMessage(msg)}
               onVote={(idx) => handleVote(msg, idx)}
-              onDelete={(mode) => deleteMessage(msg, mode)}
+              onDelete={(mode) => deleteMessage(msg.id, msg.senderId, mode)}
               onReply={() => setReplyingTo(msg)}
             />
           ))}
@@ -383,18 +335,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
   );
 }
 
-function MessageRow({ msg, user, isMobile, onSelect, onVote, onDelete, onReply }: any) {
+function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply }: any) {
   const isOwn = msg.senderId === user?.uid;
   const isSystem = msg.isDeleted;
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    if (isMobile || isSystem) return;
-    e.preventDefault();
-    onSelect();
-  };
-
   return (
-    <div className={cn("flex w-full", isOwn ? "justify-end" : "justify-start")} onContextMenu={handleContextMenu} onTouchStart={isMobile ? () => {} : undefined} onTouchEnd={isMobile ? onSelect : undefined}>
+    <div className={cn("flex w-full group", isOwn ? "justify-end" : "justify-start")}>
       <div className={cn(
         "max-w-[85%] md:max-w-[70%] p-3 rounded-2xl text-xs relative group",
         isSystem ? "bg-white/5 text-muted-foreground italic border border-white/5 text-center px-8" : 
@@ -451,18 +397,43 @@ function MessageRow({ msg, user, isMobile, onSelect, onVote, onDelete, onReply }
           )}
         </div>
 
-        {/* Desktop Context Menu Simulation */}
-        {!isMobile && !isSystem && (
-          <div className="absolute top-0 right-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {!isSystem && (
+          <div className={cn(
+            "absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity z-10",
+            isOwn ? "-left-10" : "-right-10"
+          )}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full bg-black/50"><MoreVertical className="w-3 h-3" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-black/50 text-white"><MoreVertical className="w-4 h-4" /></Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#111] border-white/10 text-white min-w-[150px]">
-                <DropdownMenuItem onClick={onReply} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary p-2 text-[10px] uppercase font-bold tracking-widest"><Reply className="w-3 h-3" /> Reply</DropdownMenuItem>
+              <DropdownMenuContent className="bg-[#111] border-white/10 text-white min-w-[160px] rounded-xl shadow-2xl">
+                <DropdownMenuItem onClick={onReply} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary p-2 text-[10px] uppercase font-bold tracking-widest">
+                  <Reply className="w-3 h-3" /> Reply
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary p-2 text-[10px] uppercase font-bold tracking-widest">
+                  <Forward className="w-3 h-3" /> Forward
+                </DropdownMenuItem>
+                {isOwn && (
+                  <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary p-2 text-[10px] uppercase font-bold tracking-widest">
+                    <Pencil className="w-3 h-3" /> Edit
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator className="bg-white/5" />
-                <DropdownMenuItem onClick={() => onDelete('me')} className="gap-2 cursor-pointer focus:bg-destructive/20 focus:text-destructive p-2 text-[10px] uppercase font-bold tracking-widest"><Trash2 className="w-3 h-3" /> Delete for me</DropdownMenuItem>
-                {isOwn && <DropdownMenuItem onClick={() => onDelete('everyone')} className="gap-2 cursor-pointer focus:bg-destructive/20 focus:text-destructive p-2 text-[10px] uppercase font-bold tracking-widest"><Trash2 className="w-3 h-3 fill-current" /> Delete for everyone</DropdownMenuItem>}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="gap-2 cursor-pointer focus:bg-destructive/20 focus:text-destructive p-2 text-[10px] uppercase font-bold tracking-widest">
+                    <Trash2 className="w-3 h-3 text-destructive" /> Delete
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="bg-[#111] border-white/10 text-white min-w-[160px] rounded-xl shadow-2xl">
+                    <DropdownMenuItem onClick={() => onDelete('me')} className="gap-2 cursor-pointer focus:bg-destructive/20 focus:text-destructive p-2 text-[10px] uppercase font-bold tracking-widest">
+                      Delete for Me
+                    </DropdownMenuItem>
+                    {isOwn && (
+                      <DropdownMenuItem onClick={() => onDelete('everyone')} className="gap-2 cursor-pointer focus:bg-destructive/20 focus:text-destructive p-2 text-[10px] uppercase font-bold tracking-widest">
+                        Delete for Everyone
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -472,36 +443,53 @@ function MessageRow({ msg, user, isMobile, onSelect, onVote, onDelete, onReply }
   );
 }
 
-function PollComposer({ onCreated }: any) {
+function PollComposer({ onCreated }: { onCreated: (poll: any) => void }) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
+
   const handleAddOption = () => setOptions([...options, '']);
+  
   const handleOptionChange = (idx: number, val: string) => {
     const newOptions = [...options];
     newOptions[idx] = val;
     setOptions(newOptions);
   };
 
+  const isInvalid = !question.trim() || options.some(o => !o.trim());
+
   return (
     <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-6 rounded-[2rem]">
       <DialogHeader>
-        <DialogTitle className="text-xl font-headline uppercase tracking-tight flex items-center gap-2 text-gradient"><BarChart2 className="w-6 h-6 text-primary" /> Create Poll</DialogTitle>
+        <DialogTitle className="text-xl font-headline uppercase tracking-tight flex items-center gap-2 text-gradient">
+          <BarChart2 className="w-6 h-6 text-primary" /> Create Poll
+        </DialogTitle>
       </DialogHeader>
       <div className="space-y-4 py-4">
         <div className="space-y-1">
           <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Question</Label>
-          <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="What's on your mind?" className="bg-white/5 border-white/10 h-12" />
+          <Input 
+            value={question} 
+            onChange={(e) => setQuestion(e.target.value)} 
+            placeholder="Ask something..." 
+            className="bg-white/5 border-white/10 h-12 text-sm focus:ring-primary" 
+          />
         </div>
         <div className="space-y-2">
           <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Options</Label>
           {options.map((opt, i) => (
-            <Input key={i} value={opt} onChange={(e) => handleOptionChange(i, e.target.value)} placeholder={`Option ${i+1}`} className="bg-white/5 border-white/10 h-10" />
+            <Input 
+              key={i} 
+              value={opt} 
+              onChange={(e) => handleOptionChange(i, e.target.value)} 
+              placeholder={`Option ${i+1}`} 
+              className="bg-white/5 border-white/10 h-10 text-sm focus:ring-primary" 
+            />
           ))}
           <Button variant="ghost" onClick={handleAddOption} className="text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-primary/10">Add Option +</Button>
         </div>
       </div>
       <DialogFooter>
-        <Button onClick={() => onCreated({ question, options, votes: {} })} disabled={!question.trim() || options.some(o => !o.trim())} className="w-full h-12 bg-primary hover:glow-green uppercase font-bold tracking-widest">Share Poll</Button>
+        <Button onClick={() => onCreated({ question, options, votes: {} })} disabled={isInvalid} className="w-full h-12 bg-primary hover:glow-green uppercase font-bold tracking-widest text-primary-foreground">Share Poll</Button>
       </DialogFooter>
     </DialogContent>
   );
