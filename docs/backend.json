@@ -91,7 +91,9 @@
         "lastMessage": { "type": "string" },
         "updatedAt": { "type": "string", "format": "date-time" },
         "unreadCount": { "type": "object" },
-        "typing": { "type": "object", "description": "Map of userIds to typing boolean status." }
+        "typing": { "type": "object" },
+        "pinnedBy": { "type": "array", "items": { "type": "string" } },
+        "hiddenFor": { "type": "array", "items": { "type": "string" } }
       }
     },
     "Message": {
@@ -135,7 +137,7 @@
         "type": { "type": "string", "enum": ["text"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "expiresAt": { "type": "string", "format": "date-time" },
-        "viewedBy": { "type": "array", "items": { "type": "string" }, "description": "List of user UIDs who have seen this status." }
+        "viewedBy": { "type": "array", "items": { "type": "string" } }
       }
     }
   },

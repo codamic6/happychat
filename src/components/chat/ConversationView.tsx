@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -30,7 +31,7 @@ import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@
 import { 
   doc, query, collection, serverTimestamp, 
   getDocs, where, addDoc, updateDoc, increment, onSnapshot, writeBatch,
-  arrayUnion
+  arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -92,6 +93,7 @@ type Conversation = {
   id: string;
   participantIds: string[];
   typing?: Record<string, boolean>;
+  hiddenFor?: string[];
 };
 
 export function ConversationView({ conversationId }: { conversationId: string }) {
@@ -183,14 +185,24 @@ export function ConversationView({ conversationId }: { conversationId: string })
           participantIds: pIds,
           updatedAt: serverTimestamp(),
           lastMessage: text || 'Media Shared',
-          unreadCount: { [otherProfile.id]: 1, [user.uid]: 0 }
+          unreadCount: { [otherProfile.id]: 1, [user.uid]: 0 },
+          hiddenFor: []
         });
         activeId = newConv.id;
         router.replace(`/chat/${activeId}`);
       } else {
         activeId = existing.docs[0].id;
         router.replace(`/chat/${activeId}`);
+        // Ensure it's not hidden if starting from contacts
+        await updateDoc(doc(db, 'conversations', activeId), {
+          hiddenFor: arrayRemove(user.uid)
+        });
       }
+    } else {
+      // If hidden, unhide for both when a new message is sent
+      await updateDoc(doc(db, 'conversations', activeId), {
+        hiddenFor: []
+      });
     }
 
     const msg = {
