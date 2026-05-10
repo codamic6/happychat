@@ -4,25 +4,20 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, MoreHorizontal, Smile, Search, 
-  MoreVertical, X, Info, ShieldAlert, ArrowLeft, Loader2,
-  ShieldCheck, Copy, Pencil, Check, Reply, Save,
-  CheckCheck, Tag, Trash2, BarChart2, UserPlus, MessageSquare,
-  Forward, ChevronRight
+  MoreVertical, X, Info, ArrowLeft, Loader2,
+  Check, Reply, CheckCheck, Trash2, BarChart2, UserPlus, MessageSquare,
+  Forward, ChevronRight, Share2, Pencil
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent
+  DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 import { 
   Dialog, 
@@ -36,11 +31,9 @@ import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@
 import { 
   doc, query, collection, serverTimestamp, 
   getDocs, where, addDoc, updateDoc, increment, onSnapshot, writeBatch,
-  orderBy, limit, arrayUnion
+  arrayUnion
 } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -113,7 +106,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   
   const isNewChat = conversationId.startsWith('new-');
@@ -143,6 +135,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
 
+  // Read status effect
   useEffect(() => {
     if (!db || isNewChat || !user || !rawMessages || isUserLoading) return;
     const unreadMessages = rawMessages.filter(m => m.senderId !== user.uid && m.status !== 'read');
@@ -152,17 +145,18 @@ export function ConversationView({ conversationId }: { conversationId: string })
         const mRef = doc(db, 'conversations', conversationId, 'messages', m.id);
         batch.update(mRef, { status: 'read', updatedAt: serverTimestamp() });
       });
-      
       batch.commit().catch(() => {});
     }
   }, [db, conversationId, isNewChat, user, rawMessages, isUserLoading]);
 
+  // Typing effect
   useEffect(() => {
     if (!db || isNewChat || !user || isUserLoading) return;
     const typingRef = doc(db, 'conversations', conversationId);
     updateDoc(typingRef, { [`typing.${user.uid}`]: inputText.trim().length > 0 }).catch(() => {});
   }, [inputText, db, conversationId, isNewChat, user, isUserLoading]);
 
+  // Profiles and contacts
   useEffect(() => {
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
     if (!uid || !db || !user) return;
@@ -234,6 +228,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     } else if (mode === 'everyone' && senderId === user.uid) {
       updateDoc(ref, { isDeleted: true, text: 'This message was deleted', poll: null, sharedContact: null });
     }
+    setSelectedMessage(null);
     toast({ title: "Message Deleted", description: mode === 'me' ? "Removed from your view." : "Removed for everyone." });
   };
 
@@ -258,40 +253,95 @@ export function ConversationView({ conversationId }: { conversationId: string })
   return (
     <div className="flex-1 flex flex-col relative bg-[#050505] overflow-hidden">
       <header className="flex-none h-16 px-4 border-b border-white/5 flex items-center justify-between z-50 sticky top-0 bg-black/80 backdrop-blur-3xl">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground"><ArrowLeft className="w-6 h-6" /></Button>
-          <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
-            <div className="w-10 h-10 rounded-full border border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden shrink-0">
-              <span className="text-sm font-bold text-primary">{initial}</span>
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-sm font-bold text-white truncate">{mainName}</h3>
-              <p className="text-[10px] text-primary uppercase font-bold tracking-widest">{otherProfile?.isOnline ? 'Online' : 'Offline'}</p>
-            </div>
-          </div>
-        </div>
+        <AnimatePresence mode="wait">
+          {selectedMessage && isMobile ? (
+            <motion.div 
+              key="selection-header"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="flex items-center justify-between w-full"
+            >
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" onClick={() => setSelectedMessage(null)} className="text-white">
+                  <X className="w-6 h-6" />
+                </Button>
+                <span className="text-sm font-bold uppercase tracking-widest text-primary">Selected</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={() => { setReplyingTo(selectedMessage); setSelectedMessage(null); }} className="text-white">
+                  <Reply className="w-5 h-5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="text-white">
+                  <Forward className="w-5 h-5" />
+                </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-destructive">
+                      <Trash2 className="w-5 h-5" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-[#0d0d0d] border-white/10 text-white rounded-[2rem]">
+                    <DialogHeader>
+                      <DialogTitle className="text-lg font-headline uppercase tracking-tight">Delete Message?</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-2 py-4">
+                      <Button onClick={() => deleteMessage(selectedMessage.id, selectedMessage.senderId, 'me')} variant="secondary" className="h-12 rounded-xl text-xs font-bold uppercase">Delete for Me</Button>
+                      {selectedMessage.senderId === user?.uid && (
+                        <Button onClick={() => deleteMessage(selectedMessage.id, selectedMessage.senderId, 'everyone')} variant="destructive" className="h-12 rounded-xl text-xs font-bold uppercase">Delete for Everyone</Button>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="normal-header"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center justify-between w-full"
+            >
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground"><ArrowLeft className="w-6 h-6" /></Button>
+                <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
+                  <div className="w-10 h-10 rounded-full border border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden shrink-0">
+                    <span className="text-sm font-bold text-primary">{initial}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-white truncate">{mainName}</h3>
+                    <p className="text-[10px] text-primary uppercase font-bold tracking-widest">{otherProfile?.isOnline ? 'Online' : 'Offline'}</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       <ScrollArea className="flex-1 p-4 custom-scrollbar">
-        <div className="max-w-4xl mx-auto space-y-2 pb-12">
+        <div className="max-w-4xl mx-auto space-y-4 pb-12">
           {messages.map((msg) => (
             <MessageRow 
               key={msg.id} msg={msg} user={user} isMobile={isMobile}
               onVote={(idx) => handleVote(msg, idx)}
               onDelete={(mode) => deleteMessage(msg.id, msg.senderId, mode)}
               onReply={() => setReplyingTo(msg)}
+              onSelect={() => isMobile && setSelectedMessage(msg)}
+              isSelected={selectedMessage?.id === msg.id}
             />
           ))}
           <div ref={scrollRef} />
         </div>
       </ScrollArea>
 
-      <footer className="bg-[#0a0a0a] border-t border-white/5 p-4 sticky bottom-0">
+      <footer className="bg-[#0a0a0a] border-t border-white/5 p-4 sticky bottom-0 z-50">
         <AnimatePresence>
           {replyingTo && (
             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="px-4 py-2 bg-white/5 border-l-2 border-primary mb-2 flex justify-between items-center rounded-r-xl">
               <div className="min-w-0">
-                <p className="text-[9px] font-bold text-primary uppercase">Replying to {replyingTo.senderId === user?.uid ? 'You' : 'User'}</p>
+                <p className="text-[9px] font-bold text-primary uppercase">Replying to {replyingTo.senderId === user?.uid ? 'You' : (otherProfile?.fullName || 'User')}</p>
                 <p className="text-xs text-muted-foreground truncate">{replyingTo.text}</p>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setReplyingTo(null)} className="h-6 w-6"><X className="w-4 h-4" /></Button>
@@ -304,7 +354,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
             <DropdownMenuTrigger asChild>
               <Button size="icon" variant="ghost" className="bg-white/5 rounded-xl h-11 w-11"><MoreHorizontal className="w-5 h-5 text-muted-foreground" /></Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="start" className="w-56 bg-[#0d0d0d] border-white/10 p-2 rounded-2xl shadow-2xl">
+            <DropdownMenuContent side="top" align="start" className="w-56 bg-[#0d0d0d] border-white/10 p-2 rounded-2xl shadow-2xl z-[100]">
               <Dialog open={isPollDialogOpen} onOpenChange={setIsPollDialogOpen}>
                 <DialogTrigger asChild>
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-primary/10 text-white">
@@ -326,33 +376,75 @@ export function ConversationView({ conversationId }: { conversationId: string })
           </DropdownMenu>
 
           <div className="flex-1 relative">
-            <Input value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} placeholder="Write a message..." className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary" />
+            <Input 
+              value={inputText} 
+              onChange={(e) => setInputText(e.target.value)} 
+              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} 
+              placeholder="Write a message..." 
+              className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary focus-visible:ring-offset-0" 
+            />
           </div>
-          <Button onClick={() => handleSendMessage()} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 rounded-xl active:scale-95 transition-all"><Send className="w-5 h-5" /></Button>
+          <Button onClick={() => handleSendMessage()} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 rounded-xl active:scale-95 transition-all shrink-0"><Send className="w-5 h-5" /></Button>
         </div>
       </footer>
     </div>
   );
 }
 
-function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply }: any) {
+function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, isSelected }: any) {
   const isOwn = msg.senderId === user?.uid;
   const isSystem = msg.isDeleted;
+  const router = useRouter();
+
+  // Drag to reply logic
+  const x = useMotionValue(0);
+  const swipeThreshold = 50;
+  const swipeOpacity = useTransform(x, [0, swipeThreshold], [0, 1]);
+
+  useEffect(() => {
+    return x.on("change", (latest) => {
+      if (latest >= swipeThreshold) {
+        onReply();
+        x.set(0);
+      }
+    });
+  }, [x, onReply]);
 
   return (
-    <div className={cn("flex w-full group", isOwn ? "justify-end" : "justify-start")}>
-      <div className={cn(
-        "max-w-[85%] md:max-w-[70%] p-3 rounded-2xl text-xs relative group",
-        isSystem ? "bg-white/5 text-muted-foreground italic border border-white/5 text-center px-8" : 
-        isOwn ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-[#161616] text-white rounded-tl-none border border-white/5"
-      )}>
+    <div className={cn("flex w-full group relative px-2", isOwn ? "justify-end" : "justify-start")}>
+      {!isOwn && !isSystem && (
+        <motion.div 
+          style={{ opacity: swipeOpacity }}
+          className="absolute left-[-20px] top-1/2 -translate-y-1/2 text-primary"
+        >
+          <Reply className="w-4 h-4" />
+        </motion.div>
+      )}
+
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: 0, right: isOwn ? 0 : 100 }}
+        dragElastic={0.2}
+        style={{ x }}
+        onPointerDown={(e) => {
+          const timer = setTimeout(onSelect, 500);
+          e.currentTarget.addEventListener('pointerup', () => clearTimeout(timer), { once: true });
+        }}
+        className={cn(
+          "max-w-[85%] md:max-w-[70%] p-3 rounded-2xl text-[13px] relative group transition-all duration-300",
+          isSelected && "scale-[1.02] ring-2 ring-primary ring-offset-2 ring-offset-[#050505]",
+          isSystem ? "bg-white/5 text-muted-foreground italic border border-white/5 text-center px-8" : 
+          isOwn ? "bg-primary text-primary-foreground rounded-tr-none shadow-lg" : "bg-[#161616] text-white rounded-tl-none border border-white/5 shadow-md"
+        )}
+      >
         {msg.replyTo && (
           <div className="mb-2 p-2 bg-black/20 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate">
+            <p className="font-bold text-primary mb-0.5">{msg.replyTo.senderName}</p>
             {msg.replyTo.text}
           </div>
         )}
 
-        {msg.text && <p className="mb-1">{msg.text}</p>}
+        {msg.text && <p className="leading-relaxed">{msg.text}</p>}
 
         {msg.poll && (
           <div className="mt-3 space-y-2 bg-black/20 p-4 rounded-xl border border-white/5">
@@ -366,8 +458,8 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply }: any) {
                 <button key={idx} onClick={() => onVote(idx)} className="w-full relative h-10 rounded-lg overflow-hidden border border-white/10 transition-all hover:border-primary/50">
                   <div className="absolute inset-0 bg-primary/20 transition-all duration-500" style={{ width: `${percent}%` }} />
                   <div className="relative z-10 px-4 flex justify-between items-center h-full font-bold uppercase text-[9px] tracking-widest">
-                    <span>{opt}</span>
-                    <span className="flex items-center gap-1">{votes.length} {hasVoted && <Check className="w-3 h-3 text-primary" />}</span>
+                    <span className="truncate mr-2">{opt}</span>
+                    <span className="flex items-center gap-1 shrink-0">{votes.length} {hasVoted && <Check className="w-3 h-3 text-primary stroke-[3]" />}</span>
                   </div>
                 </button>
               );
@@ -376,69 +468,78 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply }: any) {
         )}
 
         {msg.sharedContact && (
-          <div className="mt-2 bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col items-center gap-2">
-            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-lg">{msg.sharedContact.name.charAt(0)}</div>
+          <div className="mt-2 bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col items-center gap-3">
+            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xl shadow-inner">{msg.sharedContact.name.charAt(0)}</div>
             <div className="text-center">
-              <p className="font-bold text-[10px] uppercase tracking-widest">{msg.sharedContact.name}</p>
-              <p className="text-[9px] text-muted-foreground">@{msg.sharedContact.username}</p>
+              <p className="font-bold text-xs uppercase tracking-widest">{msg.sharedContact.name}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">@{msg.sharedContact.username}</p>
             </div>
-            <Button size="sm" variant="secondary" className="w-full h-8 text-[8px] font-bold uppercase tracking-widest bg-white/5 hover:bg-primary/20 hover:text-primary">
-              <MessageSquare className="w-3 h-3 mr-2" /> Message
+            <Button 
+              size="sm" 
+              variant="secondary" 
+              onClick={() => router.push(`/chat/new-${msg.sharedContact.uid}`)}
+              className="w-full h-10 text-[9px] font-bold uppercase tracking-widest bg-white/5 hover:bg-primary/20 hover:text-primary transition-all rounded-xl"
+            >
+              <MessageSquare className="w-4 h-4 mr-2" /> Message
             </Button>
           </div>
         )}
 
-        <div className="flex justify-end gap-1 items-center mt-1 text-[8px] font-black uppercase">
+        <div className="flex justify-end gap-1 items-center mt-1 text-[9px] font-black uppercase">
           <span className="opacity-60">{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
           {isOwn && !isSystem && (
             <div className="flex items-center ml-1">
-              {msg.status === 'read' ? <CheckCheck className="w-3.5 h-3.5 text-sky-400 stroke-[3.5]" /> : <Check className="w-3.5 h-3.5 text-white/40" />}
+              {msg.status === 'read' ? <CheckCheck className="w-3.5 h-3.5 text-sky-400 stroke-[3.5]" /> : <Check className="w-3.5 h-3.5 text-white/40 stroke-[3.5]" />}
             </div>
           )}
         </div>
 
-        {!isSystem && (
+        {/* Desktop Menu - Hidden on mobile */}
+        {!isSystem && !isMobile && (
           <div className={cn(
             "absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity z-10",
-            isOwn ? "-left-10" : "-right-10"
+            isOwn ? "-left-12" : "-right-12"
           )}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-black/50 text-white"><MoreVertical className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-black/50 text-white hover:bg-primary transition-colors"><MoreVertical className="w-4 h-4" /></Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#111] border-white/10 text-white min-w-[160px] rounded-xl shadow-2xl">
-                <DropdownMenuItem onClick={onReply} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary p-2 text-[10px] uppercase font-bold tracking-widest">
+              <DropdownMenuContent className="bg-[#111] border-white/10 text-white min-w-[160px] rounded-xl shadow-2xl z-[100]">
+                <DropdownMenuItem onClick={onReply} className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary p-3 text-[10px] uppercase font-bold tracking-widest">
                   <Reply className="w-3 h-3" /> Reply
                 </DropdownMenuItem>
-                <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary p-2 text-[10px] uppercase font-bold tracking-widest">
+                <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary p-3 text-[10px] uppercase font-bold tracking-widest">
                   <Forward className="w-3 h-3" /> Forward
                 </DropdownMenuItem>
                 {isOwn && (
-                  <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary p-2 text-[10px] uppercase font-bold tracking-widest">
+                  <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary p-3 text-[10px] uppercase font-bold tracking-widest">
                     <Pencil className="w-3 h-3" /> Edit
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator className="bg-white/5" />
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="gap-2 cursor-pointer focus:bg-destructive/20 focus:text-destructive p-2 text-[10px] uppercase font-bold tracking-widest">
-                    <Trash2 className="w-3 h-3 text-destructive" /> Delete
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="bg-[#111] border-white/10 text-white min-w-[160px] rounded-xl shadow-2xl">
-                    <DropdownMenuItem onClick={() => onDelete('me')} className="gap-2 cursor-pointer focus:bg-destructive/20 focus:text-destructive p-2 text-[10px] uppercase font-bold tracking-widest">
-                      Delete for Me
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="gap-2 cursor-pointer focus:bg-destructive/10 focus:text-destructive p-3 text-[10px] uppercase font-bold tracking-widest text-destructive">
+                      <Trash2 className="w-3 h-3" /> Delete
                     </DropdownMenuItem>
-                    {isOwn && (
-                      <DropdownMenuItem onClick={() => onDelete('everyone')} className="gap-2 cursor-pointer focus:bg-destructive/20 focus:text-destructive p-2 text-[10px] uppercase font-bold tracking-widest">
-                        Delete for Everyone
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
+                  </DialogTrigger>
+                  <DialogContent className="bg-[#0d0d0d] border-white/10 text-white rounded-[2rem] p-8">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-headline uppercase tracking-tight">Erase Content?</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-3 pt-6">
+                      <Button onClick={() => onDelete('me')} variant="secondary" className="h-14 rounded-xl text-xs font-bold uppercase tracking-widest">Delete for Me</Button>
+                      {isOwn && (
+                        <Button onClick={() => onDelete('everyone')} variant="destructive" className="h-14 rounded-xl text-xs font-bold uppercase tracking-widest">Delete for Everyone</Button>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -458,38 +559,50 @@ function PollComposer({ onCreated }: { onCreated: (poll: any) => void }) {
   const isInvalid = !question.trim() || options.some(o => !o.trim());
 
   return (
-    <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-6 rounded-[2rem]">
+    <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-8 rounded-[2rem] shadow-2xl z-[110]">
       <DialogHeader>
-        <DialogTitle className="text-xl font-headline uppercase tracking-tight flex items-center gap-2 text-gradient">
-          <BarChart2 className="w-6 h-6 text-primary" /> Create Poll
+        <DialogTitle className="text-2xl font-headline uppercase tracking-tight flex items-center gap-3 text-gradient">
+          <BarChart2 className="w-7 h-7 text-primary" /> Create Poll
         </DialogTitle>
       </DialogHeader>
-      <div className="space-y-4 py-4">
-        <div className="space-y-1">
-          <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Question</Label>
+      <div className="space-y-6 py-6">
+        <div className="space-y-2">
+          <Label className="text-[10px] font-bold uppercase tracking-widest text-primary ml-1">Question</Label>
           <Input 
             value={question} 
             onChange={(e) => setQuestion(e.target.value)} 
-            placeholder="Ask something..." 
-            className="bg-white/5 border-white/10 h-12 text-sm focus:ring-primary" 
+            placeholder="What's on your mind?" 
+            className="bg-white/5 border-white/10 h-14 text-sm focus:ring-primary focus-visible:ring-offset-0 rounded-xl" 
           />
         </div>
-        <div className="space-y-2">
-          <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Options</Label>
+        <div className="space-y-3">
+          <Label className="text-[10px] font-bold uppercase tracking-widest text-primary ml-1">Options</Label>
           {options.map((opt, i) => (
             <Input 
               key={i} 
               value={opt} 
               onChange={(e) => handleOptionChange(i, e.target.value)} 
               placeholder={`Option ${i+1}`} 
-              className="bg-white/5 border-white/10 h-10 text-sm focus:ring-primary" 
+              className="bg-white/5 border-white/10 h-12 text-sm focus:ring-primary focus-visible:ring-offset-0 rounded-xl" 
             />
           ))}
-          <Button variant="ghost" onClick={handleAddOption} className="text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-primary/10">Add Option +</Button>
+          <Button 
+            variant="ghost" 
+            onClick={handleAddOption} 
+            className="w-full text-[10px] font-bold uppercase tracking-[0.2em] text-primary hover:bg-primary/10 rounded-xl h-10"
+          >
+            Add Option +
+          </Button>
         </div>
       </div>
       <DialogFooter>
-        <Button onClick={() => onCreated({ question, options, votes: {} })} disabled={isInvalid} className="w-full h-12 bg-primary hover:glow-green uppercase font-bold tracking-widest text-primary-foreground">Share Poll</Button>
+        <Button 
+          onClick={() => onCreated({ question, options, votes: {} })} 
+          disabled={isInvalid} 
+          className="w-full h-14 bg-primary hover:glow-green uppercase font-bold tracking-widest text-primary-foreground rounded-xl transition-all"
+        >
+          Share with Chat
+        </Button>
       </DialogFooter>
     </DialogContent>
   );
@@ -498,7 +611,7 @@ function PollComposer({ onCreated }: { onCreated: (poll: any) => void }) {
 function ContactPicker({ onPicked, currentUserId }: any) {
   const db = useFirestore();
   const contactsQuery = useMemoFirebase(() => currentUserId && db ? query(collection(db, 'users', currentUserId, 'contacts')) : null, [db, currentUserId]);
-  const { data: contacts } = useCollection<ContactRecord>(contactsQuery);
+  const { data: contacts, isLoading } = useCollection<ContactRecord>(contactsQuery);
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
 
   useEffect(() => {
@@ -515,16 +628,36 @@ function ContactPicker({ onPicked, currentUserId }: any) {
   }, [contacts, db]);
 
   return (
-    <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-6 rounded-[2rem]">
-      <DialogHeader><DialogTitle className="text-xl font-headline uppercase tracking-tight flex items-center gap-2 text-gradient"><UserPlus className="w-6 h-6 text-primary" /> Share Contact</DialogTitle></DialogHeader>
-      <ScrollArea className="h-[300px] mt-4">
-        <div className="space-y-1">
+    <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-0 rounded-[2.5rem] overflow-hidden shadow-2xl z-[110]">
+      <DialogHeader className="p-8 pb-4">
+        <DialogTitle className="text-2xl font-headline uppercase tracking-tight flex items-center gap-3 text-gradient">
+          <UserPlus className="w-7 h-7 text-primary" /> Share Contact
+        </DialogTitle>
+      </DialogHeader>
+      <ScrollArea className="h-[400px] px-4 pb-8">
+        <div className="space-y-2">
           {profiles.map(p => (
-            <button key={p.id} onClick={() => onPicked({ uid: p.id, name: p.fullName || p.displayName, username: p.username })} className="w-full p-4 rounded-xl flex items-center gap-4 hover:bg-white/5 transition-all text-left">
-              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary">{p.fullName?.charAt(0)}</div>
-              <div><p className="font-bold text-xs text-white">{p.fullName}</p><p className="text-[10px] text-muted-foreground uppercase tracking-widest">@{p.username}</p></div>
+            <button 
+              key={p.id} 
+              onClick={() => onPicked({ uid: p.id, name: p.fullName || p.displayName, username: p.username })} 
+              className="w-full p-4 rounded-2xl flex items-center gap-4 hover:bg-white/5 transition-all text-left group"
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary group-hover:scale-110 transition-transform">
+                {(p.fullName || p.displayName || 'U').charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm text-white truncate">{p.fullName || p.displayName}</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">@{p.username}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
             </button>
           ))}
+          {profiles.length === 0 && !isLoading && (
+            <div className="py-20 text-center opacity-30">
+              <UserPlus className="w-12 h-12 mx-auto mb-4" />
+              <p className="text-[10px] font-bold uppercase tracking-widest">No contacts to share</p>
+            </div>
+          )}
         </div>
       </ScrollArea>
     </DialogContent>
