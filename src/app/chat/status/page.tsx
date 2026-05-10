@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, ChevronLeft, ChevronRight, Play, Pause, 
@@ -22,6 +22,7 @@ type StatusUpdate = {
   type: 'text';
   createdAt: any;
   expiresAt: any;
+  viewedBy?: string[];
 };
 
 export default function StatusImmersivePage() {
@@ -86,6 +87,18 @@ export default function StatusImmersivePage() {
       setProgress(0);
     }
   }, [currentIndex]);
+
+  // Track status view
+  useEffect(() => {
+    if (!currentStatus || !user || !db || currentStatus.userId === user.uid) return;
+
+    if (!currentStatus.viewedBy?.includes(user.uid)) {
+      const statusRef = doc(db, 'statuses', currentStatus.id);
+      updateDoc(statusRef, {
+        viewedBy: arrayUnion(user.uid)
+      }).catch(err => console.error("Error marking status as seen:", err));
+    }
+  }, [currentStatus, user, db]);
 
   useEffect(() => {
     if (!currentStatus || isPaused) return;
@@ -170,7 +183,7 @@ export default function StatusImmersivePage() {
             </Button>
             <Avatar className="w-10 h-10 border border-white/20 shadow-lg">
               <AvatarFallback className="bg-primary/20 text-primary font-bold">
-                U
+                {selectedUid === user?.uid ? 'Me' : 'U'}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">

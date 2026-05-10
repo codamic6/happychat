@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -29,7 +30,40 @@ type StatusUpdate = {
   type: 'text';
   createdAt: any;
   expiresAt: any;
+  viewedBy?: string[];
 };
+
+function SegmentedRing({ count, hasUnseen, size = 56 }: { count: number, hasUnseen: boolean, size?: number }) {
+  const radius = (size / 2) - 4;
+  const circumference = 2 * Math.PI * radius;
+  const gap = count > 1 ? 4 : 0;
+  const segmentLength = (circumference - (gap * count)) / count;
+  const color = hasUnseen ? "hsl(var(--primary))" : "rgba(255, 255, 255, 0.2)";
+
+  return (
+    <svg 
+      width={size} 
+      height={size} 
+      className="absolute inset-0 -rotate-90 pointer-events-none"
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <circle
+          key={i}
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth="2.5"
+          strokeDasharray={`${segmentLength} ${gap + (count === 1 ? 0 : 0)}`}
+          strokeDashoffset={-(i * (segmentLength + gap))}
+          strokeLinecap="round"
+          className="transition-all duration-500"
+        />
+      ))}
+    </svg>
+  );
+}
 
 export function StatusSidebar() {
   const { user } = useUser();
@@ -39,7 +73,6 @@ export function StatusSidebar() {
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch current user's profile for the "My Status" section
   const currentUserRef = useMemoFirebase(() => (user && db ? doc(db, 'users', user.uid) : null), [db, user]);
   const { data: profile } = useDoc<UserProfile>(currentUserRef);
 
@@ -64,15 +97,15 @@ export function StatusSidebar() {
     return query(
       collection(db, 'statuses'),
       where('expiresAt', '>', now),
-      orderBy('expiresAt', 'asc'),
+      orderBy('expiresAt', 'desc'),
       limit(100)
     );
   }, [db]);
 
   const { data: rawStatuses } = useCollection<StatusUpdate>(statusQuery);
 
-  const groupedStatuses = useMemo(() => {
-    if (!rawStatuses) return [];
+  const statusGroups = useMemo(() => {
+    if (!rawStatuses || !user) return [];
     const groups: Record<string, StatusUpdate[]> = {};
     
     rawStatuses.forEach(s => {
@@ -82,12 +115,16 @@ export function StatusSidebar() {
       }
     });
     
-    return Object.entries(groups).sort(([uidA], [uidB]) => {
-      if (uidA === user?.uid) return -1;
-      if (uidB === user?.uid) return 1;
-      return 0;
+    return Object.entries(groups).map(([uid, items]) => {
+      // A group is "seen" if every single status in it has been viewed by current user
+      const hasUnseen = items.some(item => !item.viewedBy?.includes(user.uid));
+      return { uid, items, hasUnseen };
     });
-  }, [rawStatuses, user?.uid, contactIds]);
+  }, [rawStatuses, user, contactIds]);
+
+  const recentUpdates = useMemo(() => statusGroups.filter(g => g.uid !== user?.uid && g.hasUnseen), [statusGroups, user]);
+  const viewedUpdates = useMemo(() => statusGroups.filter(g => g.uid !== user?.uid && !g.hasUnseen), [statusGroups, user]);
+  const myStatusGroup = useMemo(() => statusGroups.find(g => g.uid === user?.uid), [statusGroups, user]);
 
   useEffect(() => {
     if (!rawStatuses || !db) return;
@@ -112,17 +149,17 @@ export function StatusSidebar() {
     fetchProfiles();
   }, [rawStatuses, db, contactIds, userProfiles]);
 
-  const myStatusGroup = groupedStatuses.find(([uid]) => uid === user?.uid);
-  const otherStatusGroups = groupedStatuses.filter(([uid]) => uid !== user?.uid);
+  const filteredRecent = recentUpdates.filter(g => {
+    const p = userProfiles[g.uid];
+    const name = p?.displayName || p?.fullName || '';
+    return name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
-  const filteredGroups = useMemo(() => {
-    if (!searchQuery.trim()) return otherStatusGroups;
-    return otherStatusGroups.filter(([uid]) => {
-      const p = userProfiles[uid];
-      const name = p?.displayName || p?.fullName || '';
-      return name.toLowerCase().includes(searchQuery.toLowerCase());
-    });
-  }, [otherStatusGroups, searchQuery, userProfiles]);
+  const filteredViewed = viewedUpdates.filter(g => {
+    const p = userProfiles[g.uid];
+    const name = p?.displayName || p?.fullName || '';
+    return name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   return (
     <div className="flex flex-col h-full bg-[#0d0d0d] relative">
@@ -160,22 +197,29 @@ export function StatusSidebar() {
       </div>
 
       <ScrollArea className="flex-1 px-3">
-        <div className="space-y-6 pb-32">
+        <div className="space-y-8 pb-32">
+          {/* My Status Section */}
           <div className="space-y-4 px-3">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">My Status</h3>
             <button 
               onClick={() => myStatusGroup ? router.push(`/chat/status?uid=${user?.uid}`) : setIsComposerOpen(true)}
               className="w-full flex items-center gap-4 p-2 rounded-2xl hover:bg-white/5 transition-all text-left group"
             >
-              <div className="relative shrink-0">
-                <div className={cn(
-                  "w-14 h-14 rounded-full p-1 transition-all",
-                  myStatusGroup ? "bg-gradient-to-tr from-primary to-emerald-400 p-[2px] glow-green" : "border-2 border-dashed border-white/10"
-                )}>
-                  <div className="w-full h-full rounded-full bg-[#111] overflow-hidden flex items-center justify-center">
-                    <div className="text-sm font-bold text-primary">{(profile?.fullName || 'U').charAt(0)}</div>
-                  </div>
+              <div className="relative shrink-0 flex items-center justify-center w-14 h-14">
+                {myStatusGroup && (
+                  <SegmentedRing count={myStatusGroup.items.length} hasUnseen={myStatusGroup.hasUnseen} />
+                )}
+                {!myStatusGroup && (
+                  <div className="absolute inset-0 border-2 border-dashed border-white/10 rounded-full" />
+                )}
+                <div className="w-12 h-12 rounded-full bg-[#111] overflow-hidden flex items-center justify-center border border-white/5">
+                  <div className="text-sm font-bold text-primary">{(profile?.fullName || 'U').charAt(0).toUpperCase()}</div>
                 </div>
+                {!myStatusGroup && (
+                  <div className="absolute bottom-0 right-0 w-5 h-5 bg-primary rounded-full flex items-center justify-center border-2 border-[#0d0d0d] text-primary-foreground">
+                    <Plus className="w-3 h-3 stroke-[4]" />
+                  </div>
+                )}
               </div>
               <div>
                 <p className="font-bold text-sm text-white font-headline">My Status</p>
@@ -186,48 +230,84 @@ export function StatusSidebar() {
             </button>
           </div>
 
-          <div className="space-y-4 px-3">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Recent Updates</h3>
-            <div className="space-y-1">
-              {filteredGroups.map(([uid, items]) => {
-                const profile = userProfiles[uid];
-                if (!profile) return null;
-                const name = profile.displayName || profile.fullName || 'User';
-                const latest = items[items.length - 1];
+          {/* Recent Updates */}
+          {filteredRecent.length > 0 && (
+            <div className="space-y-4 px-3">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Recent Updates</h3>
+              <div className="space-y-1">
+                {filteredRecent.map((group) => {
+                  const p = userProfiles[group.uid];
+                  if (!p) return null;
+                  const name = p.displayName || p.fullName || 'User';
+                  const latest = group.items[0];
 
-                return (
-                  <button 
-                    key={uid}
-                    onClick={() => router.push(`/chat/status?uid=${uid}`)}
-                    className="w-full p-3 rounded-2xl flex items-center gap-4 transition-all hover:bg-white/5 text-left"
-                  >
-                    <div className="relative shrink-0">
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-primary to-emerald-400 p-[2px] glow-green">
-                        <div className="w-full h-full rounded-full bg-[#111] overflow-hidden flex items-center justify-center border-2 border-[#0d0d0d]">
-                          <Avatar className="w-full h-full">
-                            <AvatarFallback className="bg-primary/20 text-primary">{name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                        </div>
+                  return (
+                    <button 
+                      key={group.uid}
+                      onClick={() => router.push(`/chat/status?uid=${group.uid}`)}
+                      className="w-full p-3 rounded-2xl flex items-center gap-4 transition-all hover:bg-white/5 text-left"
+                    >
+                      <div className="relative shrink-0 flex items-center justify-center w-14 h-14">
+                        <SegmentedRing count={group.items.length} hasUnseen={group.hasUnseen} />
+                        <Avatar className="w-12 h-12 border border-[#0d0d0d]">
+                          <AvatarFallback className="bg-primary/20 text-primary font-bold">{name.charAt(0)}</AvatarFallback>
+                        </Avatar>
                       </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-white truncate font-headline">{name}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
-                        {latest.createdAt?.toDate ? formatDistanceToNow(latest.createdAt.toDate(), { addSuffix: true }) : ''}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-
-              {filteredGroups.length === 0 && (
-                <div className="py-12 text-center space-y-3 opacity-20">
-                  <Clock className="w-10 h-10 mx-auto text-muted-foreground" />
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em]">No new updates</p>
-                </div>
-              )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm text-white truncate font-headline">{name}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+                          {latest.createdAt?.toDate ? formatDistanceToNow(latest.createdAt.toDate(), { addSuffix: true }) : ''}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Viewed Updates */}
+          {filteredViewed.length > 0 && (
+            <div className="space-y-4 px-3">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground opacity-40">Viewed Updates</h3>
+              <div className="space-y-1">
+                {filteredViewed.map((group) => {
+                  const p = userProfiles[group.uid];
+                  if (!p) return null;
+                  const name = p.displayName || p.fullName || 'User';
+                  const latest = group.items[0];
+
+                  return (
+                    <button 
+                      key={group.uid}
+                      onClick={() => router.push(`/chat/status?uid=${group.uid}`)}
+                      className="w-full p-3 rounded-2xl flex items-center gap-4 transition-all hover:bg-white/5 text-left opacity-60 grayscale-[0.5]"
+                    >
+                      <div className="relative shrink-0 flex items-center justify-center w-14 h-14">
+                        <SegmentedRing count={group.items.length} hasUnseen={false} />
+                        <Avatar className="w-12 h-12 border border-[#0d0d0d]">
+                          <AvatarFallback className="bg-white/5 text-muted-foreground font-bold">{name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm text-white truncate font-headline">{name}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+                          {latest.createdAt?.toDate ? formatDistanceToNow(latest.createdAt.toDate(), { addSuffix: true }) : ''}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {statusGroups.length === 0 && (
+            <div className="py-24 text-center space-y-3 opacity-20">
+              <Clock className="w-12 h-12 mx-auto text-muted-foreground" />
+              <p className="text-[10px] font-bold uppercase tracking-[0.4em]">No moments yet</p>
+            </div>
+          )}
         </div>
       </ScrollArea>
 

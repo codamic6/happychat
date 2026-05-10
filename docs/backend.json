@@ -115,7 +115,8 @@
         "content": { "type": "string" },
         "type": { "type": "string", "enum": ["text"] },
         "createdAt": { "type": "string", "format": "date-time" },
-        "expiresAt": { "type": "string", "format": "date-time" }
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "viewedBy": { "type": "array", "items": { "type": "string" }, "description": "List of user UIDs who have seen this status." }
       }
     }
   },
