@@ -1,3 +1,4 @@
+
 'use client';
     
 import {
@@ -17,28 +18,38 @@ import {FirestorePermissionError} from '@/firebase/errors';
  * Does NOT await the write operation internally.
  */
 export function setDocumentNonBlocking(docRef: DocumentReference, data: any, options: SetOptions) {
+  console.log(`[Firestore DEBUG] TRACE: setDocumentNonBlocking. Path: ${docRef.path}`);
+  console.log(`[Firestore DEBUG] Payload:`, data);
+  
   setDoc(docRef, data, options).catch(error => {
+    console.error(`[Firestore DEBUG] setDoc FAILED:`, error);
     errorEmitter.emit(
       'permission-error',
       new FirestorePermissionError({
         path: docRef.path,
-        operation: 'write', // or 'create'/'update' based on options
+        operation: 'write',
         requestResourceData: data,
       })
     )
   })
-  // Execution continues immediately
 }
 
 
 /**
  * Initiates an addDoc operation for a collection reference.
  * Does NOT await the write operation internally.
- * Returns the Promise for the new doc ref, but typically not awaited by caller.
  */
 export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
+  console.log(`[Firestore DEBUG] TRACE: addDocumentNonBlocking. Path: ${colRef.path}`);
+  console.log(`[Firestore DEBUG] Payload:`, data);
+
   const promise = addDoc(colRef, data)
+    .then((docRef) => {
+      console.log(`[Firestore DEBUG] addDoc SUCCESS. New ID: ${docRef.id}`);
+      return docRef;
+    })
     .catch(error => {
+      console.error(`[Firestore DEBUG] addDoc FAILED:`, error);
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
@@ -46,7 +57,8 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
           operation: 'create',
           requestResourceData: data,
         })
-      )
+      );
+      throw error;
     });
   return promise;
 }
@@ -57,8 +69,15 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
  * Does NOT await the write operation internally.
  */
 export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) {
+  console.log(`[Firestore DEBUG] TRACE: updateDocumentNonBlocking. Path: ${docRef.path}`);
+  console.log(`[Firestore DEBUG] Payload:`, data);
+
   updateDoc(docRef, data)
+    .then(() => {
+      console.log(`[Firestore DEBUG] updateDoc SUCCESS: ${docRef.id}`);
+    })
     .catch(error => {
+      console.error(`[Firestore DEBUG] updateDoc FAILED:`, error);
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
@@ -66,7 +85,7 @@ export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) 
           operation: 'update',
           requestResourceData: data,
         })
-      )
+      );
     });
 }
 
@@ -76,14 +95,20 @@ export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) 
  * Does NOT await the write operation internally.
  */
 export function deleteDocumentNonBlocking(docRef: DocumentReference) {
+  console.log(`[Firestore DEBUG] TRACE: deleteDocumentNonBlocking. Path: ${docRef.path}`);
+
   deleteDoc(docRef)
+    .then(() => {
+      console.log(`[Firestore DEBUG] deleteDoc SUCCESS: ${docRef.id}`);
+    })
     .catch(error => {
+      console.error(`[Firestore DEBUG] deleteDoc FAILED:`, error);
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
           path: docRef.path,
           operation: 'delete',
         })
-      )
+      );
     });
 }

@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, Paperclip, Smile, Search, 
   MoreVertical, X, Info, ShieldAlert, ArrowLeft, Loader2,
-  ShieldCheck, Copy, Forward, Pencil, Check, Reply, Save,
+  ShieldCheck, Copy, Pencil, Check, Reply, Save,
   CheckCheck, Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,17 +19,10 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription
-} from '@/components/ui/dialog';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { 
   doc, query, collection, serverTimestamp, 
-  getDocs, where, addDoc, updateDoc, increment, setDoc, onSnapshot, writeBatch
+  getDocs, where, addDoc, updateDoc, increment, onSnapshot, writeBatch
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -38,17 +31,18 @@ import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 type Message = {
   id: string;
   senderId: string;
+  conversationId: string;
   text: string;
-  timestamp: any;
+  createdAt: any;
   conversationParticipantIds: string[];
   isEdited?: boolean;
   status?: 'sent' | 'delivered' | 'read';
+  updatedAt?: any;
   replyTo?: {
     id: string;
     text: string;
@@ -82,7 +76,7 @@ type Conversation = {
 };
 
 export function ConversationView({ conversationId }: { conversationId: string }) {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const db = useFirestore();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -93,7 +87,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [isForwardDialogOpen, setIsForwardDialogOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   
   const isNewChat = conversationId.startsWith('new-');
@@ -119,8 +112,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const messages = useMemo(() => {
     if (!rawMessages) return [];
     return [...rawMessages].sort((a, b) => {
-      const timeA = a.timestamp?.toMillis?.() || 0;
-      const timeB = b.timestamp?.toMillis?.() || 0;
+      const timeA = a.createdAt?.toMillis?.() || 0;
+      const timeB = b.createdAt?.toMillis?.() || 0;
       return timeA - timeB;
     });
   }, [rawMessages]);
@@ -131,42 +124,47 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   // Synchronization of read status
   useEffect(() => {
-    if (!db || isNewChat || !user || !rawMessages || rawMessages.length === 0) return;
+    if (!db || isNewChat || !user || !rawMessages || rawMessages.length === 0 || isUserLoading) return;
 
     const unreadMessages = rawMessages.filter(
       msg => msg.senderId !== user.uid && msg.status !== 'read'
     );
 
     if (unreadMessages.length > 0) {
+      console.log(`[Firestore DEBUG] TRACE: Updating ${unreadMessages.length} messages to 'read'.`);
+      console.log(`[Firestore DEBUG] User UID: ${user.uid}`);
+      console.log(`[Firestore DEBUG] Conversation Path: conversations/${conversationId}`);
+
       const batch = writeBatch(db);
       unreadMessages.forEach(msg => {
         const msgRef = doc(db, 'conversations', conversationId, 'messages', msg.id);
-        batch.update(msgRef, { status: 'read' });
+        console.log(`[Firestore DEBUG] Queuing update for message: ${msgRef.path}`);
+        batch.update(msgRef, { 
+          status: 'read',
+          updatedAt: serverTimestamp()
+        });
       });
       
-      batch.commit().catch(async (e) => {
+      batch.commit().then(() => {
+        console.log(`[Firestore DEBUG] Batch read-status update successful.`);
+      }).catch(async (e) => {
+        console.error(`[Firestore DEBUG] Batch read-status update FAILED:`, e);
         const permissionError = new FirestorePermissionError({ 
           path: `conversations/${conversationId}/messages/${unreadMessages[0].id}`, 
           operation: 'update',
-          requestResourceData: { status: 'read' }
+          requestResourceData: { status: 'read', updatedAt: 'serverTimestamp' }
         });
         errorEmitter.emit('permission-error', permissionError);
       });
       
       const convUpdateRef = doc(db, 'conversations', conversationId);
-      updateDoc(convUpdateRef, { [`unreadCount.${user.uid}`]: 0 }).catch(async (e) => {
-        const permissionError = new FirestorePermissionError({ 
-          path: `conversations/${conversationId}`, 
-          operation: 'update',
-          requestResourceData: { [`unreadCount.${user.uid}`]: 0 }
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
+      updateDoc(convUpdateRef, { [`unreadCount.${user.uid}`]: 0 }).catch(() => {});
     }
-  }, [db, conversationId, isNewChat, user, rawMessages]);
+  }, [db, conversationId, isNewChat, user, rawMessages, isUserLoading]);
 
+  // Typing status sync
   useEffect(() => {
-    if (!db || isNewChat || !user) return;
+    if (!db || isNewChat || !user || isUserLoading) return;
     const typingRef = doc(db, 'conversations', conversationId);
     const status = inputText.trim().length > 0;
     
@@ -177,8 +175,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
         updateDoc(typingRef, { [`typing.${user.uid}`]: false }).catch(() => {});
       }
     };
-  }, [inputText, db, conversationId, isNewChat, user]);
+  }, [inputText, db, conversationId, isNewChat, user, isUserLoading]);
 
+  // Profiles and Contact loading
   useEffect(() => {
     if (!db || !user) return;
     const fetchMyProfile = async () => {
@@ -217,7 +216,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!inputText.trim() || !user || !db || !otherProfile) return;
+    if (!inputText.trim() || !user || !db || !otherProfile || isUserLoading) return;
     const text = inputText;
     
     let replyData = null;
@@ -246,13 +245,16 @@ export function ConversationView({ conversationId }: { conversationId: string })
       const snap = await getDocs(existingQ);
       if (snap.empty) {
         try {
-          const newConv = await addDoc(collection(db, 'conversations'), {
+          console.log(`[Firestore DEBUG] TRACE: Creating NEW conversation. User: ${user.uid}`);
+          const newConvData = {
             participantIds,
             updatedAt: serverTimestamp(),
             lastMessage: text,
             unreadCount: { [otherProfile.id]: 1, [user.uid]: 0 },
             typing: { [user.uid]: false, [otherProfile.id]: false }
-          });
+          };
+          console.log(`[Firestore DEBUG] Payload:`, newConvData);
+          const newConv = await addDoc(collection(db, 'conversations'), newConvData);
           activeId = newConv.id;
           router.replace(`/chat/${activeId}`);
         } catch (e) {
@@ -269,18 +271,25 @@ export function ConversationView({ conversationId }: { conversationId: string })
       }
     }
 
-    addDoc(collection(db, 'conversations', activeId, 'messages'), {
+    const messagePayload = {
       text,
       senderId: user.uid,
-      timestamp: serverTimestamp(),
+      conversationId: activeId,
+      createdAt: serverTimestamp(),
       conversationParticipantIds: participantIds,
       status: 'sent',
       replyTo: replyData
-    }).catch(async (e) => {
+    };
+
+    console.log(`[Firestore DEBUG] TRACE: Adding message to ${activeId}. Path: conversations/${activeId}/messages`);
+    console.log(`[Firestore DEBUG] Payload:`, messagePayload);
+
+    addDoc(collection(db, 'conversations', activeId, 'messages'), messagePayload).catch(async (e) => {
+      console.error(`[Firestore DEBUG] Add message FAILED:`, e);
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: `conversations/${activeId}/messages`, 
         operation: 'create',
-        requestResourceData: { text, senderId: user.uid }
+        requestResourceData: messagePayload
       }));
     });
 
@@ -290,6 +299,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
         updatedAt: serverTimestamp(),
         [`unreadCount.${otherProfile.id}`]: increment(1)
       }).catch(async (e) => {
+        console.error(`[Firestore DEBUG] Update conversation meta FAILED:`, e);
         errorEmitter.emit('permission-error', new FirestorePermissionError({ 
           path: `conversations/${activeId}`, 
           operation: 'update',
@@ -314,14 +324,21 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const saveEdit = async () => {
     if (!editingMessageId || !db || !conversationId) return;
     const ref = doc(db, 'conversations', conversationId, 'messages', editingMessageId);
-    updateDoc(ref, {
+    
+    console.log(`[Firestore DEBUG] TRACE: Editing message ${editingMessageId}. Path: ${ref.path}`);
+    const editPayload = {
       text: editValue,
-      isEdited: true
-    }).catch(async (e) => {
+      isEdited: true,
+      updatedAt: serverTimestamp()
+    };
+    console.log(`[Firestore DEBUG] Payload:`, editPayload);
+
+    updateDoc(ref, editPayload).catch(async (e) => {
+      console.error(`[Firestore DEBUG] Edit message FAILED:`, e);
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: ref.path, 
         operation: 'update',
-        requestResourceData: { text: editValue, isEdited: true }
+        requestResourceData: editPayload
       }));
     });
     setEditingMessageId(null);
@@ -400,7 +417,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
               onTouchStart={(m: Message) => setSelectedMessage(m)}
               onTouchEnd={() => {}}
               onCopy={handleCopy}
-              onForward={() => { setSelectedMessage(msg); setIsForwardDialogOpen(true); }}
               onEdit={startEdit}
               editingMessageId={editingMessageId} editValue={editValue} setEditValue={setEditValue} saveEdit={saveEdit} cancelEdit={() => setEditingMessageId(null)}
             />
@@ -454,12 +470,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
 function MessageRow({ 
   msg, user, isMobile, 
   onDoubleTap, onTouchStart, onTouchEnd,
-  onCopy, onForward, onEdit,
+  onCopy, onEdit,
   editingMessageId, editValue, setEditValue, saveEdit, cancelEdit
 }: any) {
   const isOwn = msg.senderId === user?.uid;
   const isEditing = editingMessageId === msg.id;
-  const timeStr = msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'h:mm a') : '';
+  const timeStr = msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : '';
   const replySenderDisplayName = msg.replyTo ? (msg.replyTo.senderId === user?.uid ? 'You' : msg.replyTo.senderName) : '';
 
   const dragX = useMotionValue(0);
@@ -510,7 +526,6 @@ function MessageRow({
             <DropdownMenuContent side={isOwn ? "left" : "right"} align="start" className="bg-[#0d0d0d] border-white/10 text-white rounded-xl p-1 shadow-2xl">
               <DropdownMenuItem onClick={() => onDoubleTap()} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Reply className="w-3.5 h-3.5" /> Reply</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onCopy(msg.text)} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Copy className="w-3.5 h-3.5" /> Copy</DropdownMenuItem>
-              <DropdownMenuItem onClick={onForward} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Forward className="w-3.5 h-3.5" /> Forward</DropdownMenuItem>
               {isOwn && <DropdownMenuItem onClick={() => onEdit(msg)} className="gap-2 cursor-pointer focus:bg-primary/20 focus:text-primary"><Pencil className="w-3.5 h-3.5" /> Edit</DropdownMenuItem>}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -532,11 +547,17 @@ function UserProfileSidebar({ profile, contactRecord, onDismiss, otherName, init
     if (!user || !db || !profile) return;
     setIsUpdating(true);
     const contactRef = doc(db, 'users', user.uid, 'contacts', profile.id);
-    setDoc(contactRef, {
+    
+    console.log(`[Firestore DEBUG] TRACE: Updating contact nickname. Path: ${contactRef.path}`);
+    const nicknamePayload = {
       userId: profile.id,
       customName: nickname.trim(),
       addedAt: contactRecord?.addedAt || serverTimestamp()
-    }, { merge: true }).catch(async (e) => {
+    };
+    console.log(`[Firestore DEBUG] Payload:`, nicknamePayload);
+
+    setDoc(contactRef, nicknamePayload, { merge: true }).catch(async (e) => {
+      console.error(`[Firestore DEBUG] Update nickname FAILED:`, e);
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: contactRef.path, 
         operation: 'write' 
