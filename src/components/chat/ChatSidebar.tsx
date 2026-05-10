@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, getDocs, where, doc, updateDoc, onSnapshot, limit, orderBy, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, query, getDocs, where, doc, updateDoc, onSnapshot, limit, orderBy, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { format, differenceInSeconds, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 
@@ -130,7 +130,8 @@ export function ChatSidebar() {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const holdTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // Profile Detail Modal
+  // Management State
+  const [manageChatId, setManageChatId] = useState<string | null>(null);
   const [viewingProfile, setViewingProfile] = useState<UserProfile | null>(null);
 
   const convQuery = useMemoFirebase(() => {
@@ -248,7 +249,24 @@ export function ChatSidebar() {
     }
   };
 
-  const deleteChat = async (convId: string) => {
+  const handleClearChat = async (convId: string) => {
+    if (!user || !db) return;
+    try {
+      const q = query(collection(db, 'conversations', convId, 'messages'));
+      const snap = await getDocs(q);
+      const batch = writeBatch(db);
+      snap.docs.forEach(docSnap => {
+        batch.update(docSnap.ref, { deletedFor: arrayUnion(user.uid) });
+      });
+      await batch.commit();
+      toast({ title: "Chat Cleared", description: "All messages removed for you." });
+      setManageChatId(null);
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Error", description: "Failed to clear history." });
+    }
+  };
+
+  const handleDeleteChat = async (convId: string) => {
     if (!user || !db) return;
     const convRef = doc(db, 'conversations', convId);
     try {
@@ -258,6 +276,7 @@ export function ChatSidebar() {
       toast({ title: "Chat Deleted", description: "Conversation removed from your recents." });
       setIsSelectionMode(false);
       setSelectedConvId(null);
+      setManageChatId(null);
     } catch (e) {
       toast({ variant: 'destructive', title: "Error", description: "Failed to delete chat." });
     }
@@ -341,7 +360,7 @@ export function ChatSidebar() {
                   >
                     <Info className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => selectedConvId && deleteChat(selectedConvId)} className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                  <Button variant="ghost" size="icon" onClick={() => selectedConvId && setManageChatId(selectedConvId)} className="h-8 w-8 text-destructive hover:bg-destructive/10">
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -460,7 +479,7 @@ export function ChatSidebar() {
                                 <User className="w-4 h-4" /> View Contact
                               </DropdownMenuItem>
                               <DropdownMenuSeparator className="bg-white/5" />
-                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); deleteChat(conv.id); }} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-destructive/10 text-destructive text-[10px] font-bold uppercase tracking-widest">
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setManageChatId(conv.id); }} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-destructive/10 text-destructive text-[10px] font-bold uppercase tracking-widest">
                                 <Trash2 className="w-4 h-4" /> Delete Chat
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -496,6 +515,41 @@ export function ChatSidebar() {
           )}
         </div>
       </ScrollArea>
+
+      {/* Chat Management Confirmation Dialog */}
+      <Dialog open={!!manageChatId} onOpenChange={() => setManageChatId(null)}>
+        <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-0 rounded-[2.5rem] overflow-hidden max-w-sm shadow-2xl">
+          <DialogHeader className="p-8 pb-4">
+            <DialogTitle className="text-xl font-bold font-headline uppercase tracking-tight text-gradient text-center">Manage Chat</DialogTitle>
+            <DialogDescription className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Choose an action for this conversation
+            </DialogDescription>
+          </DialogHeader>
+          <div className="px-8 pb-8 flex flex-col gap-3">
+            <Button 
+              onClick={() => manageChatId && handleClearChat(manageChatId)}
+              variant="secondary" 
+              className="h-14 bg-white/5 border border-white/5 hover:bg-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+            >
+              Clear Chat History
+            </Button>
+            <Button 
+              onClick={() => manageChatId && handleDeleteChat(manageChatId)}
+              variant="destructive" 
+              className="h-14 rounded-2xl text-[10px] font-black uppercase tracking-widest glow-green shadow-xl active:scale-95 transition-all"
+            >
+              Delete & Hide Chat
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={() => setManageChatId(null)}
+              className="h-10 text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-white"
+            >
+              Cancel Action
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Profile Info Dialog (Shared) */}
       <Dialog open={!!viewingProfile} onOpenChange={() => setViewingProfile(null)}>
