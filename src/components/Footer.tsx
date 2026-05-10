@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { Zap, Github, Twitter, Instagram, ArrowUpRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 
 export function Footer() {
@@ -49,10 +48,10 @@ export function Footer() {
             <div className="space-y-4 md:space-y-6">
               <h4 className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-primary">Company</h4>
               <ul className="space-y-3 md:space-y-4">
-                {['Privacy', 'Terms', 'Help Center', 'Status'].map((item) => (
+                {['Privacy', 'Terms', 'Help', 'Status'].map((item) => (
                   <li key={item}>
                     <Link href={`/${item.toLowerCase().replace(' ', '-')}`} className="text-xs md:text-sm font-bold text-white/60 hover:text-white flex items-center gap-1 group transition-colors uppercase tracking-widest">
-                      {item} <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-all" />
+                      {item === 'Help' ? 'Help Center' : item} <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-all" />
                     </Link>
                   </li>
                 ))}
@@ -64,14 +63,14 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="pt-8 md:pt-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 text-center md:text-left">
           <p className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-            © 2024 HappyChat Inc. All protocols reserved.
+            © 2026 HappyChat Inc. All protocols reserved.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8">
             <div className="flex items-center gap-2">
                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-primary">Global Network Active</span>
             </div>
-            <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-muted-foreground italic">Build 0x9928AF</span>
+            <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-muted-foreground italic">Build 0x2026AF</span>
           </div>
         </div>
       </div>
