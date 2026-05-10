@@ -394,10 +394,18 @@ export function ChatSidebar() {
                 onPointerUp={handlePointerUp}
                 onPointerLeave={handlePointerUp}
               >
-                <button 
+                <div 
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleChatClick(conv.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleChatClick(conv.id);
+                    }
+                  }}
                   className={cn(
-                    "w-full p-4 rounded-3xl flex items-center gap-4 transition-all border border-transparent overflow-hidden relative",
+                    "w-full p-4 rounded-3xl flex items-center gap-4 transition-all border border-transparent overflow-hidden relative cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d0d0d]",
                     isSelected 
                       ? (isSelectionMode ? "bg-primary/20 border-primary/40 shadow-xl" : "bg-primary/10 border-primary/20 shadow-md") 
                       : "hover:bg-white/5"
@@ -436,7 +444,9 @@ export function ChatSidebar() {
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                onClick={(e) => e.stopPropagation()} 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                }} 
                                 className="h-6 w-6 rounded-full opacity-0 group-hover/item:opacity-100 transition-opacity bg-white/5 hover:bg-white/10"
                               >
                                 <MoreVertical className="w-3 h-3" />
@@ -473,7 +483,7 @@ export function ChatSidebar() {
                       )}
                     </div>
                   </div>
-                </button>
+                </div>
               </div>
             );
           })}
@@ -528,4 +538,3 @@ export function ChatSidebar() {
     </div>
   );
 }
-
