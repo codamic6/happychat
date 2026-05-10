@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -7,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit, where, getDocs } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, query, orderBy, limit, where, getDocs, doc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
@@ -40,6 +39,10 @@ export function StatusSidebar() {
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Fetch current user's profile for the "My Status" section
+  const currentUserRef = useMemoFirebase(() => (user && db ? doc(db, 'users', user.uid) : null), [db, user]);
+  const { data: profile } = useDoc<UserProfile>(currentUserRef);
+
   const contactsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     return query(collection(db, 'users', user.uid, 'contacts'));
@@ -50,7 +53,7 @@ export function StatusSidebar() {
     if (!user) return [];
     const ids = [user.uid];
     if (contactsData) {
-      contactsData.forEach(c => ids.push(c.id));
+      contactsData.forEach(c => ids.push(c.userId));
     }
     return ids;
   }, [contactsData, user]);
@@ -107,7 +110,7 @@ export function StatusSidebar() {
     };
 
     fetchProfiles();
-  }, [rawStatuses, db, contactIds]);
+  }, [rawStatuses, db, contactIds, userProfiles]);
 
   const myStatusGroup = groupedStatuses.find(([uid]) => uid === user?.uid);
   const otherStatusGroups = groupedStatuses.filter(([uid]) => uid !== user?.uid);
@@ -131,7 +134,7 @@ export function StatusSidebar() {
                 onClick={() => router.push('/chat')}
                 className="md:hidden text-muted-foreground"
               >
-                <ArrowLeft className="u-5 h-5" />
+                <ArrowLeft className="w-5 h-5" />
               </Button>
               <h2 className="text-xl md:text-2xl font-bold font-headline text-white tracking-tighter uppercase">Updates</h2>
           </div>
