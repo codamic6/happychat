@@ -96,35 +96,6 @@ type Conversation = {
   typing?: Record<string, boolean>;
 };
 
-function SegmentedRing({ count, hasUnseen, size = 56 }: { count: number, hasUnseen: boolean, size?: number }) {
-  if (count === 0) return null;
-  const radius = (size / 2) - 4;
-  const circumference = 2 * Math.PI * radius;
-  const gap = count > 1 ? 4 : 0;
-  const segmentLength = (circumference - (gap * count)) / count;
-  const color = hasUnseen ? "hsl(var(--primary))" : "rgba(255, 255, 255, 0.2)";
-
-  return (
-    <svg width={size} height={size} className="absolute inset-0 -rotate-90 pointer-events-none z-10">
-      {Array.from({ length: count }).map((_, i) => (
-        <circle
-          key={i}
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth="2.5"
-          strokeDasharray={`${segmentLength} ${gap}`}
-          strokeDashoffset={-(i * (segmentLength + gap))}
-          strokeLinecap="round"
-          className="transition-all duration-500"
-        />
-      ))}
-    </svg>
-  );
-}
-
 export function ConversationView({ conversationId }: { conversationId: string }) {
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
@@ -172,11 +143,23 @@ export function ConversationView({ conversationId }: { conversationId: string })
   // Synchronization of read status
   useEffect(() => {
     if (!db || isNewChat || !user || !rawMessages || isUserLoading) return;
-    const unread = rawMessages.filter(m => m.senderId !== user.uid && m.status !== 'read');
-    if (unread.length > 0) {
+    const unreadMessages = rawMessages.filter(m => m.senderId !== user.uid && m.status !== 'read');
+    if (unreadMessages.length > 0) {
+      console.log(`[Firestore TRACE] Attempting to mark ${unreadMessages.length} messages as read for user ${user.uid}`);
       const batch = writeBatch(db);
-      unread.forEach(m => batch.update(doc(db, 'conversations', conversationId, 'messages', m.id), { status: 'read' }));
-      batch.commit().catch(() => {});
+      unreadMessages.forEach(m => {
+        const mRef = doc(db, 'conversations', conversationId, 'messages', m.id);
+        batch.update(mRef, { status: 'read', updatedAt: serverTimestamp() });
+      });
+      
+      batch.commit().catch(async (e) => {
+        const permissionError = new FirestorePermissionError({ 
+          path: `conversations/${conversationId}/messages/${unreadMessages[0].id}`, 
+          operation: 'update',
+          requestResourceData: { status: 'read' }
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
     }
   }, [db, conversationId, isNewChat, user, rawMessages, isUserLoading]);
 
@@ -225,6 +208,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     let pIds = (conversation?.participantIds || [user.uid, otherProfile.id]).sort();
 
     if (isNewChat) {
+      console.log(`[Firestore TRACE] Creating new conversation between ${user.uid} and ${otherProfile.id}`);
       const existing = await getDocs(query(collection(db, 'conversations'), where('participantIds', '==', pIds)));
       if (existing.empty) {
         const newConv = await addDoc(collection(db, 'conversations'), {
@@ -251,11 +235,19 @@ export function ConversationView({ conversationId }: { conversationId: string })
       ...payloadOverride
     };
 
-    addDoc(collection(db, 'conversations', activeId, 'messages'), msg);
+    console.log(`[Firestore TRACE] Sending message to ${activeId}`, msg);
+    addDoc(collection(db, 'conversations', activeId, 'messages'), msg).catch(async (e) => {
+      const err = new FirestorePermissionError({ path: `conversations/${activeId}/messages`, operation: 'create', requestResourceData: msg });
+      errorEmitter.emit('permission-error', err);
+    });
+
     updateDoc(doc(db, 'conversations', activeId), {
       lastMessage: text || 'Media Shared',
       updatedAt: serverTimestamp(),
       [`unreadCount.${otherProfile.id}`]: increment(1)
+    }).catch(async (e) => {
+      const err = new FirestorePermissionError({ path: `conversations/${activeId}`, operation: 'update' });
+      errorEmitter.emit('permission-error', err);
     });
   };
 
@@ -450,11 +442,11 @@ function MessageRow({ msg, user, isMobile, onSelect, onVote, onDelete, onReply }
           </div>
         )}
 
-        <div className="flex justify-end gap-1 items-center mt-1 opacity-60 text-[8px] font-black uppercase">
-          <span>{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
+        <div className="flex justify-end gap-1 items-center mt-1 text-[8px] font-black uppercase">
+          <span className="opacity-60">{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
           {isOwn && !isSystem && (
-            <div className="flex items-center">
-              {msg.status === 'read' ? <CheckCheck className="w-3 h-3 text-blue-400 stroke-[3]" /> : <Check className="w-3 h-3" />}
+            <div className="flex items-center ml-1">
+              {msg.status === 'read' ? <CheckCheck className="w-3.5 h-3.5 text-sky-400 stroke-[3.5]" /> : <Check className="w-3.5 h-3.5 text-white/40" />}
             </div>
           )}
         </div>
