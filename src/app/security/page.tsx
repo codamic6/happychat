@@ -46,7 +46,7 @@ export default function SecurityPage() {
           <div className="container mx-auto px-6">
             <div className="text-center mb-20">
                <h2 className="text-4xl md:text-6xl font-black font-headline text-white uppercase italic tracking-tighter">Security Layers.</h2>
-               <p className="text-muted-foreground mt-4 uppercase tracking-[0.2em] font-bold text-[10px]">Defense in Depth Strategy</p>
+               <p className="text-muted-foreground mt-4 uppercase tracking-[0.2em] font-bold text-[10px]">Defense in Depth Strategy 2026</p>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
