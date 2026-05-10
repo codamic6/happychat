@@ -101,9 +101,28 @@
         "id": { "type": "string" },
         "text": { "type": "string" },
         "senderId": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" },
+        "conversationId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
         "status": { "type": "string", "enum": ["sent", "delivered", "read"] },
-        "conversationParticipantIds": { "type": "array", "items": { "type": "string" } }
+        "isDeleted": { "type": "boolean" },
+        "deletedFor": { "type": "array", "items": { "type": "string" } },
+        "replyTo": { "type": "object" },
+        "poll": {
+          "type": "object",
+          "properties": {
+            "question": { "type": "string" },
+            "options": { "type": "array", "items": { "type": "string" } },
+            "votes": { "type": "object" }
+          }
+        },
+        "sharedContact": {
+          "type": "object",
+          "properties": {
+            "uid": { "type": "string" },
+            "name": { "type": "string" },
+            "username": { "type": "string" }
+          }
+        }
       }
     },
     "StatusUpdate": {

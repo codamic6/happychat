@@ -28,10 +28,9 @@ service cloud.firestore {
 
     // --- Conversations ---
     match /conversations/{conversationId} {
-      // Use resource.data for list queries to optimize performance
-      allow read: if isSignedIn() && (request.auth.uid in resource.data.participantIds);
+      allow read: if isConversationParticipant(conversationId);
       allow create: if isSignedIn() && (request.auth.uid in request.resource.data.participantIds);
-      allow update: if isSignedIn() && (request.auth.uid in resource.data.participantIds);
+      allow update: if isConversationParticipant(conversationId);
 
       // --- Messages ---
       match /messages/{messageId} {
@@ -47,7 +46,6 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
       
-      // Allow the owner to delete, and allow OTHERS to update the 'viewedBy' array
       allow update: if isSignedIn() && (
         request.auth.uid == resource.data.userId || 
         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewedBy']))
