@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, getDocs, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, getDocs, where, doc, updateDoc, onSnapshot, limit, orderBy } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { format, differenceInSeconds, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
@@ -39,6 +39,16 @@ type Conversation = {
   unreadCount?: Record<string, number>;
 };
 
+type StatusUpdate = {
+  id: string;
+  userId: string;
+  content: string;
+  type: 'text';
+  createdAt: any;
+  expiresAt: any;
+  viewedBy?: string[];
+};
+
 function formatShortTime(date: Date, isMobile: boolean) {
   const now = new Date();
   const diffSec = differenceInSeconds(now, date);
@@ -66,6 +76,39 @@ function manualTruncate(text: string, limit: number = 20) {
   return text.substring(0, limit) + '...';
 }
 
+function SegmentedRing({ count, hasUnseen, size = 56 }: { count: number, hasUnseen: boolean, size?: number }) {
+  if (count === 0) return null;
+  const radius = (size / 2) - 4;
+  const circumference = 2 * Math.PI * radius;
+  const gap = count > 1 ? 4 : 0;
+  const segmentLength = (circumference - (gap * count)) / count;
+  const color = hasUnseen ? "hsl(var(--primary))" : "rgba(255, 255, 255, 0.2)";
+
+  return (
+    <svg 
+      width={size} 
+      height={size} 
+      className="absolute inset-0 -rotate-90 pointer-events-none z-10"
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <circle
+          key={i}
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth="2.5"
+          strokeDasharray={`${segmentLength} ${gap}`}
+          strokeDashoffset={-(i * (segmentLength + gap))}
+          strokeLinecap="round"
+          className="transition-all duration-500"
+        />
+      ))}
+    </svg>
+  );
+}
+
 function ChatItem({ 
   conv, 
   profile, 
@@ -73,7 +116,8 @@ function ChatItem({
   user, 
   isSelected, 
   onClick,
-  isMobile
+  isMobile,
+  statusInfo
 }: { 
   conv: Conversation, 
   profile: UserProfile, 
@@ -81,7 +125,8 @@ function ChatItem({
   user: any, 
   isSelected: boolean, 
   onClick: () => void,
-  isMobile: boolean
+  isMobile: boolean,
+  statusInfo?: { count: number, hasUnseen: boolean }
 }) {
   const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
   const displayName = contact?.customName || profile.displayName || profile.fullName || 'User';
@@ -99,12 +144,15 @@ function ChatItem({
           : "hover:bg-white/5"
       )}
     >
-      <div className="relative shrink-0 flex-none">
-        <div className="w-14 h-14 rounded-full border border-white/10 bg-[#111] flex items-center justify-center">
+      <div className="relative shrink-0 flex-none flex items-center justify-center w-14 h-14">
+        {statusInfo && statusInfo.count > 0 && (
+          <SegmentedRing count={statusInfo.count} hasUnseen={statusInfo.hasUnseen} size={56} />
+        )}
+        <div className="w-12 h-12 rounded-full border border-white/10 bg-[#111] flex items-center justify-center overflow-hidden z-0">
           <div className="text-xl font-bold text-primary">{initial}</div>
         </div>
         {showOnline && (
-          <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green" />
+          <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green z-20" />
         )}
       </div>
       
@@ -178,10 +226,33 @@ export function ChatSidebar() {
 
   const { data: userContacts } = useCollection<ContactRecord>(contactsQuery);
 
+  // Active Statuses to show rings
+  const statusQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(
+      collection(db, 'statuses'),
+      where('expiresAt', '>', new Date()),
+      orderBy('expiresAt', 'desc'),
+      limit(100)
+    );
+  }, [db]);
+  const { data: activeStatuses } = useCollection<StatusUpdate>(statusQuery);
+
+  const statusMap = useMemo(() => {
+    if (!activeStatuses || !user) return {};
+    const map: Record<string, { count: number, hasUnseen: boolean }> = {};
+    activeStatuses.forEach(s => {
+      if (!map[s.userId]) map[s.userId] = { count: 0, hasUnseen: false };
+      map[s.userId].count++;
+      if (!s.viewedBy?.includes(user.uid)) map[s.userId].hasUnseen = true;
+    });
+    return map;
+  }, [activeStatuses, user]);
+
   const contactAliasMap = useMemo(() => {
     if (!userContacts) return {};
     return userContacts.reduce((acc, c) => {
-      acc[c.id] = c;
+      acc[c.userId] = c;
       return acc;
     }, {} as Record<string, ContactRecord>);
   }, [userContacts]);
@@ -266,6 +337,7 @@ export function ChatSidebar() {
                 isSelected={pathname === `/chat/${conv.id}`}
                 onClick={() => router.push(`/chat/${conv.id}`)}
                 isMobile={isMobile}
+                statusInfo={otherId ? statusMap[otherId] : undefined}
               />
             );
           })}

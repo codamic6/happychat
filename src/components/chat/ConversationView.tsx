@@ -22,7 +22,8 @@ import {
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { 
   doc, query, collection, serverTimestamp, 
-  getDocs, where, addDoc, updateDoc, increment, onSnapshot, writeBatch
+  getDocs, where, addDoc, updateDoc, increment, onSnapshot, writeBatch,
+  orderBy, limit
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -75,6 +76,49 @@ type Conversation = {
   typing?: Record<string, boolean>;
 };
 
+type StatusUpdate = {
+  id: string;
+  userId: string;
+  content: string;
+  type: 'text';
+  createdAt: any;
+  expiresAt: any;
+  viewedBy?: string[];
+};
+
+function SegmentedRing({ count, hasUnseen, size = 56 }: { count: number, hasUnseen: boolean, size?: number }) {
+  if (count === 0) return null;
+  const radius = (size / 2) - 4;
+  const circumference = 2 * Math.PI * radius;
+  const gap = count > 1 ? 4 : 0;
+  const segmentLength = (circumference - (gap * count)) / count;
+  const color = hasUnseen ? "hsl(var(--primary))" : "rgba(255, 255, 255, 0.2)";
+
+  return (
+    <svg 
+      width={size} 
+      height={size} 
+      className="absolute inset-0 -rotate-90 pointer-events-none z-10"
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <circle
+          key={i}
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth="2.5"
+          strokeDasharray={`${segmentLength} ${gap}`}
+          strokeDashoffset={-(i * (segmentLength + gap))}
+          strokeLinecap="round"
+          className="transition-all duration-500"
+        />
+      ))}
+    </svg>
+  );
+}
+
 export function ConversationView({ conversationId }: { conversationId: string }) {
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
@@ -122,6 +166,29 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
 
+  // Status info for the other user
+  const otherUid = useMemo(() => targetUid || conversation?.participantIds.find(id => id !== user?.uid), [targetUid, conversation, user]);
+  
+  const otherStatusQuery = useMemoFirebase(() => {
+    if (!db || !otherUid) return null;
+    return query(
+      collection(db, 'statuses'),
+      where('userId', '==', otherUid),
+      where('expiresAt', '>', new Date()),
+      orderBy('expiresAt', 'desc'),
+      limit(20)
+    );
+  }, [db, otherUid]);
+  const { data: otherStatuses } = useCollection<StatusUpdate>(otherStatusQuery);
+
+  const statusInfo = useMemo(() => {
+    if (!otherStatuses || !user) return null;
+    return {
+      count: otherStatuses.length,
+      hasUnseen: otherStatuses.some(s => !s.viewedBy?.includes(user.uid))
+    };
+  }, [otherStatuses, user]);
+
   // Synchronization of read status
   useEffect(() => {
     if (!db || isNewChat || !user || !rawMessages || rawMessages.length === 0 || isUserLoading) return;
@@ -131,7 +198,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
     );
 
     if (unreadMessages.length > 0) {
-      console.log(`[Firestore TRACE] Updating ${unreadMessages.length} messages to 'read'`);
       const batch = writeBatch(db);
       unreadMessages.forEach(msg => {
         const msgRef = doc(db, 'conversations', conversationId, 'messages', msg.id);
@@ -267,7 +333,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
       replyTo: replyData
     };
 
-    console.log(`[Firestore TRACE] addDoc to conversations/${activeId}/messages`, messagePayload);
     addDoc(collection(db, 'conversations', activeId, 'messages'), messagePayload).catch((e) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: `conversations/${activeId}/messages`, 
@@ -321,6 +386,15 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const isOtherTyping = otherProfile ? conversation?.typing?.[otherProfile.id] : false;
   const showOnline = otherProfile?.showOnlineStatus !== false && otherProfile?.isOnline;
 
+  const handleAvatarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (statusInfo && statusInfo.count > 0 && otherUid) {
+      router.push(`/chat/status?uid=${otherUid}`);
+    } else {
+      setShowProfile(true);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col relative bg-[#050505] overflow-hidden">
       <header className={cn(
@@ -347,11 +421,21 @@ export function ConversationView({ conversationId }: { conversationId: string })
               <div className="flex items-center gap-3 overflow-hidden flex-1">
                 <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground"><ArrowLeft className="w-6 h-6" /></Button>
                 <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
-                  <div className="w-10 h-10 rounded-full border-2 border-primary/20 shadow-lg bg-[#111] flex items-center justify-center shrink-0">
-                    <div className="text-sm font-bold text-primary">{initial}</div>
+                  <div 
+                    className="relative flex items-center justify-center w-12 h-12 shrink-0 group/avatar"
+                    onClick={handleAvatarClick}
+                  >
+                    {statusInfo && statusInfo.count > 0 && (
+                      <SegmentedRing count={statusInfo.count} hasUnseen={statusInfo.hasUnseen} size={48} />
+                    )}
+                    <div className="w-10 h-10 rounded-full border-2 border-primary/20 shadow-lg bg-[#111] flex items-center justify-center overflow-hidden z-0">
+                      <div className="text-sm font-bold text-primary">{initial}</div>
+                    </div>
                   </div>
                   <div className="min-w-0 text-left">
-                    <h3 className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors leading-tight">{mainName}</h3>
+                    <h3 className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors leading-tight">
+                      {mainName}
+                    </h3>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       {isOtherTyping ? (
                         <span className="text-[9px] text-primary animate-pulse font-black uppercase tracking-widest">Typing...</span>
@@ -431,6 +515,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
             initial={initial} 
             user={user} 
             db={db} 
+            statusInfo={statusInfo}
+            otherUid={otherUid}
           />
         )}
       </AnimatePresence>
@@ -512,9 +598,10 @@ function MessageRow({
   );
 }
 
-function UserProfileSidebar({ profile, contactRecord, onDismiss, otherName, initial, user, db }: any) {
+function UserProfileSidebar({ profile, contactRecord, onDismiss, otherName, initial, user, db, statusInfo, otherUid }: any) {
   const [nickname, setNickname] = useState(contactRecord?.customName || '');
   const [isUpdating, setIsUpdating] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     if (contactRecord) setNickname(contactRecord.customName || '');
@@ -524,15 +611,19 @@ function UserProfileSidebar({ profile, contactRecord, onDismiss, otherName, init
     if (!user || !db || !profile) return;
     setIsUpdating(true);
     const contactRef = doc(db, 'users', user.uid, 'contacts', profile.id);
-    setDoc(contactRef, {
-      userId: profile.id,
+    updateDoc(contactRef, {
       customName: nickname.trim(),
-      addedAt: contactRecord?.addedAt || serverTimestamp()
-    }, { merge: true }).catch((e) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: contactRef.path, operation: 'write' }));
+    }).catch((e) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: contactRef.path, operation: 'update' }));
     }).finally(() => setIsUpdating(false));
     
     toast({ title: "Nickname Updated", description: "Identity sync complete." });
+  };
+
+  const handleAvatarClick = () => {
+    if (statusInfo && statusInfo.count > 0 && otherUid) {
+      router.push(`/chat/status?uid=${otherUid}`);
+    }
   };
 
   return (
@@ -541,7 +632,18 @@ function UserProfileSidebar({ profile, contactRecord, onDismiss, otherName, init
       <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 bottom-0 w-full md:w-[350px] bg-[#0d0d0d] border-l border-white/10 z-[120] flex flex-col shadow-2xl overflow-y-auto custom-scrollbar p-8">
         <div className="flex items-center justify-between mb-10"><span className="text-[10px] font-bold uppercase tracking-widest text-primary">Secure User Profile</span><Button size="icon" variant="ghost" onClick={onDismiss} className="hover:bg-white/5"><X className="w-5 h-5 text-muted-foreground" /></Button></div>
         <div className="flex flex-col items-center text-center space-y-8">
-          <div className="relative"><div className="w-32 h-32 border-4 border-primary/20 shadow-[0_0_30px_rgba(0,200,83,0.15)] bg-[#111] rounded-full flex items-center justify-center"><div className="text-5xl font-bold text-primary">{initial}</div></div><div className="absolute -bottom-2 -right-2 bg-primary p-2 rounded-full border-4 border-[#0d0d0d]"><ShieldCheck className="w-4 h-4 text-black" /></div></div>
+          <div 
+            className="relative flex items-center justify-center w-40 h-40 cursor-pointer group/sidebar-avatar"
+            onClick={handleAvatarClick}
+          >
+            {statusInfo && statusInfo.count > 0 && (
+              <SegmentedRing count={statusInfo.count} hasUnseen={statusInfo.hasUnseen} size={150} />
+            )}
+            <div className="w-32 h-32 border-4 border-primary/20 shadow-[0_0_30px_rgba(0,200,83,0.15)] bg-[#111] rounded-full flex items-center justify-center overflow-hidden z-0">
+              <div className="text-5xl font-bold text-primary">{initial}</div>
+            </div>
+            <div className="absolute -bottom-2 -right-2 bg-primary p-2 rounded-full border-4 border-[#0d0d0d] z-20"><ShieldCheck className="w-4 h-4 text-black" /></div>
+          </div>
           <div className="space-y-1"><h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase leading-none">{contactRecord?.customName || profile?.fullName || 'User'}</h2>{contactRecord?.customName && <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-60">{profile?.fullName}</p>}<p className="text-primary text-[9px] font-bold uppercase tracking-[0.2em] mt-2 bg-primary/10 py-1 px-3 rounded-full">Verified Identity</p></div>
           <div className="w-full space-y-6 pt-4"><div className="space-y-3 text-left"><Label className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary ml-1 flex items-center gap-2"><Tag className="w-3 h-3" /> Manage Identity</Label><div className="flex gap-2"><Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Set custom nickname..." className="bg-white/5 border-white/10 h-12 rounded-xl text-sm focus:ring-primary" /><Button onClick={handleUpdateNickname} disabled={isUpdating} className="bg-primary h-12 w-12 rounded-xl hover:glow-green shrink-0">{isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}</Button></div></div>
           <Card className="w-full bg-white/5 border-white/10 p-5 space-y-4 text-left rounded-2xl"><div><p className="text-[9px] font-bold uppercase tracking-widest text-primary mb-1">Username</p><p className="text-xs text-white">@{profile?.username}</p></div><div><p className="text-[9px] font-bold uppercase tracking-widest text-primary mb-1">About</p><p className="text-xs text-white leading-relaxed">{profile?.about || "Digital creator on HappyChat."}</p></div></Card></div>
