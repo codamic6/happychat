@@ -477,6 +477,9 @@ export function ChatSidebar() {
       {/* Profile Info Dialog (Shared) */}
       <Dialog open={!!viewingProfile} onOpenChange={() => setViewingProfile(null)}>
         <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-0 rounded-[2.5rem] overflow-hidden max-w-md shadow-2xl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>User Profile</DialogTitle>
+          </DialogHeader>
           <div className="p-8 flex flex-col items-center text-center space-y-6">
             <div className="relative">
               <div className="w-32 h-32 rounded-full border-4 border-primary/20 flex items-center justify-center bg-[#111] overflow-hidden">
