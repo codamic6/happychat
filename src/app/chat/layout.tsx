@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { IconRail } from '@/components/chat/IconRail';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
@@ -13,17 +14,50 @@ import Link from 'next/link';
 
 function ChatLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
+  const db = useFirestore();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+  // Global Presence Heartbeat
+  useEffect(() => {
+    if (!user || !db) return;
+
+    const userRef = doc(db, 'users', user.uid);
+    
+    const setOnlineStatus = (status: boolean) => {
+      updateDoc(userRef, {
+        isOnline: status,
+        updatedAt: serverTimestamp()
+      }).catch(() => {});
+    };
+
+    // Set online on mount
+    setOnlineStatus(true);
+
+    // Set offline on unmount/background
+    const handleVisibilityChange = () => {
+      setOnlineStatus(document.visibilityState === 'visible');
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', () => setOnlineStatus(false));
+
+    return () => {
+      setOnlineStatus(false);
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user, db]);
 
   // Define pages that should NOT be treated as specific conversation views
   const isExcludedFromConversation = [
     '/chat',
     '/chat/profile',
     '/chat/status',
-    '/chat/contacts'
+    '/chat/contacts',
+    '/chat/archived',
+    '/chat/settings'
   ].includes(pathname);
 
   const isAtConversation = pathname.startsWith('/chat/') && !isExcludedFromConversation;
@@ -54,10 +88,10 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
             <Sparkles className="w-12 h-12 text-primary" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase">HappyChat</h2>
-            <div className="flex items-center justify-center gap-2 text-primary text-xs font-bold uppercase tracking-widest">
+            <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase text-gradient italic">HappyChat</h2>
+            <div className="flex items-center justify-center gap-2 text-primary text-[10px] font-black uppercase tracking-[0.3em]">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Connecting...
+              Initializing Shard...
             </div>
           </div>
         </motion.div>
@@ -84,7 +118,7 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center glow-green">
             <Zap className="text-primary-foreground h-5 w-5 fill-current" />
           </div>
-          <span className="font-headline font-bold text-xl tracking-tight text-white uppercase">HappyChat</span>
+          <span className="font-headline font-bold text-xl tracking-tight text-white uppercase italic">HappyChat</span>
         </Link>
         <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
            <Users className="w-4 h-4 text-muted-foreground" />

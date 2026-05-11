@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -60,6 +59,7 @@ type Conversation = {
   pinnedBy?: string[];
   archivedBy?: string[];
   hiddenFor?: string[];
+  typing?: Record<string, boolean>;
 };
 
 type StatusUpdate = {
@@ -279,16 +279,11 @@ export function ChatSidebar() {
       const q = query(collection(db, 'conversations', convId, 'messages'));
       const snap = await getDocs(q);
       const batch = writeBatch(db);
-      
-      // Update individual messages to hide them for this user
       snap.docs.forEach(docSnap => { 
         batch.update(docSnap.ref, { deletedFor: arrayUnion(user.uid) }); 
       });
-
-      // Clear the conversation-level lastMessage string so it doesn't show in the sidebar
       const convRef = doc(db, 'conversations', convId);
       batch.update(convRef, { lastMessage: "" });
-
       await batch.commit();
       toast({ title: "Signal Cleared", description: "History scrubbed locally." });
       setManageChatId(null);
@@ -394,7 +389,6 @@ export function ChatSidebar() {
         </div>
       </header>
 
-      {/* Mobile Selection Tool Overlay */}
       <AnimatePresence>
         {isSelectionMode && isMobile && (
           <motion.div 
@@ -448,6 +442,7 @@ export function ChatSidebar() {
             const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
             const statusInfo = otherId ? statusMap[otherId] : undefined;
             const isSelected = selectedConvId === conv.id || pathname === `/chat/${conv.id}`;
+            const isTyping = otherId ? conv.typing?.[otherId] === true : false;
 
             return (
               <div 
@@ -461,7 +456,6 @@ export function ChatSidebar() {
                   role="button"
                   tabIndex={0}
                   onClick={() => handleChatClick(conv.id)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleChatClick(conv.id); } }}
                   className={cn(
                     "w-full p-4 rounded-[2rem] flex items-center gap-4 transition-all border border-transparent overflow-hidden relative cursor-pointer outline-none",
                     isSelected 
@@ -532,12 +526,16 @@ export function ChatSidebar() {
                     </div>
                     
                     <div className="flex items-center justify-between gap-3 overflow-hidden">
-                      <p className={cn(
-                        "text-[11px] min-w-0 flex-1 truncate font-medium",
-                        unreadCount > 0 ? "text-white/90" : "text-muted-foreground/50"
-                      )}>
-                        {conv.lastMessage || 'Secure connection active...'}
-                      </p>
+                      {isTyping ? (
+                        <p className="text-[11px] text-primary font-black uppercase tracking-[0.2em] animate-pulse">Typing...</p>
+                      ) : (
+                        <p className={cn(
+                          "text-[11px] min-w-0 flex-1 truncate font-medium",
+                          unreadCount > 0 ? "text-white/90" : "text-muted-foreground/50"
+                        )}>
+                          {conv.lastMessage || 'Secure connection active...'}
+                        </p>
+                      )}
                       {unreadCount > 0 && (
                         <Badge className="bg-primary text-primary-foreground text-[10px] font-black rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center glow-green">
                           {unreadCount > 99 ? '99+' : unreadCount}
@@ -557,7 +555,6 @@ export function ChatSidebar() {
               </div>
               <div className="space-y-1">
                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white">No signals found</p>
-                 <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Adjust your search parameters</p>
               </div>
             </div>
           )}
@@ -638,4 +635,3 @@ export function ChatSidebar() {
     </div>
   );
 }
-

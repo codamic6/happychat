@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -105,6 +104,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [inputText, setInputText] = useState('');
   const [showProfile, setShowProfile] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Selection & Tools State
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
@@ -139,6 +139,29 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
+
+  // Typing Logic
+  useEffect(() => {
+    if (!user || !db || isNewChat || !conversationId) return;
+
+    const setTyping = (isTyping: boolean) => {
+      updateDoc(doc(db, 'conversations', conversationId), {
+        [`typing.${user.uid}`]: isTyping
+      }).catch(() => {});
+    };
+
+    if (inputText.length > 0) {
+      setTyping(true);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => setTyping(false), 3000);
+    } else {
+      setTyping(false);
+    }
+
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, [inputText, user, db, conversationId, isNewChat]);
 
   useEffect(() => {
     if (searchParams.get('info') === 'true') {
@@ -182,7 +205,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
     setInputText('');
     setReplyingTo(null);
-    setActiveTool('none'); // Close tools on send
+    setActiveTool('none');
 
     let activeId = conversationId;
     let pIds = (conversation?.participantIds || [user.uid, otherProfile.id]).sort();
@@ -224,11 +247,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
     addDoc(collection(db, 'conversations', activeId, 'messages'), msg).catch(() => {});
 
-    updateDoc(doc(db, 'conversations', activeId), {
+    updateDoc(doc(db, 'conversations', activeId, {
       lastMessage: text || 'Media Shared',
       updatedAt: serverTimestamp(),
-      [`unreadCount.${otherProfile.id}`]: increment(1)
-    }).catch(() => {});
+      [`unreadCount.${otherProfile.id}`]: increment(1),
+      [`typing.${user.uid}`]: false
+    })).catch(() => {});
   };
 
   const deleteMessage = async (msgId: string, senderId: string, mode: 'me' | 'everyone') => {
@@ -257,6 +281,11 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
     updateDoc(doc(db, 'conversations', conversationId, 'messages', msg.id), { 'poll.votes': newVotes });
   };
+
+  const isOtherTyping = useMemo(() => {
+    if (!conversation?.typing || !otherProfile) return false;
+    return conversation.typing[otherProfile.id] === true;
+  }, [conversation?.typing, otherProfile]);
 
   const mainName = contactRecord?.customName || otherProfile?.displayName || otherProfile?.fullName || 'User';
   const initial = mainName.charAt(0).toUpperCase();
@@ -322,7 +351,16 @@ export function ConversationView({ conversationId }: { conversationId: string })
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-sm font-bold text-white truncate">{mainName}</h3>
-                    <p className="text-[10px] text-primary uppercase font-bold tracking-widest">{otherProfile?.isOnline ? 'Online' : 'Offline'}</p>
+                    {isOtherTyping ? (
+                      <p className="text-[10px] text-primary font-black uppercase tracking-[0.2em] animate-pulse">Typing...</p>
+                    ) : (
+                      <p className={cn(
+                        "text-[10px] uppercase font-bold tracking-widest",
+                        otherProfile?.isOnline ? "text-primary" : "text-muted-foreground"
+                      )}>
+                        {otherProfile?.isOnline ? 'Online' : 'Offline'}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -401,7 +439,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
           )}
         </AnimatePresence>
 
-        {/* Dynamic Action Tray */}
         <AnimatePresence mode="wait">
           {activeTool !== 'none' && (
             <motion.div 
