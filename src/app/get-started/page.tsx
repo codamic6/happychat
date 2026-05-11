@@ -37,7 +37,7 @@ export default function RegisterPage() {
         fullName,
         username: username.toLowerCase(),
         email: email.toLowerCase(),
-        phoneNumber,
+        phoneNumber: phoneNumber || null, // Optional phone
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         isOnline: true,
@@ -88,10 +88,10 @@ export default function RegisterPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-2"
               >
-                <Sparkles className="w-3 h-3" /> Protocol Phase II
+                <Sparkles className="w-3 h-3" /> World's 1st Email Chat
               </motion.div>
               <h2 className="text-4xl font-black font-headline text-white italic tracking-tight uppercase">Register</h2>
-              <p className="text-sm text-muted-foreground font-medium">Create your sovereign digital identity.</p>
+              <p className="text-sm text-muted-foreground font-medium">Create your sovereign email identity.</p>
             </div>
 
             <form onSubmit={handleRegister} className="grid sm:grid-cols-2 gap-5 relative z-10">
@@ -116,7 +116,7 @@ export default function RegisterPage() {
                 required
               />
               <AuthInput
-                label="Phone Number"
+                label="Phone (Optional)"
                 icon={Phone}
                 type="tel"
                 value={phoneNumber}

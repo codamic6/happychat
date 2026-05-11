@@ -4,8 +4,8 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'HappyChat | Secure & AI-Powered Messaging',
-  description: 'Experience the future of communication with real-time messaging, crystal clear calls, and AI assistance.',
+  title: 'HappyChat | World\'s 1st Email-Based Messenger',
+  description: 'The world\'s 1st email-based chat app. Secure, private, and accessible to everyone with an email address. Join the 2026 Signal Mesh.',
 };
 
 export default function RootLayout({

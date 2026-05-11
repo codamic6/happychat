@@ -1,14 +1,14 @@
 'use client';
 
-import { MessageCircle, Zap, Shield, Smartphone, Globe, Layers, EyeOff, Lock } from 'lucide-react';
+import { MessageCircle, Zap, Shield, Mail, Globe, Layers, EyeOff, Lock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 
 const bentoFeatures = [
   {
-    title: 'Instant Messaging',
-    desc: 'Lightning-fast delivery with real-time feedback loops.',
-    icon: MessageCircle,
+    title: 'Email Identity',
+    desc: 'The world\'s 1st chat app to use email as a universal shard identity.',
+    icon: Mail,
     className: 'md:col-span-2 md:row-span-1',
     color: 'text-primary'
   },
@@ -27,9 +27,9 @@ const bentoFeatures = [
     color: 'text-blue-400'
   },
   {
-    title: 'Cross-Platform',
-    desc: 'Native performance on every device you own.',
-    icon: Smartphone,
+    title: 'Accessible',
+    desc: 'Everyone has an email. No phone number required for signup.',
+    icon: MessageCircle,
     className: 'md:col-span-1 md:row-span-1',
     color: 'text-purple-400'
   },
@@ -69,8 +69,7 @@ export function Features() {
           transition={{ delay: 0.1 }}
           className="text-lg md:text-xl text-muted-foreground max-w-2xl font-medium"
         >
-          We've broken down the barriers of traditional messaging to build something faster, 
-          stronger, and completely private.
+          We've removed the phone number barrier. HappyChat 2026 is the world's 1st universal messenger built for the email age.
         </motion.p>
       </div>
 

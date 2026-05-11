@@ -20,7 +20,7 @@ export function Footer() {
               <span className="font-headline font-black text-2xl md:text-3xl tracking-tighter text-white italic uppercase">HappyChat</span>
             </Link>
             <p className="text-lg md:text-xl text-muted-foreground max-w-md font-medium leading-relaxed">
-              Redefining the standard of private communication through zero-knowledge architecture and cinematic design.
+              World's 1st Email-Based Messenger. Redefining private communication through secure identity shards and cinematic design.
             </p>
             <div className="flex gap-4">
               {[Twitter, Github, Instagram].map((Icon, i) => (
@@ -36,7 +36,7 @@ export function Footer() {
             <div className="space-y-4 md:space-y-6">
               <h4 className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-primary">Platform</h4>
               <ul className="space-y-3 md:space-y-4">
-                {['Features', 'Security', 'Enterprise', 'API Portal'].map((item) => (
+                {['Features', 'Security', 'Enterprise', 'Email Protocol'].map((item) => (
                   <li key={item}>
                     <Link href={`/${item.toLowerCase().replace(' ', '-')}`} className="text-xs md:text-sm font-bold text-white/60 hover:text-white flex items-center gap-1 group transition-colors uppercase tracking-widest">
                       {item} <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-all" />
@@ -68,7 +68,7 @@ export function Footer() {
           <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8">
             <div className="flex items-center gap-2">
                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-               <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-primary">Global Network Active</span>
+               <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-primary">Email Mesh Active</span>
             </div>
             <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-muted-foreground italic">Build 0x2026AF</span>
           </div>
