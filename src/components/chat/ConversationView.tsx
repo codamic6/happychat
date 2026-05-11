@@ -1,9 +1,8 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
-  Send, MoreHorizontal, Smile, Search, 
+  Send, MoreHorizontal, Search, 
   MoreVertical, X, Info, ArrowLeft, Loader2,
   Check, Reply, CheckCheck, Trash2, BarChart2, UserPlus, MessageSquare,
   Forward, ChevronRight, Share2, Pencil, Plus, ArrowLeftCircle, Tag
@@ -113,7 +112,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTool, setActiveTool] = useState<'none' | 'menu' | 'poll' | 'contact'>('none');
   
-  // Nickname editing state
   const [isEditingNickname, setIsEditingNickname] = useState(false);
   const [newNickname, setNewNickname] = useState('');
   const [isSavingNickname, setIsSavingNickname] = useState(false);
@@ -287,9 +285,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
         updatedAt: serverTimestamp()
       });
       setIsEditingNickname(false);
-      toast({ title: "Signal Updated", description: "Nickname has been synchronized." });
+      toast({ title: "Name Updated", description: "The contact name has been saved." });
     } catch (e) {
-      toast({ variant: 'destructive', title: "Update Failed", description: "Secure shard write failed." });
+      toast({ variant: 'destructive', title: "Error", description: "Could not update name." });
     } finally {
       setIsSavingNickname(false);
     }
@@ -304,22 +302,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
       updateDoc(ref, { isDeleted: true, text: 'This message was deleted', poll: null, sharedContact: null });
     }
     setSelectedMessage(null);
-    toast({ title: "Message Deleted", description: mode === 'me' ? "Removed from your view." : "Removed for everyone." });
-  };
-
-  const handleVote = async (msg: Message, optionIndex: number) => {
-    if (!user || !db) return;
-    const votes = msg.poll?.votes || {};
-    const currentVotes = votes[optionIndex] || [];
-    if (currentVotes.includes(user.uid)) return;
-
-    const newVotes = { ...votes };
-    Object.keys(newVotes).forEach(idx => {
-      newVotes[idx] = (newVotes[idx] || []).filter(uid => uid !== user.uid);
-    });
-    newVotes[optionIndex] = [...(newVotes[optionIndex] || []), user.uid];
-
-    updateDoc(doc(db, 'conversations', conversationId, 'messages', msg.id), { 'poll.votes': newVotes });
+    toast({ title: "Message Deleted" });
   };
 
   const isOtherTyping = useMemo(() => {
@@ -332,28 +315,25 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   return (
     <div className="flex-1 flex flex-col relative bg-[#050505] overflow-hidden">
-      <header className="flex-none h-16 px-4 border-b border-white/5 flex items-center justify-between z-[60] sticky top-0 bg-black/80 backdrop-blur-3xl">
+      <header className="flex-none h-20 px-4 border-b border-white/5 flex items-center justify-between z-[60] sticky top-0 bg-black/80 backdrop-blur-3xl">
         <AnimatePresence mode="wait">
           {selectedMessage && isMobile ? (
             <motion.div 
               key="selection-header"
-              initial={{ opacity: 0, y: -20 }}
+              initial={{ opacity: 0, y: -10 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ opacity: 0, y: -20 }}
+              exit={{ opacity: 0, y: -10 }}
               className="flex items-center justify-between w-full"
             >
               <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" onClick={() => setSelectedMessage(null)} className="text-white">
                   <X className="w-6 h-6" />
                 </Button>
-                <span className="text-sm font-bold uppercase tracking-widest text-primary">Selected</span>
+                <span className="text-sm font-bold uppercase tracking-widest text-primary">Message Selected</span>
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" onClick={() => { setReplyingTo(selectedMessage); setSelectedMessage(null); }} className="text-white">
                   <Reply className="w-5 h-5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="text-white">
-                  <Forward className="w-5 h-5" />
                 </Button>
                 <Dialog>
                   <DialogTrigger asChild>
@@ -378,9 +358,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
           ) : isSearchMode ? (
             <motion.div 
               key="search-header"
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ opacity: 0, y: 20 }}
+              exit={{ opacity: 0, y: 10 }}
               className="flex items-center gap-3 w-full"
             >
               <Button variant="ghost" size="icon" onClick={() => { setIsSearchMode(false); setSearchQuery(''); }} className="text-primary">
@@ -392,15 +372,10 @@ export function ConversationView({ conversationId }: { conversationId: string })
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoFocus
-                  placeholder="Signal Scan: Search history..."
-                  className="bg-white/5 border-none h-10 pl-10 rounded-full focus-visible:ring-1 focus-visible:ring-primary/30"
+                  placeholder="Search in conversation..."
+                  className="bg-white/5 border-none h-11 pl-10 rounded-full focus-visible:ring-1 focus-visible:ring-primary/30"
                 />
               </div>
-              {searchQuery && (
-                <span className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/10 px-2 py-1 rounded-md whitespace-nowrap">
-                  {filteredMessages.length} Matches
-                </span>
-              )}
             </motion.div>
           ) : (
             <motion.div 
@@ -413,11 +388,11 @@ export function ConversationView({ conversationId }: { conversationId: string })
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground"><ArrowLeft className="w-6 h-6" /></Button>
                 <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
-                  <div className="w-10 h-10 rounded-full border border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden shrink-0">
-                    <span className="text-sm font-bold text-primary not-italic flex items-center justify-center leading-none h-full w-full">{initial}</span>
+                  <div className="w-11 h-11 rounded-full border border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden shrink-0">
+                    <span className="text-base font-bold text-primary not-italic">{initial}</span>
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-white truncate">{mainName}</h3>
+                    <h3 className="text-sm md:text-base font-bold text-white truncate">{mainName}</h3>
                     {isOtherTyping ? (
                       <p className="text-[10px] text-primary font-black uppercase tracking-[0.2em] animate-pulse">Typing...</p>
                     ) : (
@@ -431,7 +406,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <Button variant="ghost" size="icon" onClick={() => setIsSearchMode(true)} className="text-muted-foreground hover:text-primary"><Search className="w-5 h-5" /></Button>
                 <Button variant="ghost" size="icon" onClick={() => setShowProfile(true)} className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button>
               </div>
@@ -457,12 +432,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
           ))}
           <div ref={scrollRef} />
         </div>
-        {filteredMessages.length === 0 && searchQuery && (
-          <div className="py-20 text-center space-y-6 opacity-30">
-            <Search className="w-12 h-12 mx-auto text-muted-foreground" />
-            <p className="text-sm font-bold uppercase tracking-widest">No signal shards found for "{searchQuery}"</p>
-          </div>
-        )}
       </ScrollArea>
 
       <AnimatePresence>
@@ -471,70 +440,64 @@ export function ConversationView({ conversationId }: { conversationId: string })
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            className="absolute inset-y-0 right-0 w-full md:w-80 bg-[#0a0a0a] border-l border-white/5 z-[100] flex flex-col shadow-2xl"
+            className="absolute inset-y-0 right-0 w-full md:w-96 bg-[#0a0a0a] border-l border-white/5 z-[100] flex flex-col shadow-2xl"
           >
             <div className="p-6 flex items-center justify-between border-b border-white/5">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">User Details</h3>
-              <Button size="icon" variant="ghost" onClick={() => setShowProfile(false)} className="h-8 w-8 rounded-full"><X className="w-4 h-4" /></Button>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">User Profile</h3>
+              <Button size="icon" variant="ghost" onClick={() => setShowProfile(false)} className="h-10 w-10 rounded-full"><X className="w-6 h-6" /></Button>
             </div>
-            <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center text-center space-y-6">
+            <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center text-center space-y-8">
               <div className="w-32 h-32 rounded-full border-4 border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden">
-                <span className="text-4xl font-black text-primary uppercase not-italic flex items-center justify-center leading-none h-full w-full">{(mainName || 'U').charAt(0)}</span>
+                <span className="text-5xl font-black text-primary uppercase not-italic">{initial}</span>
               </div>
               
-              <div className="w-full space-y-2">
+              <div className="w-full space-y-4">
                 {isEditingNickname ? (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <Input 
                       value={newNickname} 
                       onChange={(e) => setNewNickname(e.target.value)}
-                      placeholder="Enter nickname..."
-                      className="bg-white/5 border-white/10 text-center text-lg font-bold uppercase tracking-tight h-12 rounded-xl"
+                      placeholder="Enter a new name..."
+                      className="bg-white/5 border-white/10 text-center text-lg font-bold h-14 rounded-xl"
                       autoFocus
                     />
                     <div className="flex gap-2">
-                      <Button onClick={handleUpdateNickname} disabled={isSavingNickname} className="flex-1 h-10 bg-primary hover:glow-green text-primary-foreground font-bold uppercase text-[10px] tracking-widest rounded-xl">
-                        {isSavingNickname ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+                      <Button onClick={handleUpdateNickname} disabled={isSavingNickname} className="flex-1 h-12 bg-primary hover:glow-green text-primary-foreground font-bold uppercase text-xs tracking-widest rounded-xl">
+                        {isSavingNickname ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Name'}
                       </Button>
-                      <Button variant="ghost" onClick={() => setIsEditingNickname(false)} className="flex-1 h-10 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Cancel</Button>
+                      <Button variant="ghost" onClick={() => setIsEditingNickname(false)} className="flex-1 h-12 text-xs font-bold uppercase tracking-widest text-muted-foreground">Cancel</Button>
                     </div>
                   </div>
                 ) : (
-                  <div className="group relative">
-                    <h2 className="text-2xl font-black font-headline tracking-tighter uppercase">{mainName}</h2>
-                    <p className="text-primary text-[10px] font-bold uppercase tracking-widest">@{otherProfile.username}</p>
+                  <div className="space-y-4">
+                    <div>
+                      <h2 className="text-3xl font-black font-headline tracking-tighter uppercase">{mainName}</h2>
+                      <p className="text-primary text-[10px] font-bold uppercase tracking-widest">@{otherProfile.username}</p>
+                    </div>
                     {contactRecord && (
                       <Button 
-                        variant="ghost" 
-                        size="icon" 
                         onClick={() => setIsEditingNickname(true)}
-                        className="absolute -right-4 top-0 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-white/5"
+                        className="w-full h-12 bg-white/5 border border-white/10 text-white font-bold uppercase text-xs tracking-widest rounded-xl hover:bg-white/10 transition-all"
                       >
-                        <Pencil className="w-3 h-3 text-primary" />
+                        <Pencil className="w-4 h-4 mr-2" /> Edit Name
                       </Button>
                     )}
                   </div>
                 )}
               </div>
 
-              <div className="w-full bg-white/5 rounded-2xl p-6 border border-white/5 text-left space-y-4">
+              <div className="w-full bg-white/5 rounded-2xl p-6 border border-white/5 text-left space-y-6">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-2">
                     <Info className="w-3 h-3" /> About
                   </span>
-                  <p className="text-sm mt-1">{otherProfile.about || "Secure HappyChat User"}</p>
+                  <p className="text-sm leading-relaxed">{otherProfile.about || "This user prefers to keep their bio private."}</p>
                 </div>
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <Tag className="w-3 h-3" /> Real Identity
+                <div className="pt-4 border-t border-white/5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-2">
+                    <MessageSquare className="w-3 h-3" /> Email Address
                   </span>
-                  <p className="text-sm mt-1 text-white/60">{otherProfile.fullName || 'Unknown'}</p>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <MessageSquare className="w-3 h-3" /> Protocol Email
-                  </span>
-                  <p className="text-sm mt-1 text-primary truncate">{otherProfile.email}</p>
+                  <p className="text-sm text-primary truncate">{otherProfile.email}</p>
                 </div>
               </div>
             </div>
@@ -545,82 +508,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
       <footer className="bg-[#0a0a0a] border-t border-white/5 p-4 sticky bottom-0 z-50">
         <AnimatePresence>
           {replyingTo && (
-            <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="px-4 py-2 bg-white/5 border-l-2 border-primary mb-2 flex justify-between items-center rounded-r-xl overflow-hidden">
+            <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="px-4 py-3 bg-white/5 border-l-2 border-primary mb-3 flex justify-between items-center rounded-r-xl overflow-hidden shadow-lg">
               <div className="min-w-0">
-                <p className="text-[9px] font-bold text-primary uppercase">Replying to {replyingTo.senderId === user?.uid ? 'You' : (contactRecord?.customName || otherProfile?.fullName || 'User')}</p>
-                <p className="text-xs text-muted-foreground truncate">{replyingTo.text}</p>
+                <p className="text-[10px] font-bold text-primary uppercase">Replying to {replyingTo.senderId === user?.uid ? 'You' : (contactRecord?.customName || otherProfile?.fullName || 'User')}</p>
+                <p className="text-sm text-muted-foreground truncate">{replyingTo.text}</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setReplyingTo(null)} className="h-6 w-6 shrink-0"><X className="w-4 h-4" /></Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence mode="wait">
-          {activeTool !== 'none' && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="bg-[#0d0d0d] border border-white/5 rounded-2xl mb-4 overflow-hidden shadow-2xl"
-            >
-              <div className="p-4">
-                {activeTool === 'menu' && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <button 
-                      onClick={() => setActiveTool('poll')}
-                      className="flex flex-col items-center gap-2 p-6 rounded-2xl bg-white/5 hover:bg-primary/10 transition-all group"
-                    >
-                      <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                        <BarChart2 className="w-6 h-6" />
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest">Create Poll</span>
-                    </button>
-                    <button 
-                      onClick={() => setActiveTool('contact')}
-                      className="flex flex-col items-center gap-2 p-6 rounded-2xl bg-white/5 hover:bg-primary/10 transition-all group"
-                    >
-                      <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                        <UserPlus className="w-6 h-6" />
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest">Share Contact</span>
-                    </button>
-                  </div>
-                )}
-
-                {activeTool === 'poll' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => setActiveTool('menu')} className="h-8 w-8 text-primary">
-                          <ArrowLeftCircle className="w-5 h-5" />
-                        </Button>
-                        <span className="text-xs font-bold uppercase tracking-widest">New Poll</span>
-                      </div>
-                      <Button variant="ghost" size="icon" onClick={() => setActiveTool('none')} className="h-8 w-8">
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <PollComposerInline onCreated={(p) => handleSendMessage({ poll: p })} />
-                  </div>
-                )}
-
-                {activeTool === 'contact' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => setActiveTool('menu')} className="h-8 w-8 text-primary">
-                          <ArrowLeftCircle className="w-5 h-5" />
-                        </Button>
-                        <span className="text-xs font-bold uppercase tracking-widest">Share Contact</span>
-                      </div>
-                      <Button variant="ghost" size="icon" onClick={() => setActiveTool('none')} className="h-8 w-8">
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <ContactPickerInline onPicked={(c: any) => handleSendMessage({ sharedContact: c })} currentUserId={user?.uid} />
-                  </div>
-                )}
-              </div>
+              <Button variant="ghost" size="icon" onClick={() => setReplyingTo(null)} className="h-8 w-8 shrink-0"><X className="w-5 h-5" /></Button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -631,11 +524,11 @@ export function ConversationView({ conversationId }: { conversationId: string })
             variant="ghost" 
             onClick={() => setActiveTool(activeTool === 'none' ? 'menu' : 'none')}
             className={cn(
-              "rounded-xl h-11 w-11 transition-all",
+              "rounded-xl h-12 w-12 transition-all shrink-0",
               activeTool !== 'none' ? "bg-primary text-primary-foreground" : "bg-white/5 text-muted-foreground"
             )}
           >
-            {activeTool === 'none' ? <MoreHorizontal className="w-5 h-5" /> : <X className="w-5 h-5" />}
+            {activeTool === 'none' ? <Plus className="w-6 h-6" /> : <X className="w-6 h-6" />}
           </Button>
 
           <div className="flex-1 relative">
@@ -643,11 +536,11 @@ export function ConversationView({ conversationId }: { conversationId: string })
               value={inputText} 
               onChange={(e) => setInputText(e.target.value)} 
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} 
-              placeholder="Write a message..." 
-              className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary focus-visible:ring-offset-0" 
+              placeholder="Type your message..." 
+              className="bg-white/5 border-white/10 h-12 rounded-xl focus:ring-primary focus-visible:ring-offset-0 text-sm" 
             />
           </div>
-          <Button onClick={() => handleSendMessage()} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 rounded-xl active:scale-95 transition-all shrink-0"><Send className="w-5 h-5" /></Button>
+          <Button onClick={() => handleSendMessage()} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-12 w-12 rounded-xl active:scale-95 transition-all shrink-0"><Send className="w-5 h-5" /></Button>
         </div>
       </footer>
     </div>
@@ -679,12 +572,6 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
     }
   };
 
-  const handleReplyClick = () => {
-    if (msg.replyTo?.isStatus && msg.replyTo.statusUid) {
-      router.push(`/chat/status?uid=${msg.replyTo.statusUid}`);
-    }
-  };
-
   const renderText = (text: string) => {
     if (!highlight || !highlight.trim()) return text;
     const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
@@ -696,16 +583,7 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
   };
 
   return (
-    <div className={cn("flex w-full group relative px-2", isOwn ? "justify-end" : "justify-start")}>
-      {!isOwn && !isSystem && (
-        <motion.div 
-          style={{ opacity: replyIconOpacity }}
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-primary pointer-events-none"
-        >
-          <Reply className="w-5 h-5" />
-        </motion.div>
-      )}
-
+    <div className={cn("flex w-full group relative", isOwn ? "justify-end" : "justify-start")}>
       <motion.div
         drag={isOwn || isSystem ? false : "x"}
         dragConstraints={{ left: 0, right: 100 }}
@@ -719,68 +597,23 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
         className={cn(
-          "max-w-[85%] md:max-w-[70%] p-3 rounded-2xl text-[13px] relative transition-all duration-300",
+          "max-w-[85%] md:max-w-[70%] p-4 rounded-2xl text-sm relative transition-all duration-300",
           isSelected && "scale-[1.02] ring-2 ring-primary ring-offset-2 ring-offset-[#050505]",
-          isSystem ? "bg-white/5 text-muted-foreground italic border border-white/5 text-center px-8" : 
+          isSystem ? "bg-white/5 text-muted-foreground italic text-center px-8" : 
           isOwn ? "bg-primary text-primary-foreground rounded-tr-none shadow-lg" : "bg-[#161616] text-white rounded-tl-none border border-white/5 shadow-md"
         )}
       >
         {msg.replyTo && (
-          <div 
-            onClick={handleReplyClick}
-            className={cn(
-              "mb-2 p-2 bg-black/20 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate",
-              msg.replyTo.isStatus && "cursor-pointer hover:bg-black/40 transition-colors"
-            )}
-          >
-            <p className="font-bold text-primary mb-0.5">{msg.replyTo.isStatus ? 'STATUS' : msg.replyTo.senderName}</p>
+          <div className="mb-2 p-2 bg-black/20 rounded-lg border-l-2 border-primary text-[11px] opacity-80 truncate">
+            <p className="font-bold text-primary mb-0.5">{msg.replyTo.senderName}</p>
             {msg.replyTo.text}
           </div>
         )}
 
-        {msg.text && <p className="leading-relaxed">{renderText(msg.text)}</p>}
+        {msg.text && <p className="leading-relaxed whitespace-pre-wrap">{renderText(msg.text)}</p>}
 
-        {msg.poll && (
-          <div className="mt-3 space-y-2 bg-black/20 p-4 rounded-xl border border-white/5">
-            <h4 className="font-bold text-sm mb-3">{renderText(msg.poll.question)}</h4>
-            {msg.poll.options.map((opt: string, idx: number) => {
-              const votes = msg.poll.votes[idx] || [];
-              const totalVotes = Object.values(msg.poll.votes as Record<string, string[]>).flat().length;
-              const percent = totalVotes > 0 ? (votes.length / totalVotes) * 100 : 0;
-              const hasVoted = votes.includes(user?.uid);
-              return (
-                <button key={idx} onClick={() => onVote(idx)} className="w-full relative h-10 rounded-lg overflow-hidden border border-white/10 transition-all hover:border-primary/50">
-                  <div className="absolute inset-0 bg-primary/20 transition-all duration-500" style={{ width: `${percent}%` }} />
-                  <div className="relative z-10 px-4 flex justify-between items-center h-full font-bold uppercase text-[9px] tracking-widest">
-                    <span className="truncate mr-2">{opt}</span>
-                    <span className="flex items-center gap-1 shrink-0">{votes.length} {hasVoted && <Check className="w-3 h-3 text-white stroke-[3.5]" />}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {msg.sharedContact && (
-          <div className="mt-2 bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xl shadow-inner uppercase not-italic leading-none h-full w-full">{msg.sharedContact.name.charAt(0)}</div>
-            <div className="text-center">
-              <p className="font-bold text-xs uppercase tracking-widest">{renderText(msg.sharedContact.name)}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">@{msg.sharedContact.username}</p>
-            </div>
-            <Button 
-              size="sm" 
-              variant="secondary" 
-              onClick={() => router.push(`/chat/new-${msg.sharedContact.uid}`)}
-              className="w-full h-10 text-[9px] font-bold uppercase tracking-widest bg-white/5 hover:bg-primary/20 hover:text-primary transition-all rounded-xl"
-            >
-              <MessageSquare className="w-4 h-4 mr-2" /> Message
-            </Button>
-          </div>
-        )}
-
-        <div className="flex justify-end gap-1 items-center mt-1 text-[9px] font-black uppercase">
-          <span className="opacity-60">{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
+        <div className="flex justify-end gap-1 items-center mt-2 text-[10px] font-black uppercase opacity-60">
+          <span>{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
           {isOwn && !isSystem && (
             <div className="flex items-center ml-1">
               {msg.status === 'read' ? (
@@ -801,20 +634,12 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
           )}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-black/50 text-white hover:bg-primary transition-colors"><MoreVertical className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-primary transition-colors"><MoreVertical className="w-5 h-5" /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-[#111] border-white/10 text-white min-w-[160px] rounded-xl shadow-2xl z-[100]">
                 <DropdownMenuItem onClick={onReply} className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary p-3 text-[10px] uppercase font-bold tracking-widest">
                   <Reply className="w-3 h-3" /> Reply
                 </DropdownMenuItem>
-                <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary p-3 text-[10px] uppercase font-bold tracking-widest">
-                  <Forward className="w-3 h-3" /> Forward
-                </DropdownMenuItem>
-                {isOwn && (
-                  <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary p-3 text-[10px] uppercase font-bold tracking-widest">
-                    <Pencil className="w-3 h-3" /> Edit
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuSeparator className="bg-white/5" />
                 <Dialog>
                   <DialogTrigger asChild>
@@ -860,12 +685,12 @@ function PollComposerInline({ onCreated }: { onCreated: (poll: any) => void }) {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <Label className="text-[9px] font-black uppercase tracking-widest text-primary ml-1">Question</Label>
+        <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Question</Label>
         <Input 
           value={question} 
           onChange={(e) => setQuestion(e.target.value)} 
           placeholder="What's the topic?" 
-          className="bg-white/5 border-white/5 h-11 text-xs focus:ring-primary focus-visible:ring-offset-0 rounded-xl" 
+          className="bg-white/5 border-white/5 h-12 text-sm focus:ring-primary focus-visible:ring-offset-0 rounded-xl" 
         />
       </div>
       <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
@@ -875,14 +700,14 @@ function PollComposerInline({ onCreated }: { onCreated: (poll: any) => void }) {
             value={opt} 
             onChange={(e) => handleOptionChange(i, e.target.value)} 
             placeholder={`Option ${i+1}`} 
-            className="bg-white/5 border-white/5 h-10 text-xs focus:ring-primary focus-visible:ring-offset-0 rounded-xl" 
+            className="bg-white/5 border-white/5 h-11 text-sm focus:ring-primary focus-visible:ring-offset-0 rounded-xl" 
           />
         ))}
         <Button 
           variant="ghost" 
           size="sm"
           onClick={handleAddOption} 
-          className="w-full text-[9px] font-bold uppercase tracking-[0.2em] text-primary hover:bg-primary/10 rounded-xl h-8"
+          className="w-full text-[10px] font-bold uppercase tracking-[0.2em] text-primary hover:bg-primary/10 rounded-xl h-10"
         >
           Add Option +
         </Button>
@@ -890,9 +715,9 @@ function PollComposerInline({ onCreated }: { onCreated: (poll: any) => void }) {
       <Button 
         onClick={() => onCreated({ question, options, votes: {} })} 
         disabled={isInvalid} 
-        className="w-full h-11 bg-primary hover:glow-green uppercase font-black text-[10px] tracking-widest text-primary-foreground rounded-xl transition-all"
+        className="w-full h-12 bg-primary hover:glow-green uppercase font-black text-[11px] tracking-widest text-primary-foreground rounded-xl transition-all"
       >
-        Share with Chat
+        Create Poll
       </Button>
     </div>
   );
@@ -926,35 +751,35 @@ function ContactPickerInline({ onPicked, currentUserId }: any) {
   return (
     <div className="space-y-4">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search Network..." 
-          className="bg-white/5 border-white/10 h-10 text-[11px] rounded-xl focus:ring-primary"
+          placeholder="Search your contacts..." 
+          className="bg-white/5 border-white/10 h-12 text-sm rounded-xl focus:ring-primary"
         />
       </div>
-      <ScrollArea className="h-[180px]">
+      <ScrollArea className="h-[200px]">
         <div className="space-y-1">
           {filtered.map(p => (
             <button 
               key={p.id} 
               onClick={() => onPicked({ uid: p.id, name: p.fullName || p.displayName, username: p.username })} 
-              className="w-full p-2.5 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-all text-left group"
+              className="w-full p-3 rounded-xl flex items-center gap-4 hover:bg-white/5 transition-all text-left group"
             >
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xs group-hover:scale-110 transition-transform uppercase not-italic flex items-center justify-center leading-none">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-sm uppercase not-italic">
                 {(p.fullName || p.displayName || 'U').charAt(0)}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-xs text-white truncate">{p.fullName || p.displayName}</p>
-                <p className="text-[8px] text-muted-foreground uppercase tracking-widest">@{p.username}</p>
+                <p className="font-bold text-sm text-white truncate">{p.fullName || p.displayName}</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-widest">@{p.username}</p>
               </div>
-              <ChevronRight className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-all" />
+              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-all" />
             </button>
           ))}
           {filtered.length === 0 && !isLoading && (
-            <div className="py-10 text-center opacity-30">
-              <p className="text-[9px] font-bold uppercase tracking-widest">No matching contacts</p>
+            <div className="py-12 text-center opacity-30">
+              <p className="text-xs font-bold uppercase tracking-widest">No matching contacts</p>
             </div>
           )}
         </div>
