@@ -484,7 +484,7 @@ export function ChatSidebar() {
                       <SegmentedRing count={statusInfo.count} hasUnseen={statusInfo.hasUnseen} size={56} />
                     )}
                     <div className="w-12 h-12 rounded-full border border-white/10 bg-[#111] flex items-center justify-center overflow-hidden z-0 group-hover/item:scale-105 transition-transform duration-500">
-                      <div className="text-xl font-bold text-primary flex items-center justify-center w-full h-full leading-none translate-y-[1px]">{displayName.charAt(0).toUpperCase()}</div>
+                      <span className="text-xl font-bold text-primary not-italic">{displayName.charAt(0).toUpperCase()}</span>
                     </div>
                     {profile.showOnlineStatus !== false && profile.isOnline && (
                       <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green z-20 shadow-lg" />
@@ -614,7 +614,7 @@ export function ChatSidebar() {
           <div className="p-8 flex flex-col items-center text-center space-y-6">
             <div className="relative">
               <div className="w-32 h-32 rounded-full border-4 border-primary/20 flex items-center justify-center bg-[#111] overflow-hidden">
-                <span className="text-4xl font-black text-primary uppercase">{(viewingProfile?.fullName || 'U').charAt(0)}</span>
+                <span className="text-4xl font-black text-primary uppercase not-italic">{(viewingProfile?.fullName || 'U').charAt(0)}</span>
               </div>
             </div>
             <div className="space-y-1">
@@ -647,3 +647,4 @@ export function ChatSidebar() {
     </div>
   );
 }
+

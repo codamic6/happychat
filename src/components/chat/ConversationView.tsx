@@ -1,4 +1,4 @@
-'use client';
+'use server';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
@@ -106,15 +106,11 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Selection & Tools State
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   
-  // Search State
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Action Tray State
   const [activeTool, setActiveTool] = useState<'none' | 'menu' | 'poll' | 'contact'>('none');
   
   const isNewChat = conversationId.startsWith('new-');
@@ -154,7 +150,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
 
-  // Typing Logic
   useEffect(() => {
     if (!user || !db || isNewChat || !conversationId) return;
 
@@ -388,7 +383,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground"><ArrowLeft className="w-6 h-6" /></Button>
                 <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
                   <div className="w-10 h-10 rounded-full border border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden shrink-0">
-                    <span className="text-sm font-bold text-primary">{initial}</span>
+                    <span className="text-sm font-bold text-primary not-italic">{initial}</span>
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-sm font-bold text-white truncate">{mainName}</h3>
@@ -453,7 +448,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
             </div>
             <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center text-center space-y-6">
               <div className="w-32 h-32 rounded-full border-4 border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden">
-                <span className="text-4xl font-black text-primary uppercase">{initial}</span>
+                <span className="text-4xl font-black text-primary uppercase not-italic">{initial}</span>
               </div>
               <div>
                 <h2 className="text-2xl font-black font-headline tracking-tighter uppercase">{mainName}</h2>
@@ -695,7 +690,7 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
 
         {msg.sharedContact && (
           <div className="mt-2 bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xl shadow-inner">{msg.sharedContact.name.charAt(0)}</div>
+            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xl shadow-inner uppercase not-italic">{msg.sharedContact.name.charAt(0)}</div>
             <div className="text-center">
               <p className="font-bold text-xs uppercase tracking-widest">{renderText(msg.sharedContact.name)}</p>
               <p className="text-[10px] text-muted-foreground mt-0.5">@{msg.sharedContact.username}</p>
@@ -874,7 +869,7 @@ function ContactPickerInline({ onPicked, currentUserId }: any) {
               onClick={() => onPicked({ uid: p.id, name: p.fullName || p.displayName, username: p.username })} 
               className="w-full p-2.5 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-all text-left group"
             >
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xs group-hover:scale-110 transition-transform">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xs group-hover:scale-110 transition-transform uppercase not-italic">
                 {(p.fullName || p.displayName || 'U').charAt(0)}
               </div>
               <div className="flex-1 min-w-0">
@@ -894,3 +889,4 @@ function ContactPickerInline({ onPicked, currentUserId }: any) {
     </div>
   );
 }
+
