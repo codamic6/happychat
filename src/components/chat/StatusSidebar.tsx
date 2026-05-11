@@ -41,16 +41,16 @@ function formatStatusTime(date: Date, isMobile: boolean) {
   const diffHour = differenceInHours(now, date);
   const diffDay = differenceInDays(now, date);
 
-  if (diffSec < 60) return "JUST NOW";
+  if (diffSec < 60) return "NOW";
 
   if (isMobile) {
     if (diffMin < 60) return `${diffMin}m`;
     if (diffHour < 24) return `${diffHour}h`;
     return `${diffDay}d`;
   } else {
-    if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? 's' : ''}`;
-    if (diffHour < 24) return `${diffHour} hour${diffHour !== 1 ? 's' : ''}`;
-    return `${diffDay} day${diffDay !== 1 ? 's' : ''}`;
+    if (diffMin < 60) return `${diffMin}m`;
+    if (diffHour < 24) return `${diffHour}h`;
+    return `${diffDay}d`;
   }
 }
 
@@ -95,38 +95,39 @@ export function StatusSidebar() {
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const currentUserRef = useMemoFirebase(() => (user && db ? doc(db, 'users', user.uid) : null), [db, user]);
+  // SECURE REFERENCE: Ensure cleanup on logout
+  const currentUserRef = useMemoFirebase(() => (user?.uid && db ? doc(db, 'users', user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc<UserProfile>(currentUserRef);
 
   const contactsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null;
+    if (!db || !user?.uid) return null;
     return query(collection(db, 'users', user.uid, 'contacts'));
-  }, [db, user]);
+  }, [db, user?.uid]);
   const { data: contactsData } = useCollection(contactsQuery);
 
   const contactIds = useMemo(() => {
-    if (!user) return [];
+    if (!user?.uid) return [];
     const ids = [user.uid];
     if (contactsData) {
       contactsData.forEach(c => ids.push(c.userId));
     }
     return ids;
-  }, [contactsData, user]);
+  }, [contactsData, user?.uid]);
 
   const statusQuery = useMemoFirebase(() => {
-    if (!db) return null;
+    if (!db || !user?.uid) return null;
     return query(
       collection(db, 'statuses'),
       where('expiresAt', '>', new Date()),
       orderBy('expiresAt', 'desc'),
       limit(100)
     );
-  }, [db]);
+  }, [db, user?.uid]);
 
   const { data: rawStatuses } = useCollection<StatusUpdate>(statusQuery);
 
   const statusGroups = useMemo(() => {
-    if (!rawStatuses || !user) return [];
+    if (!rawStatuses || !user?.uid) return [];
     const groups: Record<string, StatusUpdate[]> = {};
     
     rawStatuses.forEach(s => {
@@ -140,14 +141,14 @@ export function StatusSidebar() {
       const hasUnseen = items.some(item => !item.viewedBy?.includes(user.uid));
       return { uid, items, hasUnseen };
     });
-  }, [rawStatuses, user, contactIds]);
+  }, [rawStatuses, user?.uid, contactIds]);
 
-  const recentUpdates = useMemo(() => statusGroups.filter(g => g.uid !== user?.uid && g.hasUnseen), [statusGroups, user]);
-  const viewedUpdates = useMemo(() => statusGroups.filter(g => g.uid !== user?.uid && !g.hasUnseen), [statusGroups, user]);
-  const myStatusGroup = useMemo(() => statusGroups.find(g => g.uid === user?.uid), [statusGroups, user]);
+  const recentUpdates = useMemo(() => statusGroups.filter(g => g.uid !== user?.uid && g.hasUnseen), [statusGroups, user?.uid]);
+  const viewedUpdates = useMemo(() => statusGroups.filter(g => g.uid !== user?.uid && !g.hasUnseen), [statusGroups, user?.uid]);
+  const myStatusGroup = useMemo(() => statusGroups.find(g => g.uid === user?.uid), [statusGroups, user?.uid]);
 
   useEffect(() => {
-    if (!rawStatuses || !db) return;
+    if (!rawStatuses || !db || !user?.uid) return;
 
     const fetchProfiles = async () => {
       const uids = Array.from(new Set(rawStatuses.map(s => s.userId)));
@@ -167,7 +168,7 @@ export function StatusSidebar() {
     };
 
     fetchProfiles();
-  }, [rawStatuses, db, contactIds, userProfiles]);
+  }, [rawStatuses, db, contactIds, user?.uid]);
 
   const filteredRecent = recentUpdates.filter(g => {
     const p = userProfiles[g.uid];
@@ -182,8 +183,8 @@ export function StatusSidebar() {
   });
 
   return (
-    <div className="flex flex-col h-full bg-[#0d0d0d] relative">
-      <div className="p-4 md:p-6 space-y-6">
+    <div className="flex flex-col h-full bg-[#0d0d0d] relative overflow-hidden">
+      <div className="p-6 space-y-6 flex-none">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
              <Button 
@@ -193,7 +194,7 @@ export function StatusSidebar() {
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <h2 className="text-xl md:text-2xl font-bold font-headline text-white tracking-tighter uppercase">Updates</h2>
+              <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase italic">Updates</h2>
           </div>
           <Dialog open={isComposerOpen} onOpenChange={setIsComposerOpen}>
             <DialogTrigger asChild>
@@ -211,19 +212,18 @@ export function StatusSidebar() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search updates..." 
-            className="bg-white/5 border-white/10 pl-12 h-12 text-sm rounded-full focus-visible:ring-primary"
+            className="bg-white/5 border-white/10 pl-12 h-12 text-sm rounded-xl focus-visible:ring-primary"
           />
         </div>
       </div>
 
       <ScrollArea className="flex-1 px-3">
         <div className="space-y-8 pb-32">
-          {/* My Status Section */}
           <div className="space-y-4 px-3">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">My Status</h3>
             <button 
               onClick={() => myStatusGroup ? router.push(`/chat/status?uid=${user?.uid}`) : setIsComposerOpen(true)}
-              className="w-full flex items-center gap-4 p-2 rounded-2xl hover:bg-white/5 transition-all text-left group"
+              className="w-full flex items-center gap-4 p-2 rounded-2xl hover:bg-white/5 transition-all text-left"
             >
               <div className="relative shrink-0 flex items-center justify-center w-14 h-14">
                 {myStatusGroup && (
@@ -242,18 +242,17 @@ export function StatusSidebar() {
                 )}
               </div>
               <div>
-                <p className="font-bold text-sm text-white font-headline">My Status</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+                <p className="font-bold text-sm text-white font-headline uppercase italic">My Status</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold">
                   {myStatusGroup ? 'Tap to view' : 'Share a moment'}
                 </p>
               </div>
             </button>
           </div>
 
-          {/* Recent Updates */}
           {filteredRecent.length > 0 && (
             <div className="space-y-4 px-3">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Recent Updates</h3>
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Recent</h3>
               <div className="space-y-1">
                 {filteredRecent.map((group) => {
                   const p = userProfiles[group.uid];
@@ -274,8 +273,8 @@ export function StatusSidebar() {
                         </Avatar>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-white truncate font-headline">{name}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+                        <p className="font-bold text-sm text-white truncate font-headline uppercase italic">{name}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold">
                           {latest.createdAt?.toDate ? formatStatusTime(latest.createdAt.toDate(), isMobile) : ''}
                         </p>
                       </div>
@@ -286,10 +285,9 @@ export function StatusSidebar() {
             </div>
           )}
 
-          {/* Viewed Updates */}
           {filteredViewed.length > 0 && (
             <div className="space-y-4 px-3">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground opacity-40">Viewed Updates</h3>
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground opacity-40">Viewed</h3>
               <div className="space-y-1">
                 {filteredViewed.map((group) => {
                   const p = userProfiles[group.uid];
@@ -301,7 +299,7 @@ export function StatusSidebar() {
                     <button 
                       key={group.uid}
                       onClick={() => router.push(`/chat/status?uid=${group.uid}`)}
-                      className="w-full p-3 rounded-2xl flex items-center gap-4 transition-all hover:bg-white/5 text-left opacity-60 grayscale-[0.5]"
+                      className="w-full p-3 rounded-2xl flex items-center gap-4 transition-all hover:bg-white/5 text-left opacity-60"
                     >
                       <div className="relative shrink-0 flex items-center justify-center w-14 h-14">
                         <SegmentedRing count={group.items.length} hasUnseen={false} />
@@ -310,8 +308,8 @@ export function StatusSidebar() {
                         </Avatar>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-white truncate font-headline">{name}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+                        <p className="font-bold text-sm text-white truncate font-headline uppercase italic">{name}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold">
                           {latest.createdAt?.toDate ? formatStatusTime(latest.createdAt.toDate(), isMobile) : ''}
                         </p>
                       </div>
@@ -334,7 +332,7 @@ export function StatusSidebar() {
       <div className="md:hidden absolute bottom-24 right-6 z-50">
         <Button 
           onClick={() => setIsComposerOpen(true)}
-          className="h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-2xl glow-green hover:scale-110 active:scale-95 transition-all"
+          className="h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-2xl glow-green transition-all active:scale-95"
         >
           <Plus className="w-8 h-8" />
         </Button>
