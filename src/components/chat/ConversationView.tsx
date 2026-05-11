@@ -1,4 +1,4 @@
-'use server';
+'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
@@ -23,8 +23,7 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogTrigger,
-  DialogFooter
+  DialogTrigger
 } from '@/components/ui/dialog';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { 
@@ -331,14 +330,14 @@ export function ConversationView({ conversationId }: { conversationId: string })
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="bg-[#0d0d0d] border-white/10 text-white rounded-[2rem]">
-                    <DialogHeader>
-                      <DialogTitle className="text-lg font-headline uppercase tracking-tight">Delete Message?</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-2 py-4">
-                      <Button onClick={() => deleteMessage(selectedMessage.id, selectedMessage.senderId, 'me')} variant="secondary" className="h-12 rounded-xl text-xs font-bold uppercase">Delete for Me</Button>
-                      {selectedMessage.senderId === user?.uid && (
-                        <Button onClick={() => deleteMessage(selectedMessage.id, selectedMessage.senderId, 'everyone')} variant="destructive" className="h-12 rounded-xl text-xs font-bold uppercase">Delete for Everyone</Button>
-                      )}
+                    <div className="p-4 space-y-4">
+                      <h2 className="text-lg font-headline uppercase tracking-tight text-center">Delete Message?</h2>
+                      <div className="grid gap-2">
+                        <Button onClick={() => deleteMessage(selectedMessage.id, selectedMessage.senderId, 'me')} variant="secondary" className="h-12 rounded-xl text-xs font-bold uppercase">Delete for Me</Button>
+                        {selectedMessage.senderId === user?.uid && (
+                          <Button onClick={() => deleteMessage(selectedMessage.id, selectedMessage.senderId, 'everyone')} variant="destructive" className="h-12 rounded-xl text-xs font-bold uppercase">Delete for Everyone</Button>
+                        )}
+                      </div>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -348,7 +347,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
             <motion.div 
               key="search-header"
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              animate={{ y: 0, opacity: 1 }}
               exit={{ opacity: 0, y: 20 }}
               className="flex items-center gap-3 w-full"
             >
@@ -383,7 +382,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground"><ArrowLeft className="w-6 h-6" /></Button>
                 <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
                   <div className="w-10 h-10 rounded-full border border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden shrink-0">
-                    <span className="text-sm font-bold text-primary not-italic">{initial}</span>
+                    <span className="text-sm font-bold text-primary not-italic leading-none">{initial}</span>
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-sm font-bold text-white truncate">{mainName}</h3>
@@ -448,7 +447,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
             </div>
             <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center text-center space-y-6">
               <div className="w-32 h-32 rounded-full border-4 border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden">
-                <span className="text-4xl font-black text-primary uppercase not-italic">{initial}</span>
+                <span className="text-4xl font-black text-primary uppercase not-italic leading-none">{initial}</span>
               </div>
               <div>
                 <h2 className="text-2xl font-black font-headline tracking-tighter uppercase">{mainName}</h2>
@@ -690,7 +689,7 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
 
         {msg.sharedContact && (
           <div className="mt-2 bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xl shadow-inner uppercase not-italic">{msg.sharedContact.name.charAt(0)}</div>
+            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xl shadow-inner uppercase not-italic leading-none">{msg.sharedContact.name.charAt(0)}</div>
             <div className="text-center">
               <p className="font-bold text-xs uppercase tracking-widest">{renderText(msg.sharedContact.name)}</p>
               <p className="text-[10px] text-muted-foreground mt-0.5">@{msg.sharedContact.username}</p>
@@ -750,14 +749,14 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
                     </DropdownMenuItem>
                   </DialogTrigger>
                   <DialogContent className="bg-[#0d0d0d] border-white/10 text-white rounded-[2rem] p-8">
-                    <DialogHeader>
-                      <DialogTitle className="text-xl font-headline uppercase tracking-tight">Erase Content?</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-3 pt-6">
-                      <Button onClick={() => onDelete('me')} variant="secondary" className="h-14 rounded-xl text-xs font-bold uppercase tracking-widest">Delete for Me</Button>
-                      {isOwn && (
-                        <Button onClick={() => onDelete('everyone')} variant="destructive" className="h-14 rounded-xl text-xs font-bold uppercase tracking-widest">Delete for Everyone</Button>
-                      )}
+                    <div className="space-y-6">
+                      <h2 className="text-xl font-headline uppercase tracking-tight text-center">Erase Content?</h2>
+                      <div className="grid gap-3">
+                        <Button onClick={() => onDelete('me')} variant="secondary" className="h-14 rounded-xl text-xs font-bold uppercase tracking-widest">Delete for Me</Button>
+                        {isOwn && (
+                          <Button onClick={() => onDelete('everyone')} variant="destructive" className="h-14 rounded-xl text-xs font-bold uppercase tracking-widest">Delete for Everyone</Button>
+                        )}
+                      </div>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -869,7 +868,7 @@ function ContactPickerInline({ onPicked, currentUserId }: any) {
               onClick={() => onPicked({ uid: p.id, name: p.fullName || p.displayName, username: p.username })} 
               className="w-full p-2.5 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-all text-left group"
             >
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xs group-hover:scale-110 transition-transform uppercase not-italic">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xs group-hover:scale-110 transition-transform uppercase not-italic leading-none">
                 {(p.fullName || p.displayName || 'U').charAt(0)}
               </div>
               <div className="flex-1 min-w-0">
@@ -889,4 +888,3 @@ function ContactPickerInline({ onPicked, currentUserId }: any) {
     </div>
   );
 }
-

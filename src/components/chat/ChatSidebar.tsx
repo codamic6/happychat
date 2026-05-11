@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Search, MoreVertical, Pin, Trash2, User, ChevronRight, X, 
   PinOff, Info, ArrowLeft, MessageCircle, Archive, CheckCircle, 
-  UserCircle, Settings, ArchiveX, Plus
+  UserCircle, Settings, Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -423,7 +423,6 @@ export function ChatSidebar() {
                <Button 
                   onClick={() => {
                     if (selectedConvId) {
-                      const otherId = sortedConversations.find(c => c.id === selectedConvId)?.participantIds.find(id => id !== user?.uid);
                       router.push(`/chat/${selectedConvId}?info=true`);
                     }
                   }}
@@ -484,7 +483,7 @@ export function ChatSidebar() {
                       <SegmentedRing count={statusInfo.count} hasUnseen={statusInfo.hasUnseen} size={56} />
                     )}
                     <div className="w-12 h-12 rounded-full border border-white/10 bg-[#111] flex items-center justify-center overflow-hidden z-0 group-hover/item:scale-105 transition-transform duration-500">
-                      <span className="text-xl font-bold text-primary not-italic">{displayName.charAt(0).toUpperCase()}</span>
+                      <span className="text-xl font-bold text-primary not-italic leading-none">{displayName.charAt(0).toUpperCase()}</span>
                     </div>
                     {profile.showOnlineStatus !== false && profile.isOnline && (
                       <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green z-20 shadow-lg" />
@@ -575,46 +574,43 @@ export function ChatSidebar() {
 
       <Dialog open={!!manageChatId} onOpenChange={() => setManageChatId(null)}>
         <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-0 rounded-[2.5rem] overflow-hidden max-w-sm shadow-2xl">
-          <DialogHeader className="p-8 pb-4">
-            <DialogTitle className="text-xl font-bold font-headline uppercase tracking-tight text-gradient text-center">Manage Chat</DialogTitle>
-            <DialogDescription className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Choose an action for this conversation shard
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-8 pb-8 flex flex-col gap-3">
-            <Button 
-              onClick={() => manageChatId && handleClearChat(manageChatId)}
-              className="h-14 bg-white/5 border border-white/5 hover:bg-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
-            >
-              Clear Message History
-            </Button>
-            <Button 
-              onClick={() => manageChatId && handleDeleteChat(manageChatId)}
-              variant="destructive" 
-              className="h-14 rounded-2xl text-[10px] font-black uppercase tracking-widest glow-green shadow-xl active:scale-95 transition-all"
-            >
-              Delete & Hide Chat
-            </Button>
-            <Button 
-              variant="ghost" 
-              onClick={() => setManageChatId(null)}
-              className="h-10 text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-white"
-            >
-              Cancel Protocol
-            </Button>
+          <div className="p-8 space-y-6">
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-bold font-headline uppercase tracking-tight text-gradient">Manage Chat</h2>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Choose an action for this shard</p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <Button 
+                onClick={() => manageChatId && handleClearChat(manageChatId)}
+                className="h-14 bg-white/5 border border-white/5 hover:bg-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+              >
+                Clear History
+              </Button>
+              <Button 
+                onClick={() => manageChatId && handleDeleteChat(manageChatId)}
+                variant="destructive" 
+                className="h-14 rounded-2xl text-[10px] font-black uppercase tracking-widest glow-green shadow-xl active:scale-95 transition-all"
+              >
+                Delete & Hide
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => setManageChatId(null)}
+                className="h-10 text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-white"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!viewingProfile} onOpenChange={() => setViewingProfile(null)}>
         <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-0 rounded-[2.5rem] overflow-hidden max-w-md shadow-2xl">
-          <DialogHeader className="p-8 pb-0">
-            <DialogTitle className="text-xl font-bold font-headline uppercase tracking-tight text-gradient">User Profile</DialogTitle>
-          </DialogHeader>
           <div className="p-8 flex flex-col items-center text-center space-y-6">
             <div className="relative">
               <div className="w-32 h-32 rounded-full border-4 border-primary/20 flex items-center justify-center bg-[#111] overflow-hidden">
-                <span className="text-4xl font-black text-primary uppercase not-italic">{(viewingProfile?.fullName || 'U').charAt(0)}</span>
+                <span className="text-4xl font-black text-primary uppercase not-italic leading-none">{(viewingProfile?.fullName || 'U').charAt(0)}</span>
               </div>
             </div>
             <div className="space-y-1">
@@ -647,4 +643,3 @@ export function ChatSidebar() {
     </div>
   );
 }
-
