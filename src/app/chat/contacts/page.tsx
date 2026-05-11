@@ -3,19 +3,26 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Search, UserPlus, MessageSquare, Loader2, 
-  ArrowLeft, Info, User, Tag, Plus, LayoutGrid, X, AtSign, Phone
+  ArrowLeft, Info, User, Tag, Plus, LayoutGrid, X, AtSign, Phone,
+  MoreVertical, UserMinus, ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, getDocs, where, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, getDocs, where, doc, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type UserProfile = {
   id: string;
@@ -103,25 +110,28 @@ export default function ContactsPage() {
     setFoundUsers([]);
 
     try {
-      // 1. Search by email
-      let q = query(collection(db, 'users'), where('email', '==', term));
-      let snap = await getDocs(q);
+      // Parallel search protocol
+      const qEmail = query(collection(db, 'users'), where('email', '==', term));
+      const qUsername = query(collection(db, 'users'), where('username', '==', term));
+      const qPhone = query(collection(db, 'users'), where('phoneNumber', '==', term));
+
+      const [sEmail, sUsername, sPhone] = await Promise.all([
+        getDocs(qEmail),
+        getDocs(qUsername),
+        getDocs(qPhone)
+      ]);
       
-      // 2. If empty, search by username
-      if (snap.empty) {
-        q = query(collection(db, 'users'), where('username', '==', term));
-        snap = await getDocs(q);
-      }
+      const combined = [...sEmail.docs, ...sUsername.docs, ...sPhone.docs];
+      const uniqueUids = new Set();
+      const results: UserProfile[] = [];
 
-      // 3. If still empty, search by phone number
-      if (snap.empty) {
-        q = query(collection(db, 'users'), where('phoneNumber', '==', term));
-        snap = await getDocs(q);
-      }
-
-      const results = snap.docs
-        .map(d => d.data() as UserProfile)
-        .filter(u => u.id !== user?.uid);
+      combined.forEach(d => {
+        const data = d.data() as UserProfile;
+        if (!uniqueUids.has(data.id) && data.id !== user?.uid) {
+          uniqueUids.add(data.id);
+          results.push(data);
+        }
+      });
 
       setFoundUsers(results);
       setHasLookedUp(true);
@@ -151,6 +161,16 @@ export default function ContactsPage() {
     }
   };
 
+  const handleRemoveContact = async (contactId: string) => {
+    if (!user || !db) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'contacts', contactId));
+      toast({ title: "Shard Severed", description: "Contact removed from network." });
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Action Failed", description: "Could not remove shard." });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[#050505]">
@@ -172,12 +192,11 @@ export default function ContactsPage() {
             <ArrowLeft className="w-6 h-6" />
           </Button>
           <div className="flex flex-col">
-            <h1 className="text-xl md:text-3xl font-black font-headline text-gradient tracking-tight uppercase italic">Network</h1>
-            <p className="text-[10px] text-primary font-bold uppercase tracking-widest hidden sm:block">Secure Connections Only</p>
+            <h1 className="text-xl md:text-3xl font-black font-headline text-gradient tracking-tight uppercase italic leading-none">Network</h1>
+            <p className="text-[10px] text-primary font-bold uppercase tracking-widest hidden sm:block mt-1">Verified Mesh v2.6</p>
           </div>
         </div>
 
-        {/* Desktop Only Button */}
         <Button 
           onClick={() => setIsAddMode(!isAddMode)}
           size="sm" 
@@ -202,10 +221,10 @@ export default function ContactsPage() {
                 exit={{ opacity: 0, y: -20 }}
                 className="py-6 md:py-10 space-y-8"
               >
-                <div className="max-w-3xl mx-auto space-y-6">
+                <div className="max-w-4xl mx-auto space-y-6">
                   <div className="text-center space-y-2">
-                    <h2 className="text-2xl font-black font-headline uppercase italic text-white">Initialize New Link</h2>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.3em]">Search by handle, email, or phone</p>
+                    <h2 className="text-2xl font-black font-headline uppercase italic text-white leading-none">Initialize New Link</h2>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.3em]">Identity Parameter Search</p>
                   </div>
 
                   <form onSubmit={handleLookup} className="space-y-4">
@@ -216,7 +235,7 @@ export default function ContactsPage() {
                         <Input 
                           value={lookupTerm}
                           onChange={(e) => setLookupTerm(e.target.value)}
-                          placeholder="Email, Handle, or Phone..." 
+                          placeholder="Handle, Email, or Phone..." 
                           className="bg-transparent border-none text-white text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 h-full w-full"
                         />
                         <Button type="submit" disabled={isLookingUp} variant="ghost" className="h-10 w-10 p-0 text-primary shrink-0">
@@ -224,7 +243,7 @@ export default function ContactsPage() {
                         </Button>
                       </div>
                     </div>
-                    {/* Mobile Cancel Button below Search */}
+                    
                     <Button 
                       type="button"
                       onClick={() => setIsAddMode(false)}
@@ -235,34 +254,33 @@ export default function ContactsPage() {
                     </Button>
                   </form>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {foundUsers.map(u => (
                       <motion.div 
                         key={u.id}
-                        initial={{ opacity: 0, scale: 0.95 }}
+                        initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="glass p-5 rounded-3xl border border-white/5 flex items-center gap-4 hover:border-primary/30 transition-all"
+                        className="glass p-4 rounded-2xl border border-white/5 flex items-center gap-4 hover:border-primary/30 transition-all group"
                       >
-                        <Avatar className="w-12 h-12 border border-primary/20">
-                          <AvatarFallback className="bg-primary/10 text-primary font-bold">{u.username[0].toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-white truncate">{u.fullName || u.username}</h4>
-                          <p className="text-[10px] text-muted-foreground uppercase font-black">@{u.username}</p>
+                        <div className="w-12 h-12 rounded-full bg-[#111] border border-primary/20 flex items-center justify-center shrink-0">
+                          <span className="text-lg font-bold text-primary">{u.username[0].toUpperCase()}</span>
                         </div>
-                        <Button onClick={() => handleAddContact(u)} size="sm" className="bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground text-[8px] font-black uppercase tracking-widest rounded-lg h-8">
-                          Link
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-white truncate text-sm">{u.fullName || u.username}</h4>
+                          <p className="text-[10px] text-muted-foreground uppercase font-black truncate">@{u.username}</p>
+                        </div>
+                        <Button onClick={() => handleAddContact(u)} size="sm" className="bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground text-[9px] font-black uppercase tracking-widest rounded-xl h-10 px-4">
+                          Establish
                         </Button>
                       </motion.div>
                     ))}
                     {hasLookedUp && foundUsers.length === 0 && (
                       <div className="col-span-full py-12 text-center opacity-30">
-                        <p className="text-sm font-bold uppercase tracking-widest">Zero Signals Found</p>
+                        <p className="text-sm font-bold uppercase tracking-widest italic">Zero Shards Found</p>
                       </div>
                     )}
                   </div>
                 </div>
-                <div className="border-b border-white/5 w-full" />
               </motion.div>
             ) : (
               <motion.div 
@@ -271,7 +289,7 @@ export default function ContactsPage() {
                 animate={{ opacity: 1 }}
                 className="py-6 md:py-10 space-y-6 md:space-y-12"
               >
-                <div className="max-w-3xl mx-auto space-y-4">
+                <div className="max-w-4xl mx-auto space-y-4">
                   <div className="relative group shadow-2xl">
                     <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-xl group-focus-within:bg-primary/10 transition-all" />
                     <div className="relative bg-[#0d0d0d] border border-white/10 rounded-2xl flex items-center px-4 h-14 group-focus-within:border-primary/50 transition-all">
@@ -279,13 +297,12 @@ export default function ContactsPage() {
                       <Input 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Filter mesh network..." 
+                        placeholder="Filter Network Mesh..." 
                         className="bg-transparent border-none text-white text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 h-full w-full"
                       />
                     </div>
                   </div>
                   
-                  {/* Responsive Add Button under Search */}
                   <Button 
                     onClick={() => setIsAddMode(true)}
                     className="md:hidden w-full h-14 rounded-2xl bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest shadow-xl glow-green"
@@ -294,7 +311,7 @@ export default function ContactsPage() {
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <AnimatePresence mode="popLayout">
                     {filteredContacts.map((contact) => {
                       const name = contact.customName || contact.profile?.displayName || contact.profile?.fullName || 'User';
@@ -304,42 +321,48 @@ export default function ContactsPage() {
                         <motion.div
                           key={contact.id}
                           layout
-                          initial={{ opacity: 0, y: 20 }}
+                          initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.95 }}
-                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         >
-                          <Card className="glass border-white/5 p-6 hover:border-primary/40 transition-all group relative overflow-hidden rounded-[2rem] shadow-xl">
-                            <div className="flex flex-col items-center text-center space-y-4">
-                              <div className="w-20 h-20 rounded-full bg-[#111] border-2 border-white/5 flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
-                                 <div className="absolute inset-0 bg-primary/10 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                                 <span className="text-3xl font-black text-primary relative z-10 leading-none">{initial}</span>
-                              </div>
-                              
-                              <div className="space-y-1 w-full">
-                                <h3 className="text-lg font-bold text-white truncate font-headline uppercase tracking-tight">{name}</h3>
-                                <div className="flex items-center justify-center gap-1.5">
-                                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em]">@{contact.profile?.username || 'unknown'}</span>
-                                </div>
-                              </div>
-
-                              <div className="w-full pt-4 grid grid-cols-2 gap-2">
-                                <Button 
-                                  onClick={() => router.push(`/chat/new-${contact.userId}`)}
-                                  className="bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground h-12 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-                                >
-                                  <MessageSquare className="w-4 h-4 mr-2" /> Message
-                                </Button>
-                                <Button 
-                                  variant="outline" 
-                                  size="icon" 
-                                  className="h-12 w-12 rounded-xl border-white/5 hover:bg-white/10 text-muted-foreground hover:text-white"
-                                >
-                                  <Info className="w-5 h-5" />
-                                </Button>
-                              </div>
+                          <div className="glass border-white/5 p-4 rounded-2xl flex items-center gap-4 hover:border-primary/30 transition-all group relative overflow-hidden">
+                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/20 group-hover:bg-primary transition-colors" />
+                            
+                            <div className="w-12 h-12 rounded-full bg-[#111] border border-white/10 flex items-center justify-center shrink-0 relative">
+                               <div className="absolute inset-0 bg-primary/5 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+                               <span className="text-xl font-black text-primary relative z-10 leading-none">{initial}</span>
                             </div>
-                          </Card>
+                            
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-bold text-white truncate text-sm font-headline uppercase tracking-tight">{name}</h3>
+                              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest truncate">@{contact.profile?.username || 'unknown'}</p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                onClick={() => router.push(`/chat/new-${contact.userId}`)}
+                                className="bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground h-10 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5 mr-2" /> Message
+                              </Button>
+                              
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl hover:bg-white/5 text-muted-foreground">
+                                    <MoreVertical className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="bg-[#111] border-white/10 p-1 rounded-xl min-w-[160px] shadow-2xl z-[120]">
+                                   <DropdownMenuItem onClick={() => router.push(`/chat/new-${contact.userId}?info=true`)} className="gap-3 p-3 rounded-lg cursor-pointer hover:bg-primary/10 text-white text-[9px] font-bold uppercase tracking-widest">
+                                     <Info className="w-4 h-4" /> Identity Info
+                                   </DropdownMenuItem>
+                                   <DropdownMenuItem onClick={() => handleRemoveContact(contact.id)} className="gap-3 p-3 rounded-lg cursor-pointer hover:bg-destructive/10 text-destructive text-[9px] font-bold uppercase tracking-widest">
+                                     <UserMinus className="w-4 h-4" /> Sever Shard
+                                   </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>
                         </motion.div>
                       );
                     })}
@@ -347,13 +370,13 @@ export default function ContactsPage() {
                 </div>
 
                 {filteredContacts.length === 0 && !searchQuery && (
-                  <div className="flex flex-col items-center justify-center py-32 text-center space-y-6 opacity-40">
-                    <div className="w-24 h-24 rounded-[2rem] bg-white/5 flex items-center justify-center border border-dashed border-white/20">
-                      <Users className="w-10 h-10 text-white" />
+                  <div className="flex flex-col items-center justify-center py-32 text-center space-y-6 opacity-20">
+                    <div className="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center border border-dashed border-white/20">
+                      <Users className="w-8 h-8 text-white" />
                     </div>
-                    <div className="space-y-2">
-                      <h3 className="text-xl font-bold uppercase tracking-widest text-white">Empty Network</h3>
-                      <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-muted-foreground max-w-xs leading-relaxed">Expand your horizons by adding secure contacts to your dashboard</p>
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-bold uppercase tracking-[0.4em] text-white">Empty Network</h3>
+                      <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">No secure signals detected</p>
                     </div>
                   </div>
                 )}
