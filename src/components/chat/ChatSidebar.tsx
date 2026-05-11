@@ -209,7 +209,6 @@ export function ChatSidebar() {
 
   const sortedConversations = useMemo(() => {
     if (!rawConversations || !user) return [];
-    // Filter out archived chats for main list
     const filtered = rawConversations.filter(c => 
       !c.hiddenFor?.includes(user.uid) && 
       !c.archivedBy?.includes(user.uid)
@@ -280,7 +279,16 @@ export function ChatSidebar() {
       const q = query(collection(db, 'conversations', convId, 'messages'));
       const snap = await getDocs(q);
       const batch = writeBatch(db);
-      snap.docs.forEach(docSnap => { batch.update(docSnap.ref, { deletedFor: arrayUnion(user.uid) }); });
+      
+      // Update individual messages to hide them for this user
+      snap.docs.forEach(docSnap => { 
+        batch.update(docSnap.ref, { deletedFor: arrayUnion(user.uid) }); 
+      });
+
+      // Clear the conversation-level lastMessage string so it doesn't show in the sidebar
+      const convRef = doc(db, 'conversations', convId);
+      batch.update(convRef, { lastMessage: "" });
+
       await batch.commit();
       toast({ title: "Signal Cleared", description: "History scrubbed locally." });
       setManageChatId(null);
@@ -461,7 +469,6 @@ export function ChatSidebar() {
                       : "hover:bg-white/5"
                   )}
                 >
-                  {/* Neon Sidebar on Selected */}
                   {isSelected && (
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full glow-green" />
                   )}
@@ -471,7 +478,7 @@ export function ChatSidebar() {
                       <SegmentedRing count={statusInfo.count} hasUnseen={statusInfo.hasUnseen} size={56} />
                     )}
                     <div className="w-12 h-12 rounded-full border border-white/10 bg-[#111] flex items-center justify-center overflow-hidden z-0 group-hover/item:scale-105 transition-transform duration-500">
-                      <div className="text-xl font-bold text-primary flex items-center justify-center w-full h-full">{displayName.charAt(0).toUpperCase()}</div>
+                      <div className="text-xl font-bold text-primary flex items-center justify-center w-full h-full leading-none translate-y-[1px]">{displayName.charAt(0).toUpperCase()}</div>
                     </div>
                     {profile.showOnlineStatus !== false && profile.isOnline && (
                       <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green z-20 shadow-lg" />
@@ -631,3 +638,4 @@ export function ChatSidebar() {
     </div>
   );
 }
+
