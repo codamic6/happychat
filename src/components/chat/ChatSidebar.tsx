@@ -225,15 +225,16 @@ export function ChatSidebar() {
 
   const filteredConversations = useMemo(() => {
     if (!searchQuery.trim()) return sortedConversations;
+    const q = searchQuery.toLowerCase();
     return sortedConversations.filter(conv => {
       const otherId = conv.participantIds.find(id => id !== user?.uid);
       const profile = otherId ? chatProfiles[otherId] : null;
       const contact = otherId ? contactAliasMap[otherId] : null;
       const name = contact?.customName || profile?.displayName || profile?.fullName || '';
       return (
-        name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        profile?.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        conv.lastMessage?.toLowerCase().includes(searchQuery.toLowerCase())
+        name.toLowerCase().includes(q) ||
+        profile?.username.toLowerCase().includes(q) ||
+        conv.lastMessage?.toLowerCase().includes(q)
       );
     });
   }, [sortedConversations, searchQuery, chatProfiles, contactAliasMap, user]);
@@ -327,7 +328,7 @@ export function ChatSidebar() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#080808] w-full overflow-hidden border-r border-white/5 shadow-2xl">
+    <div className="flex flex-col h-full bg-[#080808] w-full overflow-hidden border-r border-white/5 shadow-2xl relative">
       <header className="flex-none p-6 pb-2 space-y-6">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
@@ -418,6 +419,17 @@ export function ChatSidebar() {
                   className="rounded-xl bg-white/5 h-12 w-12 hover:bg-primary/20 text-primary"
                 >
                   <Archive className="w-5 h-5" />
+               </Button>
+               <Button 
+                  onClick={() => {
+                    if (selectedConvId) {
+                      const otherId = sortedConversations.find(c => c.id === selectedConvId)?.participantIds.find(id => id !== user?.uid);
+                      router.push(`/chat/${selectedConvId}?info=true`);
+                    }
+                  }}
+                  className="rounded-xl bg-white/5 h-12 w-12 hover:bg-primary/20 text-primary"
+                >
+                  <Info className="w-5 h-5" />
                </Button>
                <Button 
                   onClick={() => setManageChatId(selectedConvId)}

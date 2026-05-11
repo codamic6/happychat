@@ -110,6 +110,10 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   
+  // Search State
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
   // Action Tray State
   const [activeTool, setActiveTool] = useState<'none' | 'menu' | 'poll' | 'contact'>('none');
   
@@ -136,6 +140,16 @@ export function ConversationView({ conversationId }: { conversationId: string })
       .filter(m => !m.deletedFor?.includes(user.uid))
       .sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
   }, [rawMessages, user]);
+
+  const filteredMessages = useMemo(() => {
+    if (!searchQuery.trim()) return messages;
+    const q = searchQuery.toLowerCase();
+    return messages.filter(m => 
+      m.text?.toLowerCase().includes(q) || 
+      m.poll?.question.toLowerCase().includes(q) ||
+      m.sharedContact?.name.toLowerCase().includes(q)
+    );
+  }, [messages, searchQuery]);
 
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
@@ -190,8 +204,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
   }, [conversation, targetUid, user, db]);
 
   useEffect(() => {
-    if (scrollRef.current && messages.length > 0) scrollRef.current.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (scrollRef.current && filteredMessages.length > 0) scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+  }, [filteredMessages]);
 
   const handleSendMessage = async (payloadOverride?: Partial<Message>) => {
     if ((!inputText.trim() && !payloadOverride) || !user || !db || !otherProfile || isUserLoading) return;
@@ -247,12 +261,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
     addDoc(collection(db, 'conversations', activeId, 'messages'), msg).catch(() => {});
 
-    updateDoc(doc(db, 'conversations', activeId, {
+    updateDoc(doc(db, 'conversations', activeId), {
       lastMessage: text || 'Media Shared',
       updatedAt: serverTimestamp(),
       [`unreadCount.${otherProfile.id}`]: increment(1),
       [`typing.${user.uid}`]: false
-    })).catch(() => {});
+    }).catch(() => {});
   };
 
   const deleteMessage = async (msgId: string, senderId: string, mode: 'me' | 'everyone') => {
@@ -335,6 +349,33 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 </Dialog>
               </div>
             </motion.div>
+          ) : isSearchMode ? (
+            <motion.div 
+              key="search-header"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="flex items-center gap-3 w-full"
+            >
+              <Button variant="ghost" size="icon" onClick={() => { setIsSearchMode(false); setSearchQuery(''); }} className="text-primary">
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
+                  placeholder="Signal Scan: Search history..."
+                  className="bg-white/5 border-none h-10 pl-10 rounded-full focus-visible:ring-1 focus-visible:ring-primary/30"
+                />
+              </div>
+              {searchQuery && (
+                <span className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/10 px-2 py-1 rounded-md whitespace-nowrap">
+                  {filteredMessages.length} Matches
+                </span>
+              )}
+            </motion.div>
           ) : (
             <motion.div 
               key="normal-header"
@@ -365,7 +406,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary"><Search className="w-5 h-5" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setIsSearchMode(true)} className="text-muted-foreground hover:text-primary"><Search className="w-5 h-5" /></Button>
                 <Button variant="ghost" size="icon" onClick={() => setShowProfile(true)} className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button>
               </div>
             </motion.div>
@@ -375,7 +416,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
       <ScrollArea className="flex-1 p-4 custom-scrollbar">
         <div className="max-w-4xl mx-auto space-y-4 pb-12">
-          {messages.map((msg) => (
+          {filteredMessages.map((msg) => (
             <MessageRow 
               key={msg.id} msg={msg} user={user} isMobile={isMobile}
               onVote={(idx: number) => handleVote(msg, idx)}
@@ -385,10 +426,17 @@ export function ConversationView({ conversationId }: { conversationId: string })
               isSelected={selectedMessage?.id === msg.id}
               otherProfile={otherProfile}
               contactRecord={contactRecord}
+              highlight={searchQuery}
             />
           ))}
           <div ref={scrollRef} />
         </div>
+        {filteredMessages.length === 0 && searchQuery && (
+          <div className="py-20 text-center space-y-6 opacity-30">
+            <Search className="w-12 h-12 mx-auto text-muted-foreground" />
+            <p className="text-sm font-bold uppercase tracking-widest">No signal shards found for "{searchQuery}"</p>
+          </div>
+        )}
       </ScrollArea>
 
       <AnimatePresence>
@@ -538,7 +586,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   );
 }
 
-function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, isSelected, otherProfile, contactRecord }: any) {
+function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, isSelected, otherProfile, contactRecord, highlight }: any) {
   const isOwn = msg.senderId === user?.uid;
   const isSystem = msg.isDeleted;
   const router = useRouter();
@@ -567,6 +615,16 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
     if (msg.replyTo?.isStatus && msg.replyTo.statusUid) {
       router.push(`/chat/status?uid=${msg.replyTo.statusUid}`);
     }
+  };
+
+  const renderText = (text: string) => {
+    if (!highlight || !highlight.trim()) return text;
+    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+    return parts.map((part, i) => 
+      part.toLowerCase() === highlight.toLowerCase() 
+        ? <span key={i} className="bg-primary/40 text-white rounded-sm px-0.5 glow-green">{part}</span> 
+        : part
+    );
   };
 
   return (
@@ -612,11 +670,11 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
           </div>
         )}
 
-        {msg.text && <p className="leading-relaxed">{msg.text}</p>}
+        {msg.text && <p className="leading-relaxed">{renderText(msg.text)}</p>}
 
         {msg.poll && (
           <div className="mt-3 space-y-2 bg-black/20 p-4 rounded-xl border border-white/5">
-            <h4 className="font-bold text-sm mb-3">{msg.poll.question}</h4>
+            <h4 className="font-bold text-sm mb-3">{renderText(msg.poll.question)}</h4>
             {msg.poll.options.map((opt: string, idx: number) => {
               const votes = msg.poll.votes[idx] || [];
               const totalVotes = Object.values(msg.poll.votes as Record<string, string[]>).flat().length;
@@ -639,7 +697,7 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
           <div className="mt-2 bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col items-center gap-3">
             <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xl shadow-inner">{msg.sharedContact.name.charAt(0)}</div>
             <div className="text-center">
-              <p className="font-bold text-xs uppercase tracking-widest">{msg.sharedContact.name}</p>
+              <p className="font-bold text-xs uppercase tracking-widest">{renderText(msg.sharedContact.name)}</p>
               <p className="text-[10px] text-muted-foreground mt-0.5">@{msg.sharedContact.username}</p>
             </div>
             <Button 
@@ -805,7 +863,7 @@ function ContactPickerInline({ onPicked, currentUserId }: any) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search Network..." 
-          className="bg-white/5 border-white/5 pl-9 h-10 text-[11px] rounded-xl focus:ring-primary"
+          className="bg-white/5 border-white/10 h-10 text-[11px] rounded-xl focus:ring-primary"
         />
       </div>
       <ScrollArea className="h-[180px]">

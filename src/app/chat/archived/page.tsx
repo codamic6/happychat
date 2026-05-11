@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -79,12 +78,17 @@ export default function ArchivedChatsPage() {
     return () => unsubs.forEach(u => u());
   }, [archivedConvs, db, user]);
 
-  const filtered = archivedConvs.filter(c => {
-    const otherId = c.participantIds.find(id => id !== user?.uid);
-    const p = otherId ? profiles[otherId] : null;
-    const name = p?.displayName || p?.fullName || '';
-    return name.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const filtered = useMemo(() => {
+    if (!searchQuery.trim()) return archivedConvs;
+    const q = searchQuery.toLowerCase();
+    return archivedConvs.filter(c => {
+      const otherId = c.participantIds.find(id => id !== user?.uid);
+      const p = otherId ? profiles[otherId] : null;
+      const name = p?.displayName || p?.fullName || '';
+      const username = p?.username || '';
+      return name.toLowerCase().includes(q) || username.toLowerCase().includes(q);
+    });
+  }, [archivedConvs, profiles, searchQuery, user]);
 
   const unarchiveChat = async (convId: string) => {
     if (!user || !db) return;
