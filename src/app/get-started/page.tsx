@@ -1,4 +1,3 @@
-
 'use client';
 
 import { FloatingBackground } from '@/components/auth/FloatingBackground';
@@ -7,7 +6,7 @@ import { AuthInput } from '@/components/auth/AuthInput';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Zap, Mail, Lock, User, AtSign, Phone, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { Zap, Mail, Lock, User, AtSign, Phone, ArrowRight, Loader2, Sparkles, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -42,18 +41,19 @@ export default function RegisterPage() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         isOnline: true,
+        showOnlineStatus: true,
       });
 
       toast({
-        title: "Account Created",
-        description: "Welcome to HappyChat!"
+        title: "Protocol Initialized",
+        description: "Welcome to the 2026 Signal Mesh."
       });
       router.push('/chat');
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: err.message || "Failed to create account."
+        title: "Registration Failed",
+        description: err.message || "Could not initialize shard."
       });
     } finally {
       setIsLoading(false);
@@ -65,33 +65,36 @@ export default function RegisterPage() {
       <FloatingBackground />
       <AuthSidebar />
 
-      <div className="flex items-center justify-center p-6 sm:p-12 relative z-10">
+      <div className="flex items-center justify-center p-4 sm:p-12 relative z-10">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-lg"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="w-full max-w-xl"
         >
-          <div className="lg:hidden flex justify-center mb-12">
-            <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center glow-green-bright">
+          {/* Mobile Branding */}
+          <div className="lg:hidden flex flex-col items-center mb-8 space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center glow-green-bright shadow-2xl">
               <Zap className="text-primary-foreground h-10 w-10 fill-current" />
             </div>
           </div>
 
-          <div className="glass p-8 sm:p-10 rounded-[2.5rem] border border-white/5 space-y-6 relative overflow-hidden shadow-2xl">
-            <div className="text-center space-y-2 relative z-10">
+          <div className="glass p-8 sm:p-12 rounded-[3.5rem] border border-white/5 space-y-8 relative overflow-hidden shadow-2xl">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+            
+            <div className="text-center space-y-3 relative z-10">
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em]"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-2"
               >
-                <Sparkles className="w-3 h-3" /> Join the community
+                <Sparkles className="w-3 h-3" /> Protocol Phase II
               </motion.div>
-              <h2 className="text-3xl font-black font-headline text-white italic tracking-tight uppercase">Create Account</h2>
-              <p className="text-sm text-muted-foreground">Sign up to start chatting securely.</p>
+              <h2 className="text-4xl font-black font-headline text-white italic tracking-tight uppercase">Register</h2>
+              <p className="text-sm text-muted-foreground font-medium">Create your sovereign digital identity.</p>
             </div>
 
-            <form onSubmit={handleRegister} className="grid sm:grid-cols-2 gap-4 relative z-10">
+            <form onSubmit={handleRegister} className="grid sm:grid-cols-2 gap-5 relative z-10">
               <div className="sm:col-span-2">
                 <AuthInput
                   label="Full Name"
@@ -99,7 +102,7 @@ export default function RegisterPage() {
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. John Doe"
+                  placeholder="e.g. Satoshi Nakamoto"
                   required
                 />
               </div>
@@ -109,7 +112,7 @@ export default function RegisterPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="e.g. johndoe"
+                placeholder="e.g. genesis"
                 required
               />
               <AuthInput
@@ -118,7 +121,7 @@ export default function RegisterPage() {
                 type="tel"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="e.g. +1 234 567 890"
+                placeholder="+1 000 000 000"
               />
               <div className="sm:col-span-2">
                 <AuthInput
@@ -127,42 +130,43 @@ export default function RegisterPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. name@email.com"
+                  placeholder="nexus@happychat.io"
                   required
                 />
               </div>
               <div className="sm:col-span-2">
                 <AuthInput
-                  label="Password"
+                  label="Secure Password"
                   icon={Lock}
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimum 8 characters"
+                  placeholder="Min. 8 characters"
                   required
                 />
               </div>
 
-              <div className="sm:col-span-2 space-y-4 pt-4">
+              <div className="sm:col-span-2 space-y-4 pt-6">
                 <Button 
                   type="submit" 
                   disabled={isLoading}
-                  className="w-full h-14 rounded-xl bg-primary hover:glow-green-bright transition-all duration-500 font-black uppercase tracking-[0.2em] text-xs shadow-[0_0_20px_rgba(0,200,83,0.3)] group"
+                  className="w-full h-16 rounded-[1.5rem] bg-primary hover:glow-green-bright transition-all duration-500 font-black uppercase tracking-[0.2em] text-xs shadow-xl group overflow-hidden relative"
                 >
+                  <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                   {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                    <>
-                      Sign Up
-                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </>
+                    <span className="relative z-10 flex items-center justify-center">
+                      Initialize Shard
+                      <UserPlus className="w-4 h-4 ml-3 group-hover:scale-110 transition-transform" />
+                    </span>
                   )}
                 </Button>
               </div>
             </form>
 
-            <p className="text-center text-xs text-muted-foreground relative z-10">
-              Already have an account? {' '}
-              <Link href="/login" className="text-primary font-black uppercase tracking-widest hover:underline transition-all">
-                Login
+            <p className="text-center text-xs text-muted-foreground relative z-10 font-medium">
+              Already registered? {' '}
+              <Link href="/login" className="text-primary font-black uppercase tracking-widest hover:underline transition-all ml-1">
+                Access Nexus
               </Link>
             </p>
           </div>

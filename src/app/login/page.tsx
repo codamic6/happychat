@@ -1,4 +1,3 @@
-
 'use client';
 
 import { FloatingBackground } from '@/components/auth/FloatingBackground';
@@ -7,7 +6,7 @@ import { AuthInput } from '@/components/auth/AuthInput';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Zap, Mail, Lock, Chrome, Github, ArrowRight, Loader2 } from 'lucide-react';
+import { Zap, Mail, Lock, Chrome, Github, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { useAuth } from '@/firebase';
@@ -31,8 +30,8 @@ export default function LoginPage() {
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Login Failed",
-        description: "Please check your email and password."
+        title: "Access Denied",
+        description: "Invalid credentials or protocol mismatch."
       });
     } finally {
       setIsLoading(false);
@@ -49,7 +48,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Connection Error",
-        description: "Could not sign in with this provider."
+        description: "Protocol handshake failed with provider."
       });
     } finally {
       setIsLoading(false);
@@ -61,23 +60,30 @@ export default function LoginPage() {
       <FloatingBackground />
       <AuthSidebar />
 
-      <div className="flex items-center justify-center p-6 sm:p-12 relative z-10">
+      <div className="flex items-center justify-center p-4 sm:p-12 relative z-10">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
           className="w-full max-w-md"
         >
-          <div className="lg:hidden flex justify-center mb-12">
-            <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center glow-green-bright">
+          {/* Mobile Branding */}
+          <div className="lg:hidden flex flex-col items-center mb-12 space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center glow-green-bright shadow-2xl">
               <Zap className="text-primary-foreground h-10 w-10 fill-current" />
             </div>
+            <h1 className="text-2xl font-black font-headline text-white uppercase italic tracking-tighter">HappyChat 2026</h1>
           </div>
 
-          <div className="glass p-8 sm:p-12 rounded-[2.5rem] border border-white/5 space-y-8 relative overflow-hidden shadow-2xl">
-            <div className="text-center space-y-2 relative z-10">
-              <h2 className="text-3xl font-black font-headline text-white italic tracking-tight uppercase">Login</h2>
-              <p className="text-sm text-muted-foreground">Welcome back! Please enter your details.</p>
+          <div className="glass p-8 sm:p-14 rounded-[3rem] border border-white/5 space-y-10 relative overflow-hidden shadow-2xl">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+            
+            <div className="text-center space-y-3 relative z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[9px] font-black uppercase tracking-[0.2em] mb-2">
+                <ShieldCheck className="w-3 h-3" /> Secure Handshake
+              </div>
+              <h2 className="text-4xl font-black font-headline text-white italic tracking-tight uppercase">Login</h2>
+              <p className="text-sm text-muted-foreground font-medium">Verify your identity to enter the nexus.</p>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-6 relative z-10">
@@ -90,7 +96,7 @@ export default function LoginPage() {
                 placeholder="Enter your email"
                 required
               />
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <AuthInput
                   label="Password"
                   icon={Lock}
@@ -100,9 +106,9 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   required
                 />
-                <div className="flex justify-end">
-                  <Link href="/forgot-password" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
-                    Forgot Password?
+                <div className="flex justify-end pr-2">
+                  <Link href="/forgot-password" size="sm" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
+                    Reset Protocol
                   </Link>
                 </div>
               </div>
@@ -110,13 +116,14 @@ export default function LoginPage() {
               <Button 
                 type="submit" 
                 disabled={isLoading}
-                className="w-full h-14 rounded-xl bg-primary hover:glow-green-bright transition-all duration-500 font-black uppercase tracking-[0.2em] text-xs shadow-[0_0_20px_rgba(0,200,83,0.3)] group"
+                className="w-full h-16 rounded-2xl bg-primary hover:glow-green-bright transition-all duration-500 font-black uppercase tracking-[0.2em] text-xs shadow-xl group overflow-hidden relative"
               >
+                <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                  <>
-                    Sign In
+                  <span className="relative z-10 flex items-center justify-center">
+                    Enter Nexus
                     <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </>
+                  </span>
                 )}
               </Button>
             </form>
@@ -125,8 +132,8 @@ export default function LoginPage() {
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-white/5" />
               </div>
-              <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
-                <span className="bg-[#0b0b0b] px-4 text-muted-foreground">Or continue with</span>
+              <div className="relative flex justify-center text-[9px] font-black uppercase tracking-[0.3em]">
+                <span className="bg-[#0b0b0b] px-6 text-muted-foreground">Gateway Provider</span>
               </div>
             </div>
 
@@ -134,29 +141,25 @@ export default function LoginPage() {
               <Button 
                 onClick={() => handleSocialLogin('google')}
                 variant="outline" 
-                className="h-14 rounded-xl border-white/5 bg-white/5 hover:bg-white/10 text-white font-bold transition-all"
+                className="h-14 rounded-2xl border-white/5 bg-white/5 hover:bg-white/10 text-white font-bold transition-all text-xs"
               >
-                <Avatar className="w-5 h-5 mr-2">
-                   <Chrome className="w-5 h-5" />
-                </Avatar>
+                <Chrome className="w-4 h-4 mr-2 text-primary" />
                 Google
               </Button>
               <Button 
                 onClick={() => handleSocialLogin('github')}
                 variant="outline" 
-                className="h-14 rounded-xl border-white/5 bg-white/5 hover:bg-white/10 text-white font-bold transition-all"
+                className="h-14 rounded-2xl border-white/5 bg-white/5 hover:bg-white/10 text-white font-bold transition-all text-xs"
               >
-                <Avatar className="w-5 h-5 mr-2">
-                  <Github className="w-5 h-5" />
-                </Avatar>
+                <Github className="w-4 h-4 mr-2 text-primary" />
                 GitHub
               </Button>
             </div>
 
             <p className="text-center text-xs text-muted-foreground relative z-10">
-              Don't have an account? {' '}
-              <Link href="/get-started" className="text-primary font-black uppercase tracking-widest hover:underline transition-all">
-                Sign Up
+              New to the nexus? {' '}
+              <Link href="/get-started" className="text-primary font-black uppercase tracking-widest hover:underline transition-all ml-1">
+                Register Shard
               </Link>
             </p>
           </div>
