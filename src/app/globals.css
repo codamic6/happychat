@@ -31,7 +31,7 @@
   * {
     @apply border-border;
   }
-  body {
+  html, body {
     @apply bg-background text-foreground;
     background-color: #050505;
     -webkit-user-select: none;
@@ -39,6 +39,8 @@
     -ms-user-select: none;
     user-select: none;
     overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
     font-family: 'Plus Jakarta Sans', sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
@@ -83,4 +85,9 @@
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 200, 83, 0.3);
+}
+
+/* Ensure no child elements break responsive flow */
+main, section, div, aside {
+  max-width: 100%;
 }

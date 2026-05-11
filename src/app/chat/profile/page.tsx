@@ -1,9 +1,8 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Loader2, LogOut, Settings, ArrowLeft, CheckCircle2, User, Shield
+  Loader2, LogOut, Settings, ArrowLeft, CheckCircle2, User, Shield, AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -63,27 +62,32 @@ export default function ProfilePage() {
     }
   }, [profile]);
 
-  const handleCheckUsername = async (val: string) => {
-    if (!val || val === profile?.username) {
-      setUsernameStatus('idle');
-      return;
-    }
-    setUsernameStatus('checking');
-    try {
-      const q = query(collection(db, 'users'), where('username', '==', val.toLowerCase().trim()));
-      const snap = await getDocs(q);
-      setUsernameStatus(snap.empty ? 'available' : 'taken');
-    } catch (e) {
-      setUsernameStatus('idle');
-    }
-  };
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      const val = formData.username.toLowerCase().trim();
+      if (!val || val === profile?.username) {
+        setUsernameStatus('idle');
+        return;
+      }
+      setUsernameStatus('checking');
+      try {
+        const q = query(collection(db, 'users'), where('username', '==', val));
+        const snap = await getDocs(q);
+        setUsernameStatus(snap.empty ? 'available' : 'taken');
+      } catch (e) {
+        setUsernameStatus('idle');
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [formData.username, profile?.username, db]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || isSaving || !db) return;
 
     if (usernameStatus === 'taken') {
-      toast({ variant: "destructive", title: "Error", description: "Username is unavailable." });
+      toast({ variant: "destructive", title: "Identity Error", description: "Username is already claimed." });
       return;
     }
 
@@ -99,7 +103,7 @@ export default function ProfilePage() {
         isOnline: formData.showOnlineStatus ? true : false,
         updatedAt: serverTimestamp()
       });
-      toast({ title: "Saved", description: "Account settings updated." });
+      toast({ title: "Shard Updated", description: "Identity parameters synchronized." });
     } catch (err) {
       toast({ variant: "destructive", title: "Error", description: "Update failed." });
     } finally {
@@ -119,8 +123,8 @@ export default function ProfilePage() {
   const initial = name.charAt(0).toUpperCase();
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#050505] custom-scrollbar overflow-x-hidden">
-      <div className="max-w-4xl mx-auto px-4 py-8 md:py-20 space-y-8 pb-32">
+    <div className="flex-1 overflow-y-auto bg-[#050505] custom-scrollbar overflow-x-hidden w-full">
+      <div className="max-w-4xl mx-auto px-4 py-8 md:py-20 space-y-8 pb-32 w-full">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden self-start">
             <ArrowLeft className="w-6 h-6 text-muted-foreground" />
@@ -129,26 +133,26 @@ export default function ProfilePage() {
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest">
               <Settings className="w-3 h-3" /> Account Settings
             </div>
-            <h1 className="text-3xl md:text-6xl font-bold font-headline tracking-tighter text-gradient">My Profile</h1>
+            <h1 className="text-3xl md:text-6xl font-bold font-headline tracking-tighter text-gradient uppercase italic">My Profile</h1>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <Card className="glass p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2rem] lg:col-span-1">
+          <Card className="glass p-8 border-white/5 flex flex-col items-center text-center space-y-6 rounded-[2rem] lg:col-span-1 shadow-2xl">
             <div className="relative">
               <div className="w-32 h-32 md:w-44 md:h-44 rounded-full border-4 border-primary/20 bg-[#0d0d0d] flex items-center justify-center">
-                <div className="text-5xl font-bold text-primary">{initial}</div>
+                <div className="text-5xl font-bold text-primary leading-none">{initial}</div>
               </div>
             </div>
 
-            <div className="space-y-1">
-              <h3 className="text-lg font-bold text-white">{name}</h3>
-              <p className="text-primary text-[10px] font-bold uppercase tracking-widest">@{formData.username}</p>
+            <div className="space-y-1 w-full">
+              <h3 className="text-lg font-bold text-white truncate">{name}</h3>
+              <p className="text-primary text-[10px] font-bold uppercase tracking-widest truncate">@{profile?.username}</p>
             </div>
 
             <div className="w-full pt-4 space-y-3">
               <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group transition-all hover:bg-white/10">
-                <div className="flex flex-col items-start gap-0.5">
+                <div className="flex flex-col items-start gap-0.5 text-left">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-white">Online Visibility</span>
                   <p className="text-[8px] text-muted-foreground uppercase">Show when active</p>
                 </div>
@@ -167,7 +171,7 @@ export default function ProfilePage() {
             </div>
           </Card>
 
-          <Card className="glass p-8 border-white/5 rounded-[2rem] lg:col-span-2 space-y-6">
+          <Card className="glass p-8 border-white/5 rounded-[2rem] lg:col-span-2 space-y-6 shadow-2xl">
             <form onSubmit={handleSave} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -175,7 +179,7 @@ export default function ProfilePage() {
                   <input 
                     value={formData.displayName}
                     onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
-                    className="h-12 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white focus:ring-1 focus:ring-primary text-sm"
+                    className="h-12 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white focus:ring-1 focus:ring-primary text-sm transition-all"
                   />
                 </div>
                 <div className="space-y-2">
@@ -183,17 +187,16 @@ export default function ProfilePage() {
                   <div className="relative">
                     <input 
                       value={formData.username}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setFormData(prev => ({ ...prev, username: val }));
-                        handleCheckUsername(val);
-                      }}
-                      className={cn("h-12 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white focus:ring-1 focus:ring-primary text-sm", usernameStatus === 'taken' && "border-destructive")}
+                      onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                      className={cn(
+                        "h-12 w-full bg-white/5 border border-white/5 rounded-xl px-4 text-white focus:ring-1 focus:ring-primary text-sm pr-12 transition-all",
+                        usernameStatus === 'taken' && "border-destructive"
+                      )}
                     />
                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
                       {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
                       {usernameStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-primary" />}
-                      {usernameStatus === 'taken' && <span className="text-[8px] font-bold text-destructive">Taken</span>}
+                      {usernameStatus === 'taken' && <AlertCircle className="w-4 h-4 text-destructive" />}
                     </div>
                   </div>
                 </div>
@@ -203,14 +206,14 @@ export default function ProfilePage() {
                 <Textarea 
                   value={formData.about}
                   onChange={(e) => setFormData(prev => ({ ...prev, about: e.target.value }))}
-                  className="min-h-[100px] bg-white/5 border-white/10 rounded-xl resize-none text-sm"
+                  className="min-h-[100px] bg-white/5 border-white/10 rounded-xl resize-none text-sm transition-all"
                   placeholder="Digital creator on HappyChat..."
                 />
               </div>
               <Button 
                 type="submit" 
-                disabled={isSaving || usernameStatus === 'taken'}
-                className="w-full h-14 bg-primary hover:glow-green-bright text-primary-foreground font-bold uppercase text-xs tracking-widest rounded-xl transition-all"
+                disabled={isSaving || usernameStatus === 'checking' || (usernameStatus === 'taken' && formData.username !== profile?.username)}
+                className="w-full h-14 bg-primary hover:glow-green-bright text-primary-foreground font-bold uppercase text-xs tracking-widest rounded-xl transition-all shadow-xl"
               >
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Profile'}
               </Button>
