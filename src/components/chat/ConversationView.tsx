@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -5,7 +6,7 @@ import {
   Send, MoreHorizontal, Smile, Search, 
   MoreVertical, X, Info, ArrowLeft, Loader2,
   Check, Reply, CheckCheck, Trash2, BarChart2, UserPlus, MessageSquare,
-  Forward, ChevronRight, Share2, Pencil, Plus, ArrowLeftCircle
+  Forward, ChevronRight, Share2, Pencil, Plus, ArrowLeftCircle, Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -112,6 +113,11 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTool, setActiveTool] = useState<'none' | 'menu' | 'poll' | 'contact'>('none');
   
+  // Nickname editing state
+  const [isEditingNickname, setIsEditingNickname] = useState(false);
+  const [newNickname, setNewNickname] = useState('');
+  const [isSavingNickname, setIsSavingNickname] = useState(false);
+
   const isNewChat = conversationId.startsWith('new-');
   const targetUid = isNewChat ? conversationId.replace('new-', '') : null;
 
@@ -194,7 +200,15 @@ export function ConversationView({ conversationId }: { conversationId: string })
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
     if (!uid || !db || !user) return;
     onSnapshot(doc(db, 'users', uid), (snap) => snap.exists() && setOtherProfile(snap.data() as UserProfile));
-    onSnapshot(doc(db, 'users', user.uid, 'contacts', uid), (snap) => snap.exists() ? setContactRecord(snap.data() as ContactRecord) : setContactRecord(null));
+    onSnapshot(doc(db, 'users', user.uid, 'contacts', uid), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as ContactRecord;
+        setContactRecord(data);
+        setNewNickname(data.customName || '');
+      } else {
+        setContactRecord(null);
+      }
+    });
   }, [conversation, targetUid, user, db]);
 
   useEffect(() => {
@@ -261,6 +275,24 @@ export function ConversationView({ conversationId }: { conversationId: string })
       [`unreadCount.${otherProfile.id}`]: increment(1),
       [`typing.${user.uid}`]: false
     }).catch(() => {});
+  };
+
+  const handleUpdateNickname = async () => {
+    if (!user || !db || !otherProfile || isSavingNickname) return;
+    setIsSavingNickname(true);
+    try {
+      const contactRef = doc(db, 'users', user.uid, 'contacts', otherProfile.id);
+      await updateDoc(contactRef, {
+        customName: newNickname.trim(),
+        updatedAt: serverTimestamp()
+      });
+      setIsEditingNickname(false);
+      toast({ title: "Signal Updated", description: "Nickname has been synchronized." });
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Update Failed", description: "Secure shard write failed." });
+    } finally {
+      setIsSavingNickname(false);
+    }
   };
 
   const deleteMessage = async (msgId: string, senderId: string, mode: 'me' | 'everyone') => {
@@ -382,7 +414,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground"><ArrowLeft className="w-6 h-6" /></Button>
                 <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
                   <div className="w-10 h-10 rounded-full border border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden shrink-0">
-                    <span className="text-sm font-bold text-primary not-italic leading-none">{initial}</span>
+                    <span className="text-sm font-bold text-primary not-italic flex items-center justify-center leading-none h-full w-full">{initial}</span>
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-sm font-bold text-white truncate">{mainName}</h3>
@@ -447,20 +479,62 @@ export function ConversationView({ conversationId }: { conversationId: string })
             </div>
             <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center text-center space-y-6">
               <div className="w-32 h-32 rounded-full border-4 border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden">
-                <span className="text-4xl font-black text-primary uppercase not-italic leading-none">{initial}</span>
+                <span className="text-4xl font-black text-primary uppercase not-italic flex items-center justify-center leading-none h-full w-full">{(mainName || 'U').charAt(0)}</span>
               </div>
-              <div>
-                <h2 className="text-2xl font-black font-headline tracking-tighter uppercase">{mainName}</h2>
-                <p className="text-primary text-[10px] font-bold uppercase tracking-widest">@{otherProfile.username}</p>
+              
+              <div className="w-full space-y-2">
+                {isEditingNickname ? (
+                  <div className="space-y-3">
+                    <Input 
+                      value={newNickname} 
+                      onChange={(e) => setNewNickname(e.target.value)}
+                      placeholder="Enter nickname..."
+                      className="bg-white/5 border-white/10 text-center text-lg font-bold uppercase tracking-tight h-12 rounded-xl"
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
+                      <Button onClick={handleUpdateNickname} disabled={isSavingNickname} className="flex-1 h-10 bg-primary hover:glow-green text-primary-foreground font-bold uppercase text-[10px] tracking-widest rounded-xl">
+                        {isSavingNickname ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+                      </Button>
+                      <Button variant="ghost" onClick={() => setIsEditingNickname(false)} className="flex-1 h-10 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Cancel</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="group relative">
+                    <h2 className="text-2xl font-black font-headline tracking-tighter uppercase">{mainName}</h2>
+                    <p className="text-primary text-[10px] font-bold uppercase tracking-widest">@{otherProfile.username}</p>
+                    {contactRecord && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setIsEditingNickname(true)}
+                        className="absolute -right-4 top-0 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-white/5"
+                      >
+                        <Pencil className="w-3 h-3 text-primary" />
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
+
               <div className="w-full bg-white/5 rounded-2xl p-6 border border-white/5 text-left space-y-4">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">About</span>
-                  <p className="text-sm">{otherProfile.about || "Secure HappyChat User"}</p>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <Info className="w-3 h-3" /> About
+                  </span>
+                  <p className="text-sm mt-1">{otherProfile.about || "Secure HappyChat User"}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Email</span>
-                  <p className="text-sm text-primary truncate">{otherProfile.email}</p>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <Tag className="w-3 h-3" /> Real Identity
+                  </span>
+                  <p className="text-sm mt-1 text-white/60">{otherProfile.fullName || 'Unknown'}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <MessageSquare className="w-3 h-3" /> Protocol Email
+                  </span>
+                  <p className="text-sm mt-1 text-primary truncate">{otherProfile.email}</p>
                 </div>
               </div>
             </div>
@@ -473,7 +547,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
           {replyingTo && (
             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="px-4 py-2 bg-white/5 border-l-2 border-primary mb-2 flex justify-between items-center rounded-r-xl overflow-hidden">
               <div className="min-w-0">
-                <p className="text-[9px] font-bold text-primary uppercase">Replying to {replyingTo.senderId === user?.uid ? 'You' : (otherProfile?.fullName || 'User')}</p>
+                <p className="text-[9px] font-bold text-primary uppercase">Replying to {replyingTo.senderId === user?.uid ? 'You' : (contactRecord?.customName || otherProfile?.fullName || 'User')}</p>
                 <p className="text-xs text-muted-foreground truncate">{replyingTo.text}</p>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setReplyingTo(null)} className="h-6 w-6 shrink-0"><X className="w-4 h-4" /></Button>
@@ -689,7 +763,7 @@ function MessageRow({ msg, user, isMobile, onVote, onDelete, onReply, onSelect, 
 
         {msg.sharedContact && (
           <div className="mt-2 bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xl shadow-inner uppercase not-italic leading-none">{msg.sharedContact.name.charAt(0)}</div>
+            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xl shadow-inner uppercase not-italic leading-none h-full w-full">{msg.sharedContact.name.charAt(0)}</div>
             <div className="text-center">
               <p className="font-bold text-xs uppercase tracking-widest">{renderText(msg.sharedContact.name)}</p>
               <p className="text-[10px] text-muted-foreground mt-0.5">@{msg.sharedContact.username}</p>
@@ -868,7 +942,7 @@ function ContactPickerInline({ onPicked, currentUserId }: any) {
               onClick={() => onPicked({ uid: p.id, name: p.fullName || p.displayName, username: p.username })} 
               className="w-full p-2.5 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-all text-left group"
             >
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xs group-hover:scale-110 transition-transform uppercase not-italic leading-none">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xs group-hover:scale-110 transition-transform uppercase not-italic flex items-center justify-center leading-none">
                 {(p.fullName || p.displayName || 'U').charAt(0)}
               </div>
               <div className="flex-1 min-w-0">

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -202,7 +203,9 @@ export function ChatSidebar() {
   const contactAliasMap = useMemo(() => {
     if (!userContacts) return {};
     return userContacts.reduce((acc, c) => {
+      // Index by userId AND document ID (UID) for safe lookup
       acc[c.userId] = c;
+      acc[c.id] = c;
       return acc;
     }, {} as Record<string, ContactRecord>);
   }, [userContacts]);
@@ -483,7 +486,7 @@ export function ChatSidebar() {
                       <SegmentedRing count={statusInfo.count} hasUnseen={statusInfo.hasUnseen} size={56} />
                     )}
                     <div className="w-12 h-12 rounded-full border border-white/10 bg-[#111] flex items-center justify-center overflow-hidden z-0 group-hover/item:scale-105 transition-transform duration-500">
-                      <span className="text-xl font-bold text-primary not-italic leading-none">{displayName.charAt(0).toUpperCase()}</span>
+                      <span className="text-xl font-bold text-primary not-italic flex items-center justify-center leading-none h-full w-full">{displayName.charAt(0).toUpperCase()}</span>
                     </div>
                     {profile.showOnlineStatus !== false && profile.isOnline && (
                       <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green z-20 shadow-lg" />
@@ -610,7 +613,7 @@ export function ChatSidebar() {
           <div className="p-8 flex flex-col items-center text-center space-y-6">
             <div className="relative">
               <div className="w-32 h-32 rounded-full border-4 border-primary/20 flex items-center justify-center bg-[#111] overflow-hidden">
-                <span className="text-4xl font-black text-primary uppercase not-italic leading-none">{(viewingProfile?.fullName || 'U').charAt(0)}</span>
+                <span className="text-4xl font-black text-primary uppercase not-italic flex items-center justify-center leading-none h-full w-full">{(viewingProfile?.fullName || 'U').charAt(0)}</span>
               </div>
             </div>
             <div className="space-y-1">

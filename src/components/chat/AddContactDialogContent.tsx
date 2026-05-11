@@ -46,15 +46,18 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
     setCustomName('');
 
     try {
+      // Priority search: email
       let q = query(collection(db, 'users'), where('email', '==', searchTerm.toLowerCase().trim()));
       let snap = await getDocs(q);
 
       if (snap.empty) {
+        // Fallback: phone
         q = query(collection(db, 'users'), where('phoneNumber', '==', searchTerm.trim()));
         snap = await getDocs(q);
       }
 
       if (snap.empty) {
+        // Fallback: username
         q = query(collection(db, 'users'), where('username', '==', searchTerm.toLowerCase().trim()));
         snap = await getDocs(q);
       }
@@ -63,14 +66,14 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
         const userData = snap.docs[0].data() as UserProfile;
         if (userData.id !== currentUserId) {
           setFoundUser(userData);
-          setCustomName(userData.fullName); // Default to full name
+          setCustomName(userData.fullName); // Default to their current name
         } else {
           toast({ title: "Self-Search", description: "You cannot add yourself as a contact." });
         }
       }
       setHasSearched(true);
     } catch (err) {
-      toast({ variant: "destructive", title: "Search Failed", description: "An error occurred while searching." });
+      toast({ variant: "destructive", title: "Search Failed", description: "Protocol link timed out." });
     } finally {
       setIsSearching(false);
     }
@@ -81,30 +84,28 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
 
     setIsAdding(true);
     try {
-      // Add target to current user's list with custom name
       const myRef = doc(db, 'users', currentUserId, 'contacts', foundUser.id);
       await setDoc(myRef, {
         userId: foundUser.id,
         customName: customName.trim() || foundUser.fullName,
         addedAt: serverTimestamp(),
-      });
+      }, { merge: true });
 
-      // Add current user to target's list (Mutual Connection)
       const theirRef = doc(db, 'users', foundUser.id, 'contacts', currentUserId);
       await setDoc(theirRef, {
         userId: currentUserId,
         addedAt: serverTimestamp(),
-      });
+      }, { merge: true });
 
       toast({ 
-        title: "Contact Added", 
-        description: `${customName || foundUser.fullName} is now in your network.` 
+        title: "Contact Synced", 
+        description: `${customName.trim() || foundUser.fullName} is now in your mesh.` 
       });
       
       onSuccess();
       router.push(`/chat/new-${foundUser.id}`);
     } catch (err) {
-      toast({ variant: "destructive", title: "Action Failed", description: "Could not add contact." });
+      toast({ variant: "destructive", title: "Action Failed", description: "Could not establish contact shard." });
     } finally {
       setIsAdding(false);
     }
@@ -117,7 +118,7 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
           <UserPlus className="text-primary w-6 h-6" /> Add Contact
         </DialogTitle>
         <DialogDescription className="text-muted-foreground text-[10px] font-bold uppercase tracking-[0.3em]">
-          Search by email, phone, or username
+          Identify by email, phone, or handle
         </DialogDescription>
       </DialogHeader>
 
@@ -129,7 +130,7 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
               <Input 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Find someone..."
+                placeholder="Secure ID lookup..."
                 className="bg-white/5 border-white/10 h-14 pl-12 rounded-2xl focus-visible:ring-primary focus-visible:ring-offset-0 transition-all text-sm"
               />
             </div>
@@ -153,7 +154,7 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
             >
               <div className="flex items-center gap-4">
                 <Avatar className="w-16 h-16 border-2 border-primary/20 bg-[#111]">
-                  <AvatarFallback className="text-xl font-bold text-primary">
+                  <AvatarFallback className="text-xl font-bold text-primary not-italic flex items-center justify-center leading-none h-full w-full">
                     {foundUser.fullName.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -172,7 +173,7 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
                 <Input 
                   value={customName}
                   onChange={(e) => setCustomName(e.target.value)}
-                  placeholder="e.g. Best Friend, Dad, etc."
+                  placeholder="e.g. Best Friend, HQ, etc."
                   className="bg-white/5 border-white/10 h-12 rounded-xl text-sm focus-visible:ring-primary"
                 />
               </div>
@@ -183,17 +184,17 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
                 className="w-full h-14 bg-primary hover:glow-green-bright text-primary-foreground font-bold uppercase text-xs tracking-[0.2em] rounded-xl transition-all"
               >
                 {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-                  <>Securely Add Contact <Plus className="w-4 h-4 ml-2" /></>
+                  <>Establish Link <Plus className="w-4 h-4 ml-2" /></>
                 )}
               </Button>
             </motion.div>
           ) : hasSearched && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12 space-y-3">
-              <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-dashed border-white/10 opacity-30">
-                <Search className="w-8 h-8 text-white" />
+              <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-dashed border-white/20">
+                <Search className="w-8 h-8 text-white/30" />
               </div>
-              <p className="text-sm font-bold text-white uppercase font-headline">No user found</p>
-              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Try a different search term</p>
+              <p className="text-sm font-bold text-white uppercase font-headline">Zero Signals Found</p>
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Adjust search parameters</p>
             </motion.div>
           )}
         </AnimatePresence>
