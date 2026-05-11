@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -38,7 +37,8 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchTerm.trim() || !db) return;
+    const term = searchTerm.trim().toLowerCase();
+    if (!term || !db) return;
 
     setIsSearching(true);
     setHasSearched(false);
@@ -46,19 +46,19 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
     setCustomName('');
 
     try {
-      // Priority search: email
-      let q = query(collection(db, 'users'), where('email', '==', searchTerm.toLowerCase().trim()));
+      // 1. Search by email
+      let q = query(collection(db, 'users'), where('email', '==', term));
       let snap = await getDocs(q);
 
+      // 2. Fallback: username
       if (snap.empty) {
-        // Fallback: phone
-        q = query(collection(db, 'users'), where('phoneNumber', '==', searchTerm.trim()));
+        q = query(collection(db, 'users'), where('username', '==', term));
         snap = await getDocs(q);
       }
 
+      // 3. Fallback: phone
       if (snap.empty) {
-        // Fallback: username
-        q = query(collection(db, 'users'), where('username', '==', searchTerm.toLowerCase().trim()));
+        q = query(collection(db, 'users'), where('phoneNumber', '==', term));
         snap = await getDocs(q);
       }
 
@@ -66,7 +66,7 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
         const userData = snap.docs[0].data() as UserProfile;
         if (userData.id !== currentUserId) {
           setFoundUser(userData);
-          setCustomName(userData.fullName); // Default to their current name
+          setCustomName(userData.fullName);
         } else {
           toast({ title: "Self-Search", description: "You cannot add yourself as a contact." });
         }
@@ -118,7 +118,7 @@ export function AddContactDialogContent({ onSuccess, currentUserId }: { onSucces
           <UserPlus className="text-primary w-6 h-6" /> Add Contact
         </DialogTitle>
         <DialogDescription className="text-muted-foreground text-[10px] font-bold uppercase tracking-[0.3em]">
-          Identify by email, phone, or handle
+          Lookup by email, handle, or phone
         </DialogDescription>
       </DialogHeader>
 

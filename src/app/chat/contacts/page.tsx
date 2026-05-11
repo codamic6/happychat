@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Search, UserPlus, MessageSquare, Loader2, 
-  ArrowLeft, Info, User, Tag, Plus, LayoutGrid, X, AtSign
+  ArrowLeft, Info, User, Tag, Plus, LayoutGrid, X, AtSign, Phone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ type UserProfile = {
   fullName?: string;
   username: string;
   email: string;
+  phoneNumber?: string;
   about?: string;
 };
 
@@ -95,19 +96,26 @@ export default function ContactsPage() {
 
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lookupTerm.trim() || !db) return;
+    const term = lookupTerm.trim().toLowerCase();
+    if (!term || !db) return;
     setIsLookingUp(true);
     setHasLookedUp(false);
     setFoundUsers([]);
 
     try {
-      // Search by email
-      let q = query(collection(db, 'users'), where('email', '==', lookupTerm.toLowerCase().trim()));
+      // 1. Search by email
+      let q = query(collection(db, 'users'), where('email', '==', term));
       let snap = await getDocs(q);
       
-      // If empty, search by username
+      // 2. If empty, search by username
       if (snap.empty) {
-        q = query(collection(db, 'users'), where('username', '==', lookupTerm.toLowerCase().trim()));
+        q = query(collection(db, 'users'), where('username', '==', term));
+        snap = await getDocs(q);
+      }
+
+      // 3. If still empty, search by phone number
+      if (snap.empty) {
+        q = query(collection(db, 'users'), where('phoneNumber', '==', term));
         snap = await getDocs(q);
       }
 
@@ -153,7 +161,7 @@ export default function ContactsPage() {
 
   return (
     <div className="flex-1 flex flex-col bg-[#050505] h-full overflow-hidden relative">
-      <header className="h-20 md:h-24 px-6 border-b border-white/5 flex items-center justify-between bg-black/60 backdrop-blur-xl z-[60] sticky top-0">
+      <header className="h-20 md:h-24 px-6 border-b border-white/5 flex items-center justify-between bg-black/60 backdrop-blur-xl z-[60] sticky top-0 shrink-0">
         <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
@@ -169,11 +177,12 @@ export default function ContactsPage() {
           </div>
         </div>
 
+        {/* Desktop Only Button */}
         <Button 
           onClick={() => setIsAddMode(!isAddMode)}
           size="sm" 
           className={cn(
-            "font-black uppercase text-[10px] tracking-widest rounded-xl h-10 px-6 shadow-lg transition-all active:scale-95",
+            "hidden md:flex font-black uppercase text-[10px] tracking-widest rounded-xl h-10 px-6 shadow-lg transition-all active:scale-95",
             isAddMode ? "bg-destructive/20 text-destructive border border-destructive/30 hover:bg-destructive/30" : "bg-primary text-primary-foreground hover:glow-green-bright"
           )}
         >
@@ -182,7 +191,7 @@ export default function ContactsPage() {
       </header>
 
       <ScrollArea className="flex-1 w-full">
-        <div className="max-w-7xl mx-auto p-6 md:p-10 pt-0 space-y-10 pb-32">
+        <div className="max-w-7xl mx-auto p-4 md:p-10 pt-0 space-y-6 md:space-y-10 pb-32">
           
           <AnimatePresence mode="wait">
             {isAddMode ? (
@@ -191,28 +200,39 @@ export default function ContactsPage() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="py-10 space-y-8"
+                className="py-6 md:py-10 space-y-8"
               >
                 <div className="max-w-3xl mx-auto space-y-6">
                   <div className="text-center space-y-2">
                     <h2 className="text-2xl font-black font-headline uppercase italic text-white">Initialize New Link</h2>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.3em]">Search the global mesh by handle or email</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.3em]">Search by handle, email, or phone</p>
                   </div>
 
-                  <form onSubmit={handleLookup} className="relative group shadow-2xl">
-                    <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-xl group-focus-within:bg-primary/10 transition-all" />
-                    <div className="relative bg-[#0d0d0d] border border-white/10 rounded-2xl flex items-center px-4 h-14 group-focus-within:border-primary/50 transition-all">
-                      <AtSign className="w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                      <Input 
-                        value={lookupTerm}
-                        onChange={(e) => setLookupTerm(e.target.value)}
-                        placeholder="Search Identity..." 
-                        className="bg-transparent border-none text-white text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 h-full w-full"
-                      />
-                      <Button type="submit" disabled={isLookingUp} variant="ghost" className="h-10 w-10 p-0 text-primary">
-                        {isLookingUp ? <Loader2 className="animate-spin" /> : <Search />}
-                      </Button>
+                  <form onSubmit={handleLookup} className="space-y-4">
+                    <div className="relative group shadow-2xl">
+                      <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-xl group-focus-within:bg-primary/10 transition-all" />
+                      <div className="relative bg-[#0d0d0d] border border-white/10 rounded-2xl flex items-center px-4 h-14 group-focus-within:border-primary/50 transition-all">
+                        <Search className="w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <Input 
+                          value={lookupTerm}
+                          onChange={(e) => setLookupTerm(e.target.value)}
+                          placeholder="Email, Handle, or Phone..." 
+                          className="bg-transparent border-none text-white text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 h-full w-full"
+                        />
+                        <Button type="submit" disabled={isLookingUp} variant="ghost" className="h-10 w-10 p-0 text-primary shrink-0">
+                          {isLookingUp ? <Loader2 className="animate-spin" /> : <Search />}
+                        </Button>
+                      </div>
                     </div>
+                    {/* Mobile Cancel Button below Search */}
+                    <Button 
+                      type="button"
+                      onClick={() => setIsAddMode(false)}
+                      variant="outline"
+                      className="md:hidden w-full h-14 rounded-2xl border-white/5 bg-white/5 font-black uppercase text-[10px] tracking-widest text-muted-foreground"
+                    >
+                      <X className="w-4 h-4 mr-2" /> Cancel Lookup
+                    </Button>
                   </form>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -249,19 +269,29 @@ export default function ContactsPage() {
                 key="list-interface"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="py-10"
+                className="py-6 md:py-10 space-y-6 md:space-y-12"
               >
-                <div className="relative group max-w-3xl mx-auto shadow-2xl mb-12">
-                  <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-xl group-focus-within:bg-primary/10 transition-all" />
-                  <div className="relative bg-[#0d0d0d] border border-white/10 rounded-2xl flex items-center px-4 h-14 group-focus-within:border-primary/50 transition-all">
-                    <Search className="w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <Input 
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Filter mesh network..." 
-                      className="bg-transparent border-none text-white text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 h-full w-full"
-                    />
+                <div className="max-w-3xl mx-auto space-y-4">
+                  <div className="relative group shadow-2xl">
+                    <div className="absolute inset-0 bg-primary/5 rounded-2xl blur-xl group-focus-within:bg-primary/10 transition-all" />
+                    <div className="relative bg-[#0d0d0d] border border-white/10 rounded-2xl flex items-center px-4 h-14 group-focus-within:border-primary/50 transition-all">
+                      <Search className="w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                      <Input 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Filter mesh network..." 
+                        className="bg-transparent border-none text-white text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 h-full w-full"
+                      />
+                    </div>
                   </div>
+                  
+                  {/* Responsive Add Button under Search */}
+                  <Button 
+                    onClick={() => setIsAddMode(true)}
+                    className="md:hidden w-full h-14 rounded-2xl bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest shadow-xl glow-green"
+                  >
+                    <Plus className="w-4 h-4 mr-2" /> Add New Shard
+                  </Button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
