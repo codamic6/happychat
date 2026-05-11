@@ -93,6 +93,7 @@
         "unreadCount": { "type": "object" },
         "typing": { "type": "object" },
         "pinnedBy": { "type": "array", "items": { "type": "string" } },
+        "archivedBy": { "type": "array", "items": { "type": "string" } },
         "hiddenFor": { "type": "array", "items": { "type": "string" } }
       }
     },

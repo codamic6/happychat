@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { useState } from 'react';
 import { 
   MessageSquare, Globe, Users, UserCircle, 
-  LogOut, UserPlus, Zap
+  LogOut, UserPlus, Zap, Archive
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth, useUser } from '@/firebase';
@@ -25,6 +26,7 @@ export function IconRail() {
     { id: 'chats', icon: MessageSquare, label: 'Chats', path: '/chat' },
     { id: 'status', icon: Globe, label: 'Updates', path: '/chat/status' },
     { id: 'contacts', icon: Users, label: 'Contacts', path: '/chat/contacts' },
+    { id: 'archived', icon: Archive, label: 'Archived', path: '/chat/archived' },
   ];
 
   const handleSignOut = async () => {

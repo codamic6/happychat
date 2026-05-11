@@ -2,12 +2,19 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, MoreVertical, Pin, Trash2, User, ChevronRight, X, PinOff, Info, ArrowLeft, MessageCircle } from 'lucide-react';
+import { 
+  Search, MoreVertical, Pin, Trash2, User, ChevronRight, X, 
+  PinOff, Info, ArrowLeft, MessageCircle, Archive, CheckCircle, 
+  UserCircle, Settings, ArchiveX, Plus
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, getDocs, where, doc, updateDoc, onSnapshot, limit, orderBy, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
+import { 
+  collection, query, getDocs, where, doc, updateDoc, 
+  onSnapshot, orderBy, arrayUnion, arrayRemove, writeBatch 
+} from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { format, differenceInSeconds, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
@@ -24,6 +31,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
+import { AddContactDialogContent } from '@/components/chat/AddContactDialogContent';
 
 type UserProfile = {
   id: string;
@@ -50,6 +58,7 @@ type Conversation = {
   updatedAt: any;
   unreadCount?: Record<string, number>;
   pinnedBy?: string[];
+  archivedBy?: string[];
   hiddenFor?: string[];
 };
 
@@ -131,6 +140,7 @@ export function ChatSidebar() {
 
   const [manageChatId, setManageChatId] = useState<string | null>(null);
   const [viewingProfile, setViewingProfile] = useState<UserProfile | null>(null);
+  const [isNewContactOpen, setIsNewContactOpen] = useState(false);
 
   const convQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
@@ -199,7 +209,11 @@ export function ChatSidebar() {
 
   const sortedConversations = useMemo(() => {
     if (!rawConversations || !user) return [];
-    const filtered = rawConversations.filter(c => !c.hiddenFor?.includes(user.uid));
+    // Filter out archived chats for main list
+    const filtered = rawConversations.filter(c => 
+      !c.hiddenFor?.includes(user.uid) && 
+      !c.archivedBy?.includes(user.uid)
+    );
     return [...filtered].sort((a, b) => {
       const isPinnedA = a.pinnedBy?.includes(user.uid) ? 1 : 0;
       const isPinnedB = b.pinnedBy?.includes(user.uid) ? 1 : 0;
@@ -234,6 +248,30 @@ export function ChatSidebar() {
     } catch (e) {
       toast({ variant: 'destructive', title: "Error", description: "Pin protocol failed." });
     }
+  };
+
+  const archiveChat = async (convId: string) => {
+    if (!user || !db) return;
+    const convRef = doc(db, 'conversations', convId);
+    try {
+      await updateDoc(convRef, { archivedBy: arrayUnion(user.uid) });
+      toast({ title: "Chat Archived", description: "Moved to storage." });
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Error", description: "Archiving failed." });
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    if (!user || !db || !rawConversations) return;
+    const batch = writeBatch(db);
+    rawConversations.forEach(conv => {
+      if (conv.unreadCount?.[user.uid] && conv.unreadCount[user.uid] > 0) {
+        const ref = doc(db, 'conversations', conv.id);
+        batch.update(ref, { [`unreadCount.${user.uid}`]: 0 });
+      }
+    });
+    await batch.commit();
+    toast({ title: "All Read", description: "Network cleared." });
   };
 
   const handleClearChat = async (convId: string) => {
@@ -301,30 +339,54 @@ export function ChatSidebar() {
                 <MoreVertical className="w-5 h-5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-[#111] border-white/10 p-2 rounded-2xl min-w-[180px] shadow-2xl">
-               <DropdownMenuItem className="rounded-xl p-3 uppercase font-bold text-[10px] tracking-widest text-white/60 hover:text-primary transition-colors cursor-pointer">
-                  Mark all as read
+            <DropdownMenuContent className="bg-[#0a0a0a] border-white/10 p-2 rounded-2xl min-w-[200px] shadow-2xl z-[120]">
+               <DropdownMenuItem onClick={() => setIsNewContactOpen(true)} className="rounded-xl p-3 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary transition-colors cursor-pointer">
+                  <Plus className="w-4 h-4" /> New Contact
                </DropdownMenuItem>
-               <DropdownMenuItem className="rounded-xl p-3 uppercase font-bold text-[10px] tracking-widest text-white/60 hover:text-primary transition-colors cursor-pointer">
-                  Archive old chats
+               <DropdownMenuItem onClick={handleMarkAllRead} className="rounded-xl p-3 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary transition-colors cursor-pointer">
+                  <CheckCircle className="w-4 h-4" /> Mark all as read
+               </DropdownMenuItem>
+               <DropdownMenuItem onClick={() => router.push('/chat/archived')} className="rounded-xl p-3 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary transition-colors cursor-pointer">
+                  <Archive className="w-4 h-4" /> Archived Chats
+               </DropdownMenuItem>
+               <DropdownMenuSeparator className="bg-white/5" />
+               <DropdownMenuItem onClick={() => router.push('/chat/profile')} className="rounded-xl p-3 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary transition-colors cursor-pointer">
+                  <UserCircle className="w-4 h-4" /> ME
+               </DropdownMenuItem>
+               <DropdownMenuItem onClick={() => router.push('/chat/settings')} className="rounded-xl p-3 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary transition-colors cursor-pointer">
+                  <Settings className="w-4 h-4" /> Settings
                </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
-        <div className="relative group">
-          <div className="absolute inset-0 bg-primary/5 rounded-full blur-md opacity-0 group-focus-within:opacity-100 transition-opacity" />
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-          <Input 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search Network..." 
-            className="bg-white/[0.03] border-white/5 focus:border-primary/50 pl-14 h-14 text-sm rounded-full focus-visible:ring-0 transition-all placeholder:text-muted-foreground/30 font-medium"
-          />
+        <div className="space-y-4">
+          <div className="relative group">
+            <div className="absolute inset-0 bg-primary/5 rounded-full blur-md opacity-0 group-focus-within:opacity-100 transition-opacity" />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <Input 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search Network..." 
+              className="bg-white/[0.03] border-white/5 focus:border-primary/50 pl-14 h-14 text-sm rounded-full focus-visible:ring-0 transition-all placeholder:text-muted-foreground/30 font-medium"
+            />
+          </div>
+
+          <Button 
+            variant="ghost" 
+            onClick={() => router.push('/chat/archived')}
+            className="w-full h-10 rounded-xl bg-white/[0.02] border border-white/5 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all flex items-center justify-between px-4 group"
+          >
+            <div className="flex items-center gap-2">
+              <Archive className="w-3 h-3 group-hover:scale-110 transition-transform" />
+              <span>Archived Vault</span>
+            </div>
+            <ChevronRight className="w-3 h-3 opacity-30" />
+          </Button>
         </div>
       </header>
 
-      {/* Mobile Selection Tool Overly */}
+      {/* Mobile Selection Tool Overlay */}
       <AnimatePresence>
         {isSelectionMode && isMobile && (
           <motion.div 
@@ -348,6 +410,12 @@ export function ChatSidebar() {
                   className="rounded-xl bg-white/5 h-12 w-12 hover:bg-primary/20 text-primary"
                 >
                   {filteredConversations.find(c => c.id === selectedConvId)?.pinnedBy?.includes(user?.uid || '') ? <PinOff className="w-5 h-5" /> : <Pin className="w-5 h-5" />}
+               </Button>
+               <Button 
+                  onClick={() => { if (selectedConvId) archiveChat(selectedConvId); setSelectedConvId(null); setIsSelectionMode(false); }}
+                  className="rounded-xl bg-white/5 h-12 w-12 hover:bg-primary/20 text-primary"
+                >
+                  <Archive className="w-5 h-5" />
                </Button>
                <Button 
                   onClick={() => setManageChatId(selectedConvId)}
@@ -403,7 +471,7 @@ export function ChatSidebar() {
                       <SegmentedRing count={statusInfo.count} hasUnseen={statusInfo.hasUnseen} size={56} />
                     )}
                     <div className="w-12 h-12 rounded-full border border-white/10 bg-[#111] flex items-center justify-center overflow-hidden z-0 group-hover/item:scale-105 transition-transform duration-500">
-                      <div className="text-xl font-black text-primary italic">{displayName.charAt(0).toUpperCase()}</div>
+                      <div className="text-xl font-bold text-primary flex items-center justify-center w-full h-full">{displayName.charAt(0).toUpperCase()}</div>
                     </div>
                     {profile.showOnlineStatus !== false && profile.isOnline && (
                       <div className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-primary rounded-full border-2 border-[#0d0d0d] glow-green z-20 shadow-lg" />
@@ -439,6 +507,9 @@ export function ChatSidebar() {
                             <DropdownMenuContent className="bg-[#111] border-white/10 min-w-[180px] rounded-2xl p-2 shadow-2xl z-[110]">
                               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); togglePin(conv.id, isPinned); }} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-primary/10 text-white text-[9px] font-black uppercase tracking-widest">
                                 {isPinned ? <><PinOff className="w-4 h-4" /> Unpin</> : <><Pin className="w-4 h-4" /> Pin</>}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); archiveChat(conv.id); }} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-primary/10 text-white text-[9px] font-black uppercase tracking-widest">
+                                <Archive className="w-4 h-4" /> Archive
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); otherId && setViewingProfile(chatProfiles[otherId]); }} className="gap-3 p-3 rounded-xl cursor-pointer hover:bg-primary/10 text-white text-[9px] font-black uppercase tracking-widest">
                                 <User className="w-4 h-4" /> Contact
@@ -553,7 +624,10 @@ export function ChatSidebar() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isNewContactOpen} onOpenChange={setIsNewContactOpen}>
+        <AddContactDialogContent onSuccess={() => setIsNewContactOpen(false)} currentUserId={user?.uid} />
+      </Dialog>
     </div>
   );
 }
-
