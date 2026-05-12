@@ -143,7 +143,7 @@ export function ChatSidebar() {
   const [viewingProfile, setViewingProfile] = useState<UserProfile | null>(null);
   const [isNewContactOpen, setIsNewContactOpen] = useState(false);
 
-  // SECURE QUERY: Returns null immediately if user logs out to prevent permission errors
+  // SECURE QUERY
   const convQuery = useMemoFirebase(() => {
     if (!db || !user?.uid) return null;
     return query(
@@ -343,103 +343,113 @@ export function ChatSidebar() {
 
   return (
     <div className="flex flex-col h-full bg-[#080808] w-full overflow-hidden border-r border-white/5 relative">
-      <AnimatePresence mode="wait">
-        {isSelectionMode && selectedConvId ? (
-          <motion.header 
-            key="selection-header"
-            initial={{ y: -50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -50, opacity: 0 }}
-            className="flex-none h-20 md:h-24 p-4 md:p-6 bg-primary/10 border-b border-primary/20 flex items-center justify-between z-[100] backdrop-blur-xl"
-          >
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => { setIsSelectionMode(false); setSelectedConvId(null); }} className="text-white hover:bg-white/5 rounded-full">
-                <X className="w-5 h-5" />
-              </Button>
-              <span className="text-sm font-black uppercase tracking-widest text-primary">Selected</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" onClick={() => { 
-                const conv = sortedConversations.find(c => c.id === selectedConvId);
-                if (conv) togglePin(conv.id, conv.pinnedBy?.includes(user?.uid || '') || false);
-              }} className="text-white hover:text-primary">
-                <Pin className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => archiveChat(selectedConvId)} className="text-white hover:text-primary">
-                <Archive className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => setManageChatId(selectedConvId)} className="text-destructive hover:bg-destructive/5">
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </motion.header>
-        ) : (
-          <motion.header 
-            key="normal-header"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex-none p-4 md:p-6 pb-2 space-y-4 md:space-y-6"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                 <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[8px] font-black tracking-widest uppercase mb-1">
-                    <MessageCircle className="w-2 h-2" /> V2.6
-                 </div>
-                 <h2 className="text-2xl md:text-3xl font-black font-headline text-white tracking-tighter uppercase italic truncate">Recents</h2>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="icon" variant="ghost" className="rounded-xl hover:bg-white/5 text-muted-foreground w-10 h-10 shrink-0">
-                    <MoreVertical className="w-5 h-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-[#0a0a0a] border-white/10 p-1.5 rounded-xl min-w-[180px] shadow-2xl z-[120]">
-                   <DropdownMenuItem onClick={() => setIsNewContactOpen(true)} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
-                      <Plus className="w-4 h-4" /> New Contact
-                   </DropdownMenuItem>
-                   <DropdownMenuItem onClick={handleMarkAllRead} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
-                      <CheckCircle className="w-4 h-4" /> Mark all read
-                   </DropdownMenuItem>
-                   <DropdownMenuItem onClick={() => router.push('/chat/archived')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
-                      <Archive className="w-4 h-4" /> Vault
-                   </DropdownMenuItem>
-                   <DropdownMenuSeparator className="bg-white/5" />
-                   <DropdownMenuItem onClick={() => router.push('/chat/profile')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
-                      <UserCircle className="w-4 h-4" /> My Profile
-                   </DropdownMenuItem>
-                   <DropdownMenuItem onClick={() => router.push('/chat/settings')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
-                      <Settings className="w-4 h-4" /> Settings
-                   </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <div className="space-y-3">
-              <div className="relative group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                <Input 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search..." 
-                  className="bg-white/[0.03] border-white/5 focus:border-primary/30 pl-11 h-11 text-xs rounded-xl focus-visible:ring-0 transition-all placeholder:text-muted-foreground/30 font-medium"
-                />
-              </div>
-
-              <Button 
-                variant="ghost" 
-                onClick={() => router.push('/chat/archived')}
-                className="w-full h-9 rounded-lg bg-white/[0.02] border border-white/5 text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all flex items-center justify-between px-3"
+      <header className="flex-none p-4 md:p-6 pb-2 space-y-4 md:space-y-6">
+        {/* TOP ROW: Title or Selection Bar */}
+        <div className="h-12 flex items-center justify-between gap-2 overflow-hidden">
+          <AnimatePresence mode="wait">
+            {isSelectionMode && selectedConvId ? (
+              <motion.div 
+                key="selection-bar"
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -20, opacity: 0 }}
+                className="w-full h-full bg-primary/10 rounded-2xl border border-primary/20 px-4 flex items-center justify-between backdrop-blur-xl"
               >
-                <div className="flex items-center gap-2">
-                  <Archive className="w-3 h-3" />
-                  <span>Archived Shards</span>
+                <div className="flex items-center gap-3">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => { setIsSelectionMode(false); setSelectedConvId(null); }} 
+                    className="h-8 w-8 text-white hover:bg-white/5 rounded-full"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary italic">Mode: Active</span>
                 </div>
-                <ChevronRight className="w-3 h-3 opacity-30" />
-              </Button>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => { 
+                    const conv = sortedConversations.find(c => c.id === selectedConvId);
+                    if (conv) togglePin(conv.id, conv.pinnedBy?.includes(user?.uid || '') || false);
+                  }} className="h-8 w-8 text-white hover:text-primary">
+                    <Pin className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => archiveChat(selectedConvId)} className="h-8 w-8 text-white hover:text-primary">
+                    <Archive className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => setManageChatId(selectedConvId)} className="h-8 w-8 text-destructive hover:bg-destructive/5">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="normal-title"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center justify-between w-full"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[8px] font-black tracking-widest uppercase mb-1">
+                    <MessageCircle className="w-2 h-2" /> V2.6
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-black font-headline text-white tracking-tighter uppercase italic truncate">Recents</h2>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" variant="ghost" className="rounded-xl hover:bg-white/5 text-muted-foreground w-10 h-10 shrink-0">
+                      <MoreVertical className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-[#0a0a0a] border-white/10 p-1.5 rounded-xl min-w-[180px] shadow-2xl z-[120]">
+                    <DropdownMenuItem onClick={() => setIsNewContactOpen(true)} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
+                      <Plus className="w-4 h-4" /> New Contact
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleMarkAllRead} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
+                      <CheckCircle className="w-4 h-4" /> Mark all read
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push('/chat/archived')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
+                      <Archive className="w-4 h-4" /> Vault
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-white/5" />
+                    <DropdownMenuItem onClick={() => router.push('/chat/profile')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
+                      <UserCircle className="w-4 h-4" /> My Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push('/chat/settings')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
+                      <Settings className="w-4 h-4" /> Settings
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* SEARCH & ARCHIVE (Always Visible) */}
+        <div className="space-y-3">
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <Input 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search..." 
+              className="bg-white/[0.03] border-white/5 focus:border-primary/30 pl-11 h-11 text-xs rounded-xl focus-visible:ring-0 transition-all placeholder:text-muted-foreground/30 font-medium"
+            />
+          </div>
+
+          <Button 
+            variant="ghost" 
+            onClick={() => router.push('/chat/archived')}
+            className="w-full h-9 rounded-lg bg-white/[0.02] border border-white/5 text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all flex items-center justify-between px-3"
+          >
+            <div className="flex items-center gap-2">
+              <Archive className="w-3 h-3" />
+              <span>Archived Shards</span>
             </div>
-          </motion.header>
-        )}
-      </AnimatePresence>
+            <ChevronRight className="w-3 h-3 opacity-30" />
+          </Button>
+        </div>
+      </header>
 
       <ScrollArea className="flex-1 w-full mt-2">
         <div className="px-2 pb-32 space-y-0.5">
@@ -516,7 +526,8 @@ export function ChatSidebar() {
                           {unreadCount > 99 ? '99+' : unreadCount}
                         </Badge>
                       )}
-                      {!isSelectionMode && (
+                      {/* PC ONLY: Show 3-dots menu icon */}
+                      {!isMobile && !isSelectionMode && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button 
