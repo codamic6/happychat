@@ -105,6 +105,7 @@ type Conversation = {
   participantIds: string[];
   typing?: Record<string, boolean>;
   hiddenFor?: string[];
+  unreadCount?: Record<string, number>;
 };
 
 export function ConversationView({ conversationId }: { conversationId: string }) {
@@ -167,6 +168,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
 
+  // TYPING PROTOCOL
   useEffect(() => {
     if (!user?.uid || !db || isNewChat || !conversationId) return;
 
@@ -189,24 +191,34 @@ export function ConversationView({ conversationId }: { conversationId: string })
     };
   }, [inputText, user?.uid, db, conversationId, isNewChat]);
 
+  // READ STATUS & UNREAD CLEARING PROTOCOL
+  useEffect(() => {
+    if (!db || isNewChat || !user?.uid || !rawMessages) return;
+
+    // 1. Mark incoming messages as read in this conversation
+    const unreadFromOther = rawMessages.filter(m => m.senderId !== user.uid && m.status !== 'read');
+    if (unreadFromOther.length > 0) {
+      const batch = writeBatch(db);
+      unreadFromOther.forEach(m => {
+        const mRef = doc(db, 'conversations', conversationId, 'messages', m.id);
+        batch.update(mRef, { status: 'read', updatedAt: serverTimestamp() });
+      });
+      batch.commit().catch(err => console.error("Error marking messages as read:", err));
+    }
+
+    // 2. Clear conversation unread count for current user
+    const cRef = doc(db, 'conversations', conversationId);
+    updateDoc(cRef, {
+      [`unreadCount.${user.uid}`]: 0
+    }).catch(() => {});
+
+  }, [db, conversationId, isNewChat, user?.uid, rawMessages]);
+
   useEffect(() => {
     if (searchParams.get('info') === 'true') {
       setShowProfile(true);
     }
   }, [searchParams]);
-
-  useEffect(() => {
-    if (!db || isNewChat || !user?.uid || !rawMessages) return;
-    const unreadMessages = rawMessages.filter(m => m.senderId !== user.uid && m.status !== 'read');
-    if (unreadMessages.length > 0) {
-      const batch = writeBatch(db);
-      unreadMessages.forEach(m => {
-        const mRef = doc(db, 'conversations', conversationId, 'messages', m.id);
-        batch.update(mRef, { status: 'read', updatedAt: serverTimestamp() });
-      });
-      batch.commit().catch(() => {});
-    }
-  }, [db, conversationId, isNewChat, user?.uid, rawMessages]);
 
   useEffect(() => {
     const uid = targetUid || conversation?.participantIds.find(id => id !== user?.uid);
@@ -304,7 +316,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     updateDoc(doc(db, 'conversations', activeId), {
       lastMessage: text || (payloadOverride?.poll ? 'Poll Shared' : 'Contact Shared'),
       updatedAt: serverTimestamp(),
-      [`unreadCount.${otherProfile.id}`]: increment(1),
+      [`unreadCount.${otherProfile.id}`]: increment(1), // Increment notification for recipient
       [`typing.${user.uid}`]: false
     }).catch(() => {});
   };
@@ -354,7 +366,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
       });
       await updateDoc(doc(db, 'conversations', targetConvId), {
         lastMessage: forwardingMessage.text,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        [`unreadCount.${targetConvId.split('-')[1] || ''}`]: increment(1) // Basic logic for notification
       });
       setForwardingMessage(null);
       toast({ title: "Message Forwarded" });
@@ -376,7 +389,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-[#050505] overflow-hidden relative">
-      {/* Selection Header */}
       <AnimatePresence>
         {selectedMessage && (
           <motion.div 
@@ -637,7 +649,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
         </div>
       </footer>
 
-      {/* Delete Confirmation */}
       <AlertDialog open={!!deletingMessage} onOpenChange={() => setDeletingMessage(null)}>
         <AlertDialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2rem] shadow-2xl max-w-[calc(100%-2rem)] md:max-w-sm">
           <AlertDialogHeader>
@@ -656,7 +667,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Forward Picker */}
       <ForwardPicker 
         open={!!forwardingMessage} 
         onClose={() => setForwardingMessage(null)} 
@@ -730,7 +740,6 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
 
   return (
     <div className={cn("flex w-full group relative mb-1 min-w-0 items-center", isOwn ? "justify-end" : "justify-start")}>
-      {/* Centered Swipe Indicator */}
       <div className="absolute left-0 flex items-center justify-center w-14 h-full pointer-events-none z-0">
         <motion.div 
           style={{ opacity: swipeOpacity, scale: swipeScale }}
@@ -814,12 +823,16 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
            </div>
         )}
         {msg.text && <p className="leading-relaxed whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
-        <div className="flex justify-end gap-1 items-center mt-1 text-[7px] font-black uppercase opacity-60 tracking-widest">
+        <div className="flex justify-end gap-1.5 items-center mt-1 text-[7px] font-black uppercase opacity-60 tracking-widest">
           {msg.isEdited && <span className="mr-1 italic opacity-40">(edited)</span>}
           <span>{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
           {isOwn && !isSystem && (
             <div className="flex items-center ml-1">
-              {msg.status === 'read' ? <CheckCheck className="w-2.5 h-2.5 text-white" /> : <Check className="w-2.5 h-2.5 text-white/50" />}
+              {msg.status === 'read' ? (
+                <CheckCheck className="w-3 h-3 text-white drop-shadow-[0_0_3px_rgba(255,255,255,0.5)]" /> 
+              ) : (
+                <Check className="w-3 h-3 text-white/40" />
+              )}
             </div>
           )}
         </div>
