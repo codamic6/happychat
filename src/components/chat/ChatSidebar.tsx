@@ -397,6 +397,12 @@ export function ChatSidebar() {
             const isSelected = pathname === `/chat/${conv.id}`;
             const isTyping = otherId ? conv.typing?.[otherId] === true : false;
 
+            // Strict 20-character truncation for the last message
+            const rawLastMessage = conv.lastMessage || 'Secure link...';
+            const displayLastMessage = rawLastMessage.length > 20 
+              ? rawLastMessage.substring(0, 20) + '...' 
+              : rawLastMessage;
+
             return (
               <div key={conv.id} className="w-full px-1">
                 <div 
@@ -440,7 +446,7 @@ export function ChatSidebar() {
                           "text-[10px] truncate flex-1 font-medium",
                           unreadCount > 0 ? "text-white/90" : "text-muted-foreground/50"
                         )}>
-                          {conv.lastMessage || 'Secure link...'}
+                          {displayLastMessage}
                         </p>
                       )}
                       {unreadCount > 0 && (

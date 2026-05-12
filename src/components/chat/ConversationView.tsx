@@ -579,7 +579,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
       </footer>
 
       <AlertDialog open={!!deletingMessage} onOpenChange={() => setDeletingMessage(null)}>
-        <AlertDialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2rem] shadow-2xl max-w-[calc(100%-2rem)] md:max-w-sm">
+        <AlertDialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] shadow-2xl max-w-[calc(100%-2rem)] md:max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-headline uppercase tracking-tight text-gradient">Wipe Message?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">Choose the deletion protocol for this shard.</AlertDialogDescription>
@@ -685,12 +685,12 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
             <div className="flex items-center ml-1">
               {msg.status === 'read' ? (
                 <CheckCheck 
-                  strokeWidth={4} 
-                  className="w-3.5 h-3.5 text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]" 
+                  strokeWidth={5} 
+                  className="w-3.5 h-3.5 text-white drop-shadow-[0_0_8px_rgba(255,255,255,1)]" 
                 /> 
               ) : (
                 <Check 
-                  strokeWidth={3} 
+                  strokeWidth={4} 
                   className="w-3.5 h-3.5 text-white/40" 
                 />
               )}
