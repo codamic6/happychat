@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -42,7 +43,7 @@ import {
   getDocs, where, addDoc, updateDoc, increment, onSnapshot, writeBatch,
   arrayUnion, arrayRemove
 } from 'firebase/firestore';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -671,6 +672,10 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
   const isSystem = msg.isDeleted;
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const dragX = useMotionValue(0);
+  const swipeOpacity = useTransform(dragX, [isOwn ? 0 : 0, isOwn ? 60 : -60], [0, 1]);
+  const swipeScale = useTransform(dragX, [isOwn ? 0 : 0, isOwn ? 60 : -60], [0.5, 1.2]);
+
   const handlePointerDown = () => {
     if (!isMobile) return;
     holdTimerRef.current = setTimeout(() => {
@@ -683,6 +688,15 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
     if (holdTimerRef.current) {
       clearTimeout(holdTimerRef.current);
       holdTimerRef.current = null;
+    }
+  };
+
+  const handleDragEnd = (_: any, info: any) => {
+    const threshold = 60;
+    if (isOwn && info.offset.x > threshold) {
+      onReply();
+    } else if (!isOwn && info.offset.x < -threshold) {
+      onReply();
     }
   };
 
@@ -719,12 +733,31 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
 
   return (
     <div className={cn("flex w-full group relative mb-0.5 min-w-0", isOwn ? "justify-end pl-8" : "justify-start pr-8")}>
+      {/* Swipe Indicator Background */}
+      <AnimatePresence>
+        <motion.div 
+          style={{ opacity: swipeOpacity, scale: swipeScale }}
+          className={cn(
+            "absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 bg-primary/20 rounded-full border border-primary/30 z-0",
+            isOwn ? "left-4" : "right-4"
+          )}
+        >
+          <Reply className="w-5 h-5 text-primary" />
+        </motion.div>
+      </AnimatePresence>
+
       <motion.div 
+        drag={isMobile ? "x" : false}
+        dragConstraints={{ left: isOwn ? 0 : -100, right: isOwn ? 100 : 0 }}
+        dragElastic={0.1}
+        dragSnapToOrigin
+        onDragEnd={handleDragEnd}
+        style={{ x: dragX }}
         onPointerDown={handlePointerDown} 
         onPointerUp={handlePointerUp} 
         onPointerLeave={handlePointerUp} 
         className={cn(
-          "max-w-full p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0", 
+          "max-w-full p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0 z-10", 
           isSelected && "ring-2 ring-primary shadow-[0_0_20px_rgba(0,200,83,0.3)] scale-[1.02]", 
           isSystem ? "bg-white/5 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/10 text-[11px]" : 
           isOwn ? "bg-primary text-primary-foreground rounded-tr-none shadow-lg" : 
