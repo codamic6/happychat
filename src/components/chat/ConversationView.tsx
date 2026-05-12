@@ -673,8 +673,9 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const dragX = useMotionValue(0);
-  const swipeOpacity = useTransform(dragX, [isOwn ? 0 : 0, isOwn ? 60 : -60], [0, 1]);
-  const swipeScale = useTransform(dragX, [isOwn ? 0 : 0, isOwn ? 60 : -60], [0.5, 1.2]);
+  // Transform drag distance into opacity/scale for the reply icon appearing on the left
+  const swipeOpacity = useTransform(dragX, [0, 60], [0, 1]);
+  const swipeScale = useTransform(dragX, [0, 60], [0.5, 1.2]);
 
   const handlePointerDown = () => {
     if (!isMobile) return;
@@ -692,10 +693,8 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
   };
 
   const handleDragEnd = (_: any, info: any) => {
-    const threshold = 60;
-    if (isOwn && info.offset.x > threshold) {
-      onReply();
-    } else if (!isOwn && info.offset.x < -threshold) {
+    // All messages trigger reply when dragged to the right (x > 60)
+    if (info.offset.x > 60) {
       onReply();
     }
   };
@@ -733,13 +732,13 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
 
   return (
     <div className={cn("flex w-full group relative mb-0.5 min-w-0", isOwn ? "justify-end pl-8" : "justify-start pr-8")}>
-      {/* Swipe Indicator Background */}
+      {/* Swipe Indicator Background (Always on the left of the bubble) */}
       <AnimatePresence>
         <motion.div 
           style={{ opacity: swipeOpacity, scale: swipeScale }}
           className={cn(
             "absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 bg-primary/20 rounded-full border border-primary/30 z-0",
-            isOwn ? "left-4" : "right-4"
+            "left-0"
           )}
         >
           <Reply className="w-5 h-5 text-primary" />
@@ -748,8 +747,9 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
 
       <motion.div 
         drag={isMobile ? "x" : false}
-        dragConstraints={{ left: isOwn ? 0 : -100, right: isOwn ? 100 : 0 }}
-        dragElastic={0.1}
+        // Unified drag: only allows dragging to the right
+        dragConstraints={{ left: 0, right: 120 }}
+        dragElastic={0.2}
         dragSnapToOrigin
         onDragEnd={handleDragEnd}
         style={{ x: dragX }}
