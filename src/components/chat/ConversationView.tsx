@@ -1,10 +1,10 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, Search, MoreVertical, X, Info, ArrowLeft, Loader2,
-  Check, Reply, CheckCheck, Trash2, Pencil, Plus, Tag, Mail, AtSign
+  Check, Reply, CheckCheck, Trash2, Pencil, Plus, Tag, Mail, AtSign,
+  Share2, BarChart2, UserPlus, Forward, MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,15 +22,27 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogTrigger
+  DialogTrigger,
+  DialogDescription,
+  DialogFooter
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { 
   doc, query, collection, serverTimestamp, 
   getDocs, where, addDoc, updateDoc, increment, onSnapshot, writeBatch,
   arrayUnion, arrayRemove
 } from 'firebase/firestore';
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -55,6 +67,16 @@ type Message = {
     senderName: string;
     isStatus?: boolean;
     statusUid?: string;
+  };
+  poll?: {
+    question: string;
+    options: string[];
+    votes: Record<string, number>;
+  };
+  sharedContact?: {
+    uid: string;
+    name: string;
+    username: string;
   };
 };
 
@@ -96,10 +118,14 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [deletingMessage, setDeletingMessage] = useState<Message | null>(null);
+  const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
+  const [showPollCreator, setShowPollCreator] = useState(false);
+  const [showContactPicker, setShowContactPicker] = useState(false);
   
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTool, setActiveTool] = useState<'none' | 'menu'>('none');
   
   const [isEditingNickname, setIsEditingNickname] = useState(false);
   const [newNickname, setNewNickname] = useState('');
@@ -108,7 +134,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const isNewChat = conversationId.startsWith('new-');
   const targetUid = isNewChat ? conversationId.replace('new-', '') : null;
 
-  // SECURE REFERENCE: Ensure cleanup on logout
   const convRef = useMemoFirebase(() => {
     if (!db || isNewChat || !user?.uid) return null;
     return doc(db, 'conversations', conversationId);
@@ -209,6 +234,16 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   const handleSendMessage = async (payloadOverride?: Partial<Message>) => {
     if ((!inputText.trim() && !payloadOverride) || !user?.uid || !db || !otherProfile) return;
+    
+    if (editingMessage) {
+      const text = inputText;
+      const ref = doc(db, 'conversations', conversationId, 'messages', editingMessage.id);
+      updateDoc(ref, { text, isEdited: true, updatedAt: serverTimestamp() }).catch(() => {});
+      setEditingMessage(null);
+      setInputText('');
+      return;
+    }
+
     const text = inputText;
     let replyData = replyingTo ? {
       id: replyingTo.id,
@@ -219,7 +254,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
     setInputText('');
     setReplyingTo(null);
-    setActiveTool('none');
 
     let activeId = conversationId;
     let pIds = (conversation?.participantIds || [user.uid, otherProfile.id]).sort();
@@ -230,7 +264,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
         const newConv = await addDoc(collection(db, 'conversations'), {
           participantIds: pIds,
           updatedAt: serverTimestamp(),
-          lastMessage: text || 'Media shared',
+          lastMessage: text || (payloadOverride?.poll ? 'Shared a poll' : 'Shared a contact'),
           unreadCount: { [otherProfile.id]: 1, [user.uid]: 0 },
           hiddenFor: []
         });
@@ -262,7 +296,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     addDoc(collection(db, 'conversations', activeId, 'messages'), msg).catch(() => {});
 
     updateDoc(doc(db, 'conversations', activeId), {
-      lastMessage: text || 'Media shared',
+      lastMessage: text || (payloadOverride?.poll ? 'Shared a poll' : 'Shared a contact'),
       updatedAt: serverTimestamp(),
       [`unreadCount.${otherProfile.id}`]: increment(1),
       [`typing.${user.uid}`]: false
@@ -287,16 +321,40 @@ export function ConversationView({ conversationId }: { conversationId: string })
     }
   };
 
-  const deleteMessage = async (msgId: string, senderId: string, mode: 'me' | 'everyone') => {
-    if (!user?.uid || !db) return;
-    const ref = doc(db, 'conversations', conversationId, 'messages', msgId);
+  const deleteMessage = async (mode: 'me' | 'everyone') => {
+    if (!user?.uid || !db || !deletingMessage) return;
+    const ref = doc(db, 'conversations', conversationId, 'messages', deletingMessage.id);
     if (mode === 'me') {
       updateDoc(ref, { deletedFor: arrayUnion(user.uid) });
-    } else if (mode === 'everyone' && senderId === user.uid) {
+    } else if (mode === 'everyone' && deletingMessage.senderId === user.uid) {
       updateDoc(ref, { isDeleted: true, text: 'This message was deleted' });
     }
+    setDeletingMessage(null);
     setSelectedMessage(null);
-    toast({ title: "Erited" });
+    toast({ title: "Message Deleted" });
+  };
+
+  const handleForwardMessage = async (targetConvId: string) => {
+    if (!user?.uid || !db || !forwardingMessage) return;
+    
+    try {
+      await addDoc(collection(db, 'conversations', targetConvId, 'messages'), {
+        text: forwardingMessage.text,
+        senderId: user.uid,
+        conversationId: targetConvId,
+        createdAt: serverTimestamp(),
+        status: 'sent',
+        forwarded: true
+      });
+      await updateDoc(doc(db, 'conversations', targetConvId), {
+        lastMessage: forwardingMessage.text,
+        updatedAt: serverTimestamp()
+      });
+      setForwardingMessage(null);
+      toast({ title: "Message Forwarded" });
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Forward failed." });
+    }
   };
 
   const isOtherTyping = useMemo(() => {
@@ -311,20 +369,34 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   return (
     <div className="flex-1 flex flex-col relative bg-[#050505] overflow-hidden">
+      {/* Mobile Selection Header */}
+      <AnimatePresence>
+        {selectedMessage && isMobile && (
+          <motion.div 
+            initial={{ y: -100 }} 
+            animate={{ y: 0 }} 
+            exit={{ y: -100 }}
+            className="absolute top-0 inset-x-0 h-16 bg-[#0a0a0a] border-b border-primary/20 flex items-center justify-between px-6 z-[100] shadow-2xl"
+          >
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => setSelectedMessage(null)} className="text-white"><X className="w-5 h-5" /></Button>
+              <span className="text-xs font-black uppercase tracking-widest text-primary">Message Options</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={() => { setReplyingTo(selectedMessage); setSelectedMessage(null); }} className="text-white"><Reply className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => { setForwardingMessage(selectedMessage); setSelectedMessage(null); }} className="text-white"><Forward className="w-4 h-4" /></Button>
+              {selectedMessage.senderId === user?.uid && (
+                <Button variant="ghost" size="icon" onClick={() => { setEditingMessage(selectedMessage); setInputText(selectedMessage.text); setSelectedMessage(null); }} className="text-white"><Pencil className="w-4 h-4" /></Button>
+              )}
+              <Button variant="ghost" size="icon" onClick={() => { setDeletingMessage(selectedMessage); setSelectedMessage(null); }} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <header className="flex-none h-20 px-4 border-b border-white/5 flex items-center justify-between z-[60] bg-black/80 backdrop-blur-3xl">
         <AnimatePresence mode="wait">
-          {selectedMessage && isMobile ? (
-            <motion.div key="selection-header" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => setSelectedMessage(null)} className="text-white"><X className="w-6 h-6" /></Button>
-                <span className="text-sm font-bold uppercase text-primary">Selected</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={() => { setReplyingTo(selectedMessage); setSelectedMessage(null); }} className="text-white"><Reply className="w-5 h-5" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => deleteMessage(selectedMessage.id, selectedMessage.senderId, 'me')} className="text-destructive"><Trash2 className="w-5 h-5" /></Button>
-              </div>
-            </motion.div>
-          ) : isSearchMode ? (
+          {isSearchMode ? (
             <motion.div key="search-header" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-3 w-full">
               <Button variant="ghost" size="icon" onClick={() => { setIsSearchMode(false); setSearchQuery(''); }} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
               <div className="flex-1 relative">
@@ -362,12 +434,13 @@ export function ConversationView({ conversationId }: { conversationId: string })
           {filteredMessages.map((msg) => (
             <MessageRow 
               key={msg.id} msg={msg} user={user} isMobile={isMobile}
-              onDelete={(mode: 'me' | 'everyone') => deleteMessage(msg.id, msg.senderId, mode)}
+              onDelete={() => setDeletingMessage(msg)}
               onReply={() => setReplyingTo(msg)}
+              onEdit={() => { setEditingMessage(msg); setInputText(msg.text); }}
+              onForward={() => setForwardingMessage(msg)}
               onSelect={() => setSelectedMessage(msg)}
               isSelected={selectedMessage?.id === msg.id}
               highlight={searchQuery}
-              otherName={mainName}
             />
           ))}
           <div ref={scrollRef} />
@@ -439,7 +512,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
       <footer className="bg-[#0a0a0a] border-t border-white/5 p-4">
         {replyingTo && (
-          <div className="px-4 py-3 bg-white/5 border-l-2 border-primary mb-3 flex justify-between items-center rounded-r-xl shadow-lg">
+          <div className="px-4 py-3 bg-white/5 border-l-2 border-primary mb-3 flex justify-between items-center rounded-r-xl shadow-lg animate-in slide-in-from-bottom-2">
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-primary uppercase">Reply to {replyingTo.senderId === user?.uid ? 'You' : mainName}</p>
               <p className="text-sm text-muted-foreground truncate">{replyingTo.text}</p>
@@ -447,21 +520,91 @@ export function ConversationView({ conversationId }: { conversationId: string })
             <Button variant="ghost" size="icon" onClick={() => setReplyingTo(null)} className="h-8 w-8 shrink-0"><X className="w-5 h-5" /></Button>
           </div>
         )}
-        <div className="flex items-center gap-3 max-w-5xl mx-auto">
-          <Button size="icon" variant="ghost" onClick={() => setActiveTool(activeTool === 'none' ? 'menu' : 'none')} className={cn("rounded-xl h-12 w-12 shrink-0", activeTool !== 'none' ? "bg-primary text-primary-foreground" : "bg-white/5")}>
-            {activeTool === 'none' ? <Plus className="w-6 h-6" /> : <X className="w-6 h-6" />}
-          </Button>
-          <div className="flex-1 relative">
-            <Input value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} placeholder="Type your message..." className="bg-white/5 border-white/10 h-12 rounded-xl focus:ring-primary focus-visible:ring-offset-0 text-sm" />
+        {editingMessage && (
+          <div className="px-4 py-3 bg-white/5 border-l-2 border-amber-500 mb-3 flex justify-between items-center rounded-r-xl shadow-lg animate-in slide-in-from-bottom-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-amber-500 uppercase">Editing Message</p>
+              <p className="text-sm text-muted-foreground truncate">{editingMessage.text}</p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => { setEditingMessage(null); setInputText(''); }} className="h-8 w-8 shrink-0"><X className="w-5 h-5" /></Button>
           </div>
-          <Button onClick={() => handleSendMessage()} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-12 w-12 rounded-xl shrink-0"><Send className="w-5 h-5" /></Button>
+        )}
+        <div className="flex items-center gap-3 max-w-5xl mx-auto">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="ghost" className="rounded-xl h-12 w-12 shrink-0 bg-white/5 hover:bg-white/10">
+                <Plus className="w-6 h-6" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top" className="bg-[#111] border-white/10 min-w-[200px] p-2 rounded-2xl shadow-2xl mb-2">
+              <DropdownMenuItem onClick={() => setShowContactPicker(true)} className="gap-3 p-3 text-[11px] uppercase font-black tracking-widest cursor-pointer rounded-xl hover:bg-primary/10 hover:text-primary">
+                <UserPlus className="w-4 h-4" /> Share Contact
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowPollCreator(true)} className="gap-3 p-3 text-[11px] uppercase font-black tracking-widest cursor-pointer rounded-xl hover:bg-primary/10 hover:text-primary">
+                <BarChart2 className="w-4 h-4" /> Create Poll
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="flex-1 relative">
+            <Input 
+              value={inputText} 
+              onChange={(e) => setInputText(e.target.value)} 
+              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} 
+              placeholder={editingMessage ? "Update message..." : "Type message..."} 
+              className="bg-white/5 border-white/10 h-12 rounded-xl focus:ring-primary focus-visible:ring-offset-0 text-sm" 
+            />
+          </div>
+          <Button onClick={() => handleSendMessage()} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-12 w-12 rounded-xl shrink-0">
+            <Send className="w-5 h-5" />
+          </Button>
         </div>
       </footer>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deletingMessage} onOpenChange={() => setDeletingMessage(null)}>
+        <AlertDialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2rem]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-headline uppercase tracking-tight">Delete Message?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground uppercase text-[10px] font-bold">
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-col gap-2">
+            <Button onClick={() => deleteMessage('me')} className="bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] uppercase font-black tracking-widest h-12 rounded-xl">Delete for Me</Button>
+            {deletingMessage?.senderId === user?.uid && (
+              <Button onClick={() => deleteMessage('everyone')} variant="destructive" className="text-[10px] uppercase font-black tracking-widest h-12 rounded-xl shadow-xl">Delete for Everyone</Button>
+            )}
+            <AlertDialogCancel className="bg-transparent border-none text-[10px] uppercase font-black tracking-widest">Cancel</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Forward Picker */}
+      <ForwardPicker 
+        open={!!forwardingMessage} 
+        onClose={() => setForwardingMessage(null)} 
+        onForward={handleForwardMessage} 
+      />
+
+      {/* Poll Creator */}
+      <PollCreator 
+        open={showPollCreator} 
+        onClose={() => setShowPollCreator(false)} 
+        onSend={(poll) => handleSendMessage({ poll })} 
+      />
+
+      {/* Contact Picker */}
+      <ContactPicker 
+        open={showContactPicker} 
+        onClose={() => setShowContactPicker(false)} 
+        onSend={(contact) => handleSendMessage({ sharedContact: contact })} 
+      />
     </div>
   );
 }
 
-function MessageRow({ msg, user, isMobile, onDelete, onReply, onSelect, isSelected, highlight, otherName }: any) {
+function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward, onSelect, isSelected, highlight }: any) {
   const isOwn = msg.senderId === user?.uid;
   const isSystem = msg.isDeleted;
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -471,7 +614,7 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onSelect, isSelect
     holdTimerRef.current = setTimeout(() => {
       onSelect();
       if (window.navigator.vibrate) window.navigator.vibrate(50);
-    }, 700); 
+    }, 600); 
   };
 
   const handlePointerUp = () => {
@@ -493,15 +636,60 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onSelect, isSelect
 
   return (
     <div className={cn("flex w-full group relative", isOwn ? "justify-end" : "justify-start")}>
-      <motion.div onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp} className={cn("max-w-[85%] md:max-w-[70%] p-4 rounded-2xl text-sm relative transition-all duration-300", isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-[#050505]", isSystem ? "bg-white/5 text-muted-foreground italic text-center px-8" : isOwn ? "bg-primary text-primary-foreground rounded-tr-none shadow-lg" : "bg-[#161616] text-white rounded-tl-none border border-white/5")}>
+      <motion.div 
+        onPointerDown={handlePointerDown} 
+        onPointerUp={handlePointerUp} 
+        onPointerLeave={handlePointerUp} 
+        className={cn(
+          "max-w-[85%] md:max-w-[70%] p-3 px-4 rounded-2xl text-sm relative transition-all duration-300", 
+          isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-[#050505]", 
+          isSystem ? "bg-white/5 text-muted-foreground italic text-center px-8" : 
+          isOwn ? "bg-primary text-primary-foreground rounded-tr-none shadow-lg" : 
+          "bg-[#161616] text-white rounded-tl-none border border-white/5"
+        )}
+      >
+        {msg.forwarded && (
+          <div className="flex items-center gap-1.5 mb-1.5 opacity-60 text-[9px] font-black uppercase italic tracking-widest">
+            <Forward className="w-2.5 h-2.5" /> Forwarded
+          </div>
+        )}
         {msg.replyTo && (
-          <div className="mb-2 p-2 bg-black/20 rounded-lg border-l-2 border-primary text-[11px] opacity-80 truncate">
+          <div className="mb-2 p-2 bg-black/20 rounded-lg border-l-2 border-primary text-[11px] opacity-80 truncate max-w-full">
             <p className="font-bold text-primary mb-0.5">{msg.replyTo.senderName}</p>
             {msg.replyTo.text}
           </div>
         )}
+        {msg.poll && (
+          <div className="mb-2 p-4 bg-black/20 rounded-xl border border-white/10 space-y-3">
+             <div className="flex items-center gap-2 text-primary">
+                <BarChart2 className="w-4 h-4" />
+                <span className="font-bold uppercase tracking-tight text-xs">{msg.poll.question}</span>
+             </div>
+             <div className="space-y-2">
+                {msg.poll.options.map((opt: string, i: number) => (
+                  <Button key={i} variant="ghost" className="w-full justify-between h-10 bg-white/5 border border-white/5 hover:bg-primary/20 text-xs rounded-lg px-3 group">
+                    <span className="truncate">{opt}</span>
+                    <span className="text-[10px] font-black text-primary opacity-0 group-hover:opacity-100">0%</span>
+                  </Button>
+                ))}
+             </div>
+          </div>
+        )}
+        {msg.sharedContact && (
+           <div className="mb-2 p-3 bg-white/5 rounded-xl border border-white/5 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                 {msg.sharedContact.name.charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                 <p className="text-xs font-bold truncate">{msg.sharedContact.name}</p>
+                 <p className="text-[9px] uppercase font-bold text-muted-foreground">@{msg.sharedContact.username}</p>
+              </div>
+              <Button size="sm" className="h-8 px-3 rounded-lg text-[9px] font-black uppercase bg-primary text-primary-foreground">Add</Button>
+           </div>
+        )}
         {msg.text && <p className="leading-relaxed whitespace-pre-wrap">{renderText(msg.text)}</p>}
         <div className="flex justify-end gap-1 items-center mt-2 text-[9px] font-black uppercase opacity-60">
+          {msg.isEdited && <span className="mr-1 italic">(edited)</span>}
           <span>{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
           {isOwn && !isSystem && (
             <div className="flex items-center ml-1">
@@ -509,19 +697,180 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onSelect, isSelect
             </div>
           )}
         </div>
+
         {!isSystem && !isMobile && (
-          <div className={cn("absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity z-10", isOwn ? "-left-12" : "-right-12")}>
+          <div className={cn("absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity z-10", isOwn ? "-left-14" : "-right-14")}>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-primary"><MoreVertical className="w-5 h-5" /></Button></DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#111] border-white/10 text-white min-w-[160px] rounded-xl shadow-2xl z-[100]">
-                <DropdownMenuItem onClick={onReply} className="gap-2 p-3 text-[10px] uppercase font-bold tracking-widest cursor-pointer"><Reply className="w-3 h-3" /> Reply</DropdownMenuItem>
+              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-primary shadow-xl border border-white/5"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-[#111] border-white/10 text-white min-w-[160px] rounded-xl shadow-2xl z-[100] p-1.5">
+                <DropdownMenuItem onClick={onReply} className="gap-3 p-2.5 text-[10px] uppercase font-black tracking-widest cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary"><Reply className="w-3.5 h-3.5" /> Reply</DropdownMenuItem>
+                <DropdownMenuItem onClick={onForward} className="gap-3 p-2.5 text-[10px] uppercase font-black tracking-widest cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary"><Forward className="w-3.5 h-3.5" /> Forward</DropdownMenuItem>
+                {isOwn && (
+                  <DropdownMenuItem onClick={onEdit} className="gap-3 p-2.5 text-[10px] uppercase font-black tracking-widest cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary"><Pencil className="w-3.5 h-3.5" /> Edit</DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator className="bg-white/5" />
-                <DropdownMenuItem onClick={() => onDelete('me')} className="gap-2 p-3 text-[10px] uppercase font-bold tracking-widest text-destructive cursor-pointer"><Trash2 className="w-3 h-3" /> Delete</DropdownMenuItem>
+                <DropdownMenuItem onClick={onDelete} className="gap-3 p-2.5 text-[10px] uppercase font-black tracking-widest text-destructive cursor-pointer rounded-lg hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /> Delete</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         )}
       </motion.div>
     </div>
+  );
+}
+
+function PollCreator({ open, onClose, onSend }: { open: boolean, onClose: () => void, onSend: (poll: any) => void }) {
+  const [question, setQuestion] = useState('');
+  const [options, setOptions] = useState(['', '']);
+
+  const handleAddOption = () => setOptions([...options, '']);
+  const handleOptionChange = (idx: number, val: string) => {
+    const newOptions = [...options];
+    newOptions[idx] = val;
+    setOptions(newOptions);
+  };
+
+  const handleCreate = () => {
+    if (!question.trim() || options.some(o => !o.trim())) return;
+    onSend({
+      question,
+      options: options.filter(o => o.trim() !== ''),
+      votes: {}
+    });
+    setQuestion('');
+    setOptions(['', '']);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-8 max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-black font-headline uppercase italic text-gradient">Create Poll</DialogTitle>
+          <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Gather feedback from the mesh</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-primary">The Question</Label>
+            <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Best time for sync?" className="bg-white/5 border-white/10 rounded-xl h-12" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Options</Label>
+            {options.map((opt, i) => (
+              <Input key={i} value={opt} onChange={(e) => handleOptionChange(i, e.target.value)} placeholder={`Option ${i+1}`} className="bg-white/5 border-white/10 rounded-xl h-10 mb-2" />
+            ))}
+            <Button variant="ghost" onClick={handleAddOption} className="text-[9px] uppercase font-black text-primary tracking-widest p-0 h-8 hover:bg-transparent">
+              <Plus className="w-3 h-3 mr-1" /> Add Option
+            </Button>
+          </div>
+        </div>
+        <Button onClick={handleCreate} disabled={!question.trim()} className="w-full h-14 bg-primary hover:glow-green text-primary-foreground font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl">Launch Poll</Button>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ContactPicker({ open, onClose, onSend }: { open: boolean, onClose: () => void, onSend: (contact: any) => void }) {
+  const { user } = useUser();
+  const db = useFirestore();
+  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user || !db || !open) return;
+    const fetchContacts = async () => {
+      const snap = await getDocs(collection(db, 'users', user.uid, 'contacts'));
+      const contactIds = snap.docs.map(d => d.id);
+      if (contactIds.length === 0) {
+        setProfiles([]);
+        setLoading(false);
+        return;
+      }
+      const usersSnap = await getDocs(query(collection(db, 'users'), where('id', 'in', contactIds)));
+      setProfiles(usersSnap.docs.map(d => d.data() as UserProfile));
+      setLoading(false);
+    };
+    fetchContacts();
+  }, [user, db, open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-sm">
+        <DialogHeader className="p-8 pb-4">
+          <DialogTitle className="text-2xl font-black font-headline uppercase italic text-gradient">Share Contact</DialogTitle>
+          <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Broadcast a secure identity</DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="h-72 px-6 pb-6">
+          <div className="space-y-2">
+            {profiles.map(p => (
+              <Button key={p.id} onClick={() => { onSend({ uid: p.id, name: p.fullName || p.displayName || p.username, username: p.username }); onClose(); }} variant="ghost" className="w-full justify-start h-16 bg-white/[0.02] border border-white/5 rounded-2xl px-4 gap-4 hover:bg-primary/10 group transition-all">
+                <div className="w-10 h-10 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary group-hover:glow-green transition-all">{p.username[0].toUpperCase()}</div>
+                <div className="text-left">
+                  <p className="text-xs font-bold group-hover:text-primary transition-colors">{p.fullName}</p>
+                  <p className="text-[9px] uppercase font-bold text-muted-foreground">@{p.username}</p>
+                </div>
+              </Button>
+            ))}
+            {profiles.length === 0 && !loading && (
+              <div className="text-center py-12 opacity-30 text-[10px] uppercase font-black">Zero Contacts Found</div>
+            )}
+            {loading && <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ForwardPicker({ open, onClose, onForward }: { open: boolean, onClose: () => void, onForward: (id: string) => void }) {
+  const { user } = useUser();
+  const db = useFirestore();
+  const [convs, setConvs] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, UserProfile>>({});
+
+  useEffect(() => {
+    if (!user || !db || !open) return;
+    const unsub = onSnapshot(query(collection(db, 'conversations'), where('participantIds', 'array-contains', user.uid)), (snap) => {
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setConvs(data);
+      data.forEach(c => {
+        const otherId = c.participantIds.find((id: string) => id !== user.uid);
+        if (otherId && !profiles[otherId]) {
+          onSnapshot(doc(db, 'users', otherId), s => {
+            if (s.exists()) setProfiles(prev => ({ ...prev, [otherId]: s.data() as UserProfile }));
+          });
+        }
+      });
+    });
+    return () => unsub();
+  }, [user, db, open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-sm">
+        <DialogHeader className="p-8 pb-4">
+          <DialogTitle className="text-2xl font-black font-headline uppercase italic text-gradient">Forward Signal</DialogTitle>
+          <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Relay this shard to another thread</DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="h-80 px-6 pb-8">
+          <div className="space-y-2">
+            {convs.map(c => {
+              const otherId = c.participantIds.find((id: string) => id !== user?.uid);
+              const p = profiles[otherId];
+              const name = p?.displayName || p?.fullName || 'Secure User';
+              return (
+                <Button key={c.id} onClick={() => onForward(c.id)} variant="ghost" className="w-full justify-start h-16 bg-white/[0.02] border border-white/5 rounded-2xl px-4 gap-4 hover:bg-primary/10 group">
+                  <div className="w-10 h-10 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary">{name[0].toUpperCase()}</div>
+                  <div className="text-left min-w-0 flex-1">
+                    <p className="text-xs font-bold truncate group-hover:text-primary">{name}</p>
+                    <p className="text-[9px] uppercase font-bold text-muted-foreground truncate">{c.lastMessage || 'End-to-end encrypted'}</p>
+                  </div>
+                </Button>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 }
