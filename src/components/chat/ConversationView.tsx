@@ -673,9 +673,8 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const dragX = useMotionValue(0);
-  // Transform drag distance into opacity/scale for the reply icon appearing on the left
   const swipeOpacity = useTransform(dragX, [0, 60], [0, 1]);
-  const swipeScale = useTransform(dragX, [0, 60], [0.5, 1.2]);
+  const swipeScale = useTransform(dragX, [0, 60], [0.5, 1.1]);
 
   const handlePointerDown = () => {
     if (!isMobile) return;
@@ -693,7 +692,6 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
   };
 
   const handleDragEnd = (_: any, info: any) => {
-    // All messages trigger reply when dragged to the right (x > 60)
     if (info.offset.x > 60) {
       onReply();
     }
@@ -731,25 +729,21 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
   }, [msg.poll, voters, totalVotes]);
 
   return (
-    <div className={cn("flex w-full group relative mb-0.5 min-w-0", isOwn ? "justify-end pl-8" : "justify-start pr-8")}>
-      {/* Swipe Indicator Background (Always on the left of the bubble) */}
-      <AnimatePresence>
+    <div className={cn("flex w-full group relative mb-1 min-w-0 items-center", isOwn ? "justify-end" : "justify-start")}>
+      {/* Centered Swipe Indicator */}
+      <div className="absolute left-0 flex items-center justify-center w-14 h-full pointer-events-none z-0">
         <motion.div 
           style={{ opacity: swipeOpacity, scale: swipeScale }}
-          className={cn(
-            "absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 bg-primary/20 rounded-full border border-primary/30 z-0",
-            "left-0"
-          )}
+          className="flex items-center justify-center w-8 h-8 bg-primary/20 rounded-full border border-primary/30 shadow-[0_0_15px_rgba(0,200,83,0.2)]"
         >
-          <Reply className="w-5 h-5 text-primary" />
+          <Reply className="w-4 h-4 text-primary" />
         </motion.div>
-      </AnimatePresence>
+      </div>
 
       <motion.div 
         drag={isMobile ? "x" : false}
-        // Unified drag: only allows dragging to the right
-        dragConstraints={{ left: 0, right: 120 }}
-        dragElastic={0.2}
+        dragConstraints={{ left: 0, right: 100 }}
+        dragElastic={0.15}
         dragSnapToOrigin
         onDragEnd={handleDragEnd}
         style={{ x: dragX }}
@@ -757,11 +751,11 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
         onPointerUp={handlePointerUp} 
         onPointerLeave={handlePointerUp} 
         className={cn(
-          "max-w-full p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0 z-10", 
+          "max-w-[85%] p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0 z-10 shadow-sm", 
           isSelected && "ring-2 ring-primary shadow-[0_0_20px_rgba(0,200,83,0.3)] scale-[1.02]", 
-          isSystem ? "bg-white/5 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/10 text-[11px]" : 
-          isOwn ? "bg-primary text-primary-foreground rounded-tr-none shadow-lg" : 
-          "bg-[#181818] text-white rounded-tl-none border border-white/5 shadow-md"
+          isSystem ? "bg-white/5 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/10 text-[11px] mx-auto" : 
+          isOwn ? "bg-primary text-primary-foreground rounded-tr-none" : 
+          "bg-[#181818] text-white rounded-tl-none border border-white/5"
         )}
       >
         {msg.forwarded && (
@@ -831,7 +825,7 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
         </div>
 
         {!isSystem && !isMobile && (
-          <div className={cn("absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity z-10", isOwn ? "-left-9" : "-right-9")}>
+          <div className={cn("absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity z-20", isOwn ? "-left-9" : "-right-9")}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 rounded-full bg-black/80 text-white hover:bg-primary shadow-2xl border border-white/10 backdrop-blur-xl"><MoreVertical className="w-3 h-3" /></Button></DropdownMenuTrigger>
               <DropdownMenuContent className="bg-[#111] border-white/10 text-white min-w-[140px] rounded-xl shadow-2xl z-[100] p-1">
