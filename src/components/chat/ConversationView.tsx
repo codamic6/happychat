@@ -386,7 +386,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
           >
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => setSelectedMessage(null)} className="text-white hover:bg-white/5"><X className="w-5 h-5" /></Button>
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary">Signal Selection</span>
             </div>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" onClick={() => { setReplyingTo(selectedMessage); setSelectedMessage(null); }} className="text-white hover:text-primary"><Reply className="w-4 h-4" /></Button>
