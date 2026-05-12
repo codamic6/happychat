@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, Search, MoreVertical, X, Info, ArrowLeft, Loader2,
   Check, Reply, CheckCheck, Trash2, Pencil, Plus, Tag, Mail, AtSign,
-  Share2, BarChart2, UserPlus, Forward, MessageSquare
+  Share2, BarChart2, UserPlus, Forward, MessageSquare, User, UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,7 +72,7 @@ type Message = {
   poll?: {
     question: string;
     options: string[];
-    votes: Record<string, number>;
+    voters?: Record<string, number>;
   };
   sharedContact?: {
     uid: string;
@@ -258,6 +258,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     setReplyingTo(null);
     setShowActionMenu(false);
     setShowPollCreator(false);
+    setShowContactPicker(false);
 
     let activeId = conversationId;
     let pIds = (conversation?.participantIds || [user.uid, otherProfile.id]).sort();
@@ -367,6 +368,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   }, [conversation?.typing, otherProfile]);
 
   const mainName = contactRecord?.customName || otherProfile?.displayName || otherProfile?.fullName || 'User';
+  const realName = otherProfile?.fullName || otherProfile?.displayName || 'User';
   const initial = mainName.charAt(0).toUpperCase();
 
   if (isUserLoading) return null;
@@ -417,10 +419,17 @@ export function ConversationView({ conversationId }: { conversationId: string })
                     <span className="text-base font-bold text-primary not-italic flex items-center justify-center h-full w-full">{initial}</span>
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-sm md:text-base font-bold text-white truncate">{mainName}</h3>
-                    <p className={cn("text-[10px] uppercase font-bold tracking-widest", isOtherTyping ? "text-primary animate-pulse" : otherProfile?.isOnline ? "text-primary" : "text-muted-foreground")}>
-                      {isOtherTyping ? 'Typing...' : otherProfile?.isOnline ? 'Online' : 'Offline'}
-                    </p>
+                    <h3 className="text-sm md:text-base font-bold text-white truncate flex items-center gap-2">
+                      {mainName}
+                    </h3>
+                    <div className="flex items-center gap-2 overflow-hidden">
+                       <p className={cn("text-[10px] uppercase font-bold tracking-widest shrink-0", isOtherTyping ? "text-primary animate-pulse" : otherProfile?.isOnline ? "text-primary" : "text-muted-foreground")}>
+                        {isOtherTyping ? 'Typing...' : otherProfile?.isOnline ? 'Online' : 'Offline'}
+                      </p>
+                      {contactRecord?.customName && contactRecord.customName !== realName && (
+                        <p className="text-[9px] text-muted-foreground truncate italic opacity-60">• Real: {realName}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -476,7 +485,10 @@ export function ConversationView({ conversationId }: { conversationId: string })
                   <div className="space-y-4">
                     <div>
                       <h2 className="text-3xl font-black font-headline tracking-tighter uppercase">{mainName}</h2>
-                      <p className="text-primary text-[10px] font-bold uppercase tracking-widest">@{otherProfile.username}</p>
+                      {contactRecord?.customName && contactRecord.customName !== realName && (
+                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-1">System Name: {realName}</p>
+                      )}
+                      <p className="text-primary text-[10px] font-bold uppercase tracking-widest mt-1">@{otherProfile.username}</p>
                     </div>
                     {contactRecord && (
                       <Button onClick={() => setIsEditingNickname(true)} className="w-full h-14 bg-white/5 border border-white/10 text-white font-bold uppercase text-xs rounded-xl hover:bg-white/10">
@@ -529,7 +541,20 @@ export function ConversationView({ conversationId }: { conversationId: string })
               />
             </motion.div>
           )}
-          {showActionMenu && !showPollCreator && (
+          {showContactPicker && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute bottom-full left-0 right-0 p-6 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
+            >
+              <ContactPickerInline 
+                onClose={() => setShowContactPicker(false)} 
+                onSend={(contact) => handleSendMessage({ sharedContact: contact })} 
+              />
+            </motion.div>
+          )}
+          {showActionMenu && !showPollCreator && !showContactPicker && (
             <motion.div 
               initial={{ opacity: 0, y: 20 }} 
               animate={{ opacity: 1, y: 0 }} 
@@ -583,18 +608,19 @@ export function ConversationView({ conversationId }: { conversationId: string })
             size="icon" 
             variant="ghost" 
             onClick={() => {
-              if (showPollCreator) {
+              if (showPollCreator || showContactPicker) {
                 setShowPollCreator(false);
+                setShowContactPicker(false);
               } else {
                 setShowActionMenu(!showActionMenu);
               }
             }}
             className={cn(
               "rounded-xl h-12 w-12 shrink-0 bg-white/5 hover:bg-white/10 transition-all",
-              (showActionMenu || showPollCreator) && "bg-primary/20 text-primary rotate-45"
+              (showActionMenu || showPollCreator || showContactPicker) && "bg-primary/20 text-primary rotate-45"
             )}
           >
-            {(showActionMenu || showPollCreator) ? <X className="w-6 h-6" /> : <MoreVertical className="w-6 h-6" />}
+            {(showActionMenu || showPollCreator || showContactPicker) ? <X className="w-6 h-6" /> : <MoreVertical className="w-6 h-6" />}
           </Button>
 
           <div className="flex-1 relative">
@@ -637,13 +663,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
         onClose={() => setForwardingMessage(null)} 
         onForward={handleForwardMessage} 
       />
-
-      {/* Contact Picker */}
-      <ContactPicker 
-        open={showContactPicker} 
-        onClose={() => { setShowContactPicker(false); setShowActionMenu(false); }} 
-        onSend={(contact) => handleSendMessage({ sharedContact: contact })} 
-      />
     </div>
   );
 }
@@ -680,17 +699,28 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
   };
 
   const handleVote = async (optionIndex: number) => {
-    if (!user || !db || isSystem) return;
+    if (!user || !db || isSystem || !msg.poll) return;
     const msgRef = doc(db, 'conversations', msg.conversationId, 'messages', msg.id);
+    
+    // ONE PERSON ONE VOTE Protocol
+    // Map UID to the option index
     updateDoc(msgRef, {
-      [`poll.votes.${optionIndex}`]: increment(1)
+      [`poll.voters.${user.uid}`]: optionIndex
     }).catch(() => {});
   };
 
-  const totalVotes = useMemo(() => {
-    if (!msg.poll?.votes) return 0;
-    return Object.values(msg.poll.votes).reduce((a: any, b: any) => a + b, 0) as number;
-  }, [msg.poll?.votes]);
+  const voters = msg.poll?.voters || {};
+  const totalVotes = Object.keys(voters).length;
+  const myVote = voters[user?.uid || ''];
+
+  const pollResults = useMemo(() => {
+    if (!msg.poll) return [];
+    const counts = new Array(msg.poll.options.length).fill(0);
+    Object.values(voters).forEach((val: any) => {
+      if (counts[val] !== undefined) counts[val]++;
+    });
+    return counts.map(c => totalVotes > 0 ? Math.round((c / totalVotes) * 100) : 0);
+  }, [msg.poll, voters, totalVotes]);
 
   return (
     <div className={cn("flex w-full group relative", isOwn ? "justify-end" : "justify-start")}>
@@ -727,31 +757,37 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
              </div>
              <div className="space-y-2">
                 {msg.poll.options.map((opt: string, i: number) => {
-                  const votes = msg.poll?.votes?.[i] || 0;
-                  const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+                  const pct = pollResults[i] || 0;
+                  const isMyVote = myVote === i;
                   
                   return (
                     <button 
                       key={i} 
                       onClick={() => handleVote(i)}
                       disabled={isSystem}
-                      className="w-full relative h-12 bg-white/5 border border-white/5 hover:border-primary/30 rounded-xl px-4 overflow-hidden group transition-all"
+                      className={cn(
+                        "w-full relative h-12 bg-white/5 border rounded-xl px-4 overflow-hidden group transition-all",
+                        isMyVote ? "border-primary/50" : "border-white/5 hover:border-primary/30"
+                      )}
                     >
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
                         transition={{ duration: 1, ease: "easeOut" }}
-                        className="absolute inset-y-0 left-0 bg-primary/10" 
+                        className={cn("absolute inset-y-0 left-0", isMyVote ? "bg-primary/20" : "bg-primary/10")}
                       />
                       <div className="relative flex justify-between items-center w-full z-10">
-                        <span className="text-xs font-bold text-white/80 group-hover:text-white transition-colors">{opt}</span>
-                        <span className="text-[10px] font-black text-primary opacity-60 group-hover:opacity-100 transition-all">{pct}%</span>
+                        <div className="flex items-center gap-2">
+                          <span className={cn("text-xs font-bold transition-colors", isMyVote ? "text-primary" : "text-white/80 group-hover:text-white")}>{opt}</span>
+                          {isMyVote && <UserCheck className="w-3 h-3 text-primary" />}
+                        </div>
+                        <span className={cn("text-[10px] font-black opacity-60 group-hover:opacity-100 transition-all", isMyVote ? "text-primary" : "text-muted-foreground")}>{pct}%</span>
                       </div>
                     </button>
                   );
                 })}
              </div>
-             <p className="text-[8px] font-black uppercase tracking-[0.2em] text-center text-muted-foreground pt-1">Decentralized Signal Poll • {totalVotes} Votes</p>
+             <p className="text-[8px] font-black uppercase tracking-[0.2em] text-center text-muted-foreground pt-1">Decentralized Signal Poll • {totalVotes} Unique Votes</p>
           </div>
         )}
         {msg.sharedContact && (
@@ -814,7 +850,7 @@ function PollCreatorInline({ onClose, onSend }: { onClose: () => void, onSend: (
     onSend({
       question: question.trim(),
       options: options.filter(o => o.trim() !== ''),
-      votes: {}
+      voters: {}
     });
     setQuestion('');
     setOptions(['', '']);
@@ -873,14 +909,14 @@ function PollCreatorInline({ onClose, onSend }: { onClose: () => void, onSend: (
   );
 }
 
-function ContactPicker({ open, onClose, onSend }: { open: boolean, onClose: () => void, onSend: (contact: any) => void }) {
+function ContactPickerInline({ onClose, onSend }: { onClose: () => void, onSend: (contact: any) => void }) {
   const { user } = useUser();
   const db = useFirestore();
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || !db || !open) return;
+    if (!user || !db) return;
     const fetchContacts = async () => {
       const snap = await getDocs(collection(db, 'users', user.uid, 'contacts'));
       const contactIds = snap.docs.map(d => d.id);
@@ -894,34 +930,46 @@ function ContactPicker({ open, onClose, onSend }: { open: boolean, onClose: () =
       setLoading(false);
     };
     fetchContacts();
-  }, [user, db, open]);
+  }, [user, db]);
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-sm shadow-2xl">
-        <DialogHeader className="p-8 pb-4">
-          <DialogTitle className="text-2xl font-black font-headline uppercase italic text-gradient tracking-tight">Share Contact</DialogTitle>
-          <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Relay a secure identity shard</DialogDescription>
-        </DialogHeader>
-        <ScrollArea className="h-80 px-6 pb-8">
-          <div className="space-y-2">
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-black font-headline uppercase italic text-gradient tracking-tight">Share Identity Shard</h2>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Relay a secure link from your network</p>
+        </div>
+        <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10 text-muted-foreground hover:text-white hover:bg-white/5">
+          <X className="w-5 h-5" />
+        </Button>
+      </div>
+
+      <ScrollArea className="h-64 rounded-[2rem] bg-white/[0.02] border border-white/5 p-4">
+        {loading ? (
+          <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+        ) : profiles.length === 0 ? (
+          <div className="text-center py-20 opacity-30 text-[10px] font-black uppercase tracking-widest italic">Zero Identities Found</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {profiles.map(p => (
-              <Button key={p.id} onClick={() => { onSend({ uid: p.id, name: p.fullName || p.displayName || p.username, username: p.username }); onClose(); }} variant="ghost" className="w-full justify-start h-16 bg-white/[0.02] border border-white/5 rounded-2xl px-4 gap-4 hover:bg-primary/10 group transition-all">
-                <div className="w-10 h-10 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary group-hover:glow-green transition-all">{p.username[0].toUpperCase()}</div>
-                <div className="text-left flex-1 min-w-0">
-                  <p className="text-xs font-black uppercase truncate group-hover:text-primary transition-colors">{p.fullName}</p>
+              <button 
+                key={p.id} 
+                onClick={() => onSend({ uid: p.id, name: p.fullName || p.displayName || p.username, username: p.username })}
+                className="w-full flex items-center h-16 bg-white/[0.03] border border-white/5 rounded-2xl px-4 gap-4 hover:bg-primary/10 group transition-all text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary group-hover:glow-green transition-all uppercase">
+                  {p.username[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black uppercase truncate group-hover:text-primary transition-colors text-white">{p.fullName}</p>
                   <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-widest">@{p.username}</p>
                 </div>
-              </Button>
+              </button>
             ))}
-            {profiles.length === 0 && !loading && (
-              <div className="text-center py-20 opacity-30 text-[10px] font-black uppercase tracking-widest italic">Zero Identities Found</div>
-            )}
-            {loading && <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}
           </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+        )}
+      </ScrollArea>
+    </div>
   );
 }
 
