@@ -123,6 +123,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
   const [showPollCreator, setShowPollCreator] = useState(false);
   const [showContactPicker, setShowContactPicker] = useState(false);
+  const [showActionMenu, setShowActionMenu] = useState(false);
   
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -254,6 +255,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
     setInputText('');
     setReplyingTo(null);
+    setShowActionMenu(false);
 
     let activeId = conversationId;
     let pIds = (conversation?.participantIds || [user.uid, otherProfile.id]).sort();
@@ -264,7 +266,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
         const newConv = await addDoc(collection(db, 'conversations'), {
           participantIds: pIds,
           updatedAt: serverTimestamp(),
-          lastMessage: text || (payloadOverride?.poll ? 'Shared a poll' : 'Shared a contact'),
+          lastMessage: text || (payloadOverride?.poll ? 'Poll Shared' : 'Contact Shared'),
           unreadCount: { [otherProfile.id]: 1, [user.uid]: 0 },
           hiddenFor: []
         });
@@ -296,7 +298,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     addDoc(collection(db, 'conversations', activeId, 'messages'), msg).catch(() => {});
 
     updateDoc(doc(db, 'conversations', activeId), {
-      lastMessage: text || (payloadOverride?.poll ? 'Shared a poll' : 'Shared a contact'),
+      lastMessage: text || (payloadOverride?.poll ? 'Poll Shared' : 'Contact Shared'),
       updatedAt: serverTimestamp(),
       [`unreadCount.${otherProfile.id}`]: increment(1),
       [`typing.${user.uid}`]: false
@@ -380,13 +382,13 @@ export function ConversationView({ conversationId }: { conversationId: string })
           >
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => setSelectedMessage(null)} className="text-white"><X className="w-5 h-5" /></Button>
-              <span className="text-xs font-black uppercase tracking-widest text-primary">Message Options</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-primary">Signal Selection</span>
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" onClick={() => { setReplyingTo(selectedMessage); setSelectedMessage(null); }} className="text-white"><Reply className="w-4 h-4" /></Button>
-              <Button variant="ghost" size="icon" onClick={() => { setForwardingMessage(selectedMessage); setSelectedMessage(null); }} className="text-white"><Forward className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => { setReplyingTo(selectedMessage); setSelectedMessage(null); }} className="text-white hover:text-primary"><Reply className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => { setForwardingMessage(selectedMessage); setSelectedMessage(null); }} className="text-white hover:text-primary"><Forward className="w-4 h-4" /></Button>
               {selectedMessage.senderId === user?.uid && (
-                <Button variant="ghost" size="icon" onClick={() => { setEditingMessage(selectedMessage); setInputText(selectedMessage.text); setSelectedMessage(null); }} className="text-white"><Pencil className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => { setEditingMessage(selectedMessage); setInputText(selectedMessage.text); setSelectedMessage(null); }} className="text-white hover:text-primary"><Pencil className="w-4 h-4" /></Button>
               )}
               <Button variant="ghost" size="icon" onClick={() => { setDeletingMessage(selectedMessage); setSelectedMessage(null); }} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
             </div>
@@ -451,7 +453,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
         {showProfile && otherProfile && (
           <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute inset-y-0 right-0 w-full md:w-96 bg-[#0a0a0a] border-l border-white/5 z-[100] flex flex-col shadow-2xl">
             <div className="p-6 flex items-center justify-between border-b border-white/5">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Information</h3>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Identity Information</h3>
               <Button size="icon" variant="ghost" onClick={() => setShowProfile(false)} className="h-10 w-10 rounded-full"><X className="w-6 h-6" /></Button>
             </div>
             <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center text-center space-y-8">
@@ -462,9 +464,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
               <div className="w-full space-y-4">
                 {isEditingNickname ? (
                   <div className="space-y-3">
-                    <Input value={newNickname} onChange={(e) => setNewNickname(e.target.value)} placeholder="New name..." className="bg-white/5 border-white/10 text-center text-lg font-bold h-14 rounded-xl" autoFocus />
+                    <Input value={newNickname} onChange={(e) => setNewNickname(e.target.value)} placeholder="New identity handle..." className="bg-white/5 border-white/10 text-center text-lg font-bold h-14 rounded-xl" autoFocus />
                     <div className="flex gap-2">
-                      <Button onClick={handleUpdateNickname} disabled={isSavingNickname} className="flex-1 h-12 bg-primary hover:glow-green text-primary-foreground font-bold uppercase text-xs rounded-xl">Save</Button>
+                      <Button onClick={handleUpdateNickname} disabled={isSavingNickname} className="flex-1 h-12 bg-primary hover:glow-green text-primary-foreground font-bold uppercase text-xs rounded-xl">Save Shard</Button>
                       <Button variant="ghost" onClick={() => setIsEditingNickname(false)} className="flex-1 h-12 text-xs font-bold uppercase text-muted-foreground">Cancel</Button>
                     </div>
                   </div>
@@ -476,7 +478,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                     </div>
                     {contactRecord && (
                       <Button onClick={() => setIsEditingNickname(true)} className="w-full h-14 bg-white/5 border border-white/10 text-white font-bold uppercase text-xs rounded-xl hover:bg-white/10">
-                        <Pencil className="w-4 h-4 mr-2" /> Edit Name
+                        <Pencil className="w-4 h-4 mr-2" /> Edit Nickname
                       </Button>
                     )}
                   </div>
@@ -486,20 +488,20 @@ export function ConversationView({ conversationId }: { conversationId: string })
               <div className="w-full bg-white/5 rounded-2xl p-6 border border-white/5 text-left space-y-6">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-2">
-                    <Info className="w-3 h-3" /> About
+                    <Info className="w-3 h-3" /> Digital Bio
                   </span>
                   <p className="text-sm leading-relaxed">{otherProfile.about || "Digital identity on HappyChat."}</p>
                 </div>
                 <div className="pt-4 border-t border-white/5 space-y-4">
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-2">
-                      <Mail className="w-3 h-3" /> Email Link
+                      <Mail className="w-3 h-3" /> Email Hash
                     </span>
                     <p className="text-sm text-primary truncate">{otherProfile.email}</p>
                   </div>
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-2">
-                      <AtSign className="w-3 h-3" /> System Handle
+                      <AtSign className="w-3 h-3" /> System Key
                     </span>
                     <p className="text-sm text-white/80 truncate">@{otherProfile.username}</p>
                   </div>
@@ -510,7 +512,39 @@ export function ConversationView({ conversationId }: { conversationId: string })
         )}
       </AnimatePresence>
 
-      <footer className="bg-[#0a0a0a] border-t border-white/5 p-4">
+      <footer className="bg-[#0a0a0a] border-t border-white/5 p-4 relative">
+        <AnimatePresence>
+          {showActionMenu && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute bottom-full left-0 right-0 p-4 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
+            >
+              <div className="max-w-5xl mx-auto grid grid-cols-2 gap-4">
+                <button 
+                  onClick={() => setShowPollCreator(true)}
+                  className="flex flex-col items-center justify-center p-8 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group"
+                >
+                  <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center mb-4 group-hover:glow-green transition-all">
+                    <BarChart2 className="w-6 h-6 text-primary" />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white">Create Poll</span>
+                </button>
+                <button 
+                  onClick={() => setShowContactPicker(true)}
+                  className="flex flex-col items-center justify-center p-8 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group"
+                >
+                  <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center mb-4 group-hover:glow-green transition-all">
+                    <UserPlus className="w-6 h-6 text-primary" />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white">Share Contact</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {replyingTo && (
           <div className="px-4 py-3 bg-white/5 border-l-2 border-primary mb-3 flex justify-between items-center rounded-r-xl shadow-lg animate-in slide-in-from-bottom-2">
             <div className="min-w-0">
@@ -523,39 +557,35 @@ export function ConversationView({ conversationId }: { conversationId: string })
         {editingMessage && (
           <div className="px-4 py-3 bg-white/5 border-l-2 border-amber-500 mb-3 flex justify-between items-center rounded-r-xl shadow-lg animate-in slide-in-from-bottom-2">
             <div className="min-w-0">
-              <p className="text-[10px] font-bold text-amber-500 uppercase">Editing Message</p>
+              <p className="text-[10px] font-bold text-amber-500 uppercase">Editing Shard</p>
               <p className="text-sm text-muted-foreground truncate">{editingMessage.text}</p>
             </div>
             <Button variant="ghost" size="icon" onClick={() => { setEditingMessage(null); setInputText(''); }} className="h-8 w-8 shrink-0"><X className="w-5 h-5" /></Button>
           </div>
         )}
         <div className="flex items-center gap-3 max-w-5xl mx-auto">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="icon" variant="ghost" className="rounded-xl h-12 w-12 shrink-0 bg-white/5 hover:bg-white/10">
-                <Plus className="w-6 h-6" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="top" className="bg-[#111] border-white/10 min-w-[200px] p-2 rounded-2xl shadow-2xl mb-2">
-              <DropdownMenuItem onClick={() => setShowContactPicker(true)} className="gap-3 p-3 text-[11px] uppercase font-black tracking-widest cursor-pointer rounded-xl hover:bg-primary/10 hover:text-primary">
-                <UserPlus className="w-4 h-4" /> Share Contact
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowPollCreator(true)} className="gap-3 p-3 text-[11px] uppercase font-black tracking-widest cursor-pointer rounded-xl hover:bg-primary/10 hover:text-primary">
-                <BarChart2 className="w-4 h-4" /> Create Poll
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            onClick={() => setShowActionMenu(!showActionMenu)}
+            className={cn(
+              "rounded-xl h-12 w-12 shrink-0 bg-white/5 hover:bg-white/10 transition-all",
+              showActionMenu && "bg-primary/20 text-primary rotate-45"
+            )}
+          >
+            {showActionMenu ? <X className="w-6 h-6" /> : <MoreVertical className="w-6 h-6" />}
+          </Button>
 
           <div className="flex-1 relative">
             <Input 
               value={inputText} 
               onChange={(e) => setInputText(e.target.value)} 
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} 
-              placeholder={editingMessage ? "Update message..." : "Type message..."} 
+              placeholder={editingMessage ? "Update identity shard..." : "Type message..."} 
               className="bg-white/5 border-white/10 h-12 rounded-xl focus:ring-primary focus-visible:ring-offset-0 text-sm" 
             />
           </div>
-          <Button onClick={() => handleSendMessage()} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-12 w-12 rounded-xl shrink-0">
+          <Button onClick={() => handleSendMessage()} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-12 w-12 rounded-xl shrink-0 transition-all active:scale-90">
             <Send className="w-5 h-5" />
           </Button>
         </div>
@@ -563,19 +593,19 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deletingMessage} onOpenChange={() => setDeletingMessage(null)}>
-        <AlertDialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2rem]">
+        <AlertDialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2rem] shadow-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-headline uppercase tracking-tight">Delete Message?</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground uppercase text-[10px] font-bold">
-              This action cannot be undone.
+            <AlertDialogTitle className="font-headline uppercase tracking-tight text-gradient">Wipe Message?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">
+              Choose the deletion protocol for this shard.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex flex-col gap-2">
-            <Button onClick={() => deleteMessage('me')} className="bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] uppercase font-black tracking-widest h-12 rounded-xl">Delete for Me</Button>
+            <Button onClick={() => deleteMessage('me')} className="h-12 bg-white/5 border border-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest">Delete for Me</Button>
             {deletingMessage?.senderId === user?.uid && (
-              <Button onClick={() => deleteMessage('everyone')} variant="destructive" className="text-[10px] uppercase font-black tracking-widest h-12 rounded-xl shadow-xl">Delete for Everyone</Button>
+              <Button onClick={() => deleteMessage('everyone')} variant="destructive" className="h-12 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl glow-green-bright">Delete for Everyone</Button>
             )}
-            <AlertDialogCancel className="bg-transparent border-none text-[10px] uppercase font-black tracking-widest">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white">Abort Deletion</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -590,14 +620,14 @@ export function ConversationView({ conversationId }: { conversationId: string })
       {/* Poll Creator */}
       <PollCreator 
         open={showPollCreator} 
-        onClose={() => setShowPollCreator(false)} 
+        onClose={() => { setShowPollCreator(false); setShowActionMenu(false); }} 
         onSend={(poll) => handleSendMessage({ poll })} 
       />
 
       {/* Contact Picker */}
       <ContactPicker 
         open={showContactPicker} 
-        onClose={() => setShowContactPicker(false)} 
+        onClose={() => { setShowContactPicker(false); setShowActionMenu(false); }} 
         onSend={(contact) => handleSendMessage({ sharedContact: contact })} 
       />
     </div>
@@ -641,59 +671,65 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
         onPointerUp={handlePointerUp} 
         onPointerLeave={handlePointerUp} 
         className={cn(
-          "max-w-[85%] md:max-w-[70%] p-3 px-4 rounded-2xl text-sm relative transition-all duration-300", 
-          isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-[#050505]", 
-          isSystem ? "bg-white/5 text-muted-foreground italic text-center px-8" : 
-          isOwn ? "bg-primary text-primary-foreground rounded-tr-none shadow-lg" : 
-          "bg-[#161616] text-white rounded-tl-none border border-white/5"
+          "max-w-[85%] md:max-w-[70%] p-2.5 px-4 rounded-2xl text-sm relative transition-all duration-300", 
+          isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-[#050505] shadow-[0_0_20px_rgba(0,200,83,0.3)]", 
+          isSystem ? "bg-white/5 text-muted-foreground italic text-center px-8 border border-dashed border-white/10" : 
+          isOwn ? "bg-primary text-primary-foreground rounded-tr-none shadow-xl" : 
+          "bg-[#161616] text-white rounded-tl-none border border-white/5 shadow-lg"
         )}
       >
         {msg.forwarded && (
           <div className="flex items-center gap-1.5 mb-1.5 opacity-60 text-[9px] font-black uppercase italic tracking-widest">
-            <Forward className="w-2.5 h-2.5" /> Forwarded
+            <Forward className="w-2.5 h-2.5" /> Relay Signal
           </div>
         )}
         {msg.replyTo && (
           <div className="mb-2 p-2 bg-black/20 rounded-lg border-l-2 border-primary text-[11px] opacity-80 truncate max-w-full">
-            <p className="font-bold text-primary mb-0.5">{msg.replyTo.senderName}</p>
+            <p className="font-bold text-primary mb-0.5 uppercase tracking-widest text-[9px]">{msg.replyTo.senderName}</p>
             {msg.replyTo.text}
           </div>
         )}
         {msg.poll && (
-          <div className="mb-2 p-4 bg-black/20 rounded-xl border border-white/10 space-y-3">
-             <div className="flex items-center gap-2 text-primary">
-                <BarChart2 className="w-4 h-4" />
-                <span className="font-bold uppercase tracking-tight text-xs">{msg.poll.question}</span>
+          <div className="mb-2 p-5 bg-black/40 rounded-2xl border border-white/10 space-y-4 shadow-inner">
+             <div className="flex items-center gap-3 text-primary">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                  <BarChart2 className="w-4 h-4" />
+                </div>
+                <span className="font-black uppercase tracking-widest text-[11px]">{msg.poll.question}</span>
              </div>
              <div className="space-y-2">
                 {msg.poll.options.map((opt: string, i: number) => (
-                  <Button key={i} variant="ghost" className="w-full justify-between h-10 bg-white/5 border border-white/5 hover:bg-primary/20 text-xs rounded-lg px-3 group">
-                    <span className="truncate">{opt}</span>
-                    <span className="text-[10px] font-black text-primary opacity-0 group-hover:opacity-100">0%</span>
-                  </Button>
+                  <button key={i} className="w-full relative h-12 bg-white/5 border border-white/5 hover:bg-primary/20 rounded-xl px-4 overflow-hidden group transition-all">
+                    <div className="absolute inset-y-0 left-0 bg-primary/10 w-0 group-hover:w-[5%] transition-all" />
+                    <div className="relative flex justify-between items-center w-full">
+                      <span className="text-xs font-bold text-white/80 group-hover:text-white transition-colors">{opt}</span>
+                      <span className="text-[10px] font-black text-primary opacity-30 group-hover:opacity-100 transition-all">0%</span>
+                    </div>
+                  </button>
                 ))}
              </div>
+             <p className="text-[8px] font-black uppercase tracking-[0.2em] text-center text-muted-foreground pt-1">Decentralized Signal Poll</p>
           </div>
         )}
         {msg.sharedContact && (
-           <div className="mb-2 p-3 bg-white/5 rounded-xl border border-white/5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+           <div className="mb-2 p-4 bg-[#0a0a0a] rounded-2xl border border-white/10 flex items-center gap-4 shadow-2xl">
+              <div className="w-12 h-12 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center text-primary font-black text-lg">
                  {msg.sharedContact.name.charAt(0)}
               </div>
               <div className="flex-1 min-w-0">
-                 <p className="text-xs font-bold truncate">{msg.sharedContact.name}</p>
-                 <p className="text-[9px] uppercase font-bold text-muted-foreground">@{msg.sharedContact.username}</p>
+                 <p className="text-sm font-black uppercase tracking-tight truncate text-white">{msg.sharedContact.name}</p>
+                 <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">@{msg.sharedContact.username}</p>
               </div>
-              <Button size="sm" className="h-8 px-3 rounded-lg text-[9px] font-black uppercase bg-primary text-primary-foreground">Add</Button>
+              <Button size="sm" className="h-10 px-5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary text-primary-foreground hover:glow-green transition-all shadow-lg active:scale-95">Add Link</Button>
            </div>
         )}
-        {msg.text && <p className="leading-relaxed whitespace-pre-wrap">{renderText(msg.text)}</p>}
-        <div className="flex justify-end gap-1 items-center mt-2 text-[9px] font-black uppercase opacity-60">
-          {msg.isEdited && <span className="mr-1 italic">(edited)</span>}
+        {msg.text && <p className="leading-relaxed whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
+        <div className="flex justify-end gap-1.5 items-center mt-2 text-[8px] font-black uppercase opacity-60 tracking-widest">
+          {msg.isEdited && <span className="mr-1 italic opacity-40">(edited)</span>}
           <span>{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
           {isOwn && !isSystem && (
             <div className="flex items-center ml-1">
-              {msg.status === 'read' ? <CheckCheck className="w-3.5 h-3.5 text-white" /> : <Check className="w-3.5 h-3.5 text-white/50" />}
+              {msg.status === 'read' ? <CheckCheck className="w-3 h-3 text-white" /> : <Check className="w-3 h-3 text-white/50" />}
             </div>
           )}
         </div>
@@ -701,15 +737,15 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
         {!isSystem && !isMobile && (
           <div className={cn("absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity z-10", isOwn ? "-left-14" : "-right-14")}>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-primary shadow-xl border border-white/5"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#111] border-white/10 text-white min-w-[160px] rounded-xl shadow-2xl z-[100] p-1.5">
-                <DropdownMenuItem onClick={onReply} className="gap-3 p-2.5 text-[10px] uppercase font-black tracking-widest cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary"><Reply className="w-3.5 h-3.5" /> Reply</DropdownMenuItem>
-                <DropdownMenuItem onClick={onForward} className="gap-3 p-2.5 text-[10px] uppercase font-black tracking-widest cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary"><Forward className="w-3.5 h-3.5" /> Forward</DropdownMenuItem>
+              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-black/80 text-white hover:bg-primary shadow-2xl border border-white/10 backdrop-blur-xl"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-[#111] border-white/10 text-white min-w-[180px] rounded-2xl shadow-2xl z-[100] p-1.5">
+                <DropdownMenuItem onClick={onReply} className="gap-3 p-3 text-[10px] uppercase font-black tracking-widest cursor-pointer rounded-xl hover:bg-primary/10 hover:text-primary"><Reply className="w-3.5 h-3.5" /> Reply Signal</DropdownMenuItem>
+                <DropdownMenuItem onClick={onForward} className="gap-3 p-3 text-[10px] uppercase font-black tracking-widest cursor-pointer rounded-xl hover:bg-primary/10 hover:text-primary"><Forward className="w-3.5 h-3.5" /> Forward Shard</DropdownMenuItem>
                 {isOwn && (
-                  <DropdownMenuItem onClick={onEdit} className="gap-3 p-2.5 text-[10px] uppercase font-black tracking-widest cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary"><Pencil className="w-3.5 h-3.5" /> Edit</DropdownMenuItem>
+                  <DropdownMenuItem onClick={onEdit} className="gap-3 p-3 text-[10px] uppercase font-black tracking-widest cursor-pointer rounded-xl hover:bg-primary/10 hover:text-primary"><Pencil className="w-3.5 h-3.5" /> Edit Shard</DropdownMenuItem>
                 )}
-                <DropdownMenuSeparator className="bg-white/5" />
-                <DropdownMenuItem onClick={onDelete} className="gap-3 p-2.5 text-[10px] uppercase font-black tracking-widest text-destructive cursor-pointer rounded-lg hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /> Delete</DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-white/5 mx-1" />
+                <DropdownMenuItem onClick={onDelete} className="gap-3 p-3 text-[10px] uppercase font-black tracking-widest text-destructive cursor-pointer rounded-xl hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /> Wipe Message</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -733,7 +769,7 @@ function PollCreator({ open, onClose, onSend }: { open: boolean, onClose: () => 
   const handleCreate = () => {
     if (!question.trim() || options.some(o => !o.trim())) return;
     onSend({
-      question,
+      question: question.trim(),
       options: options.filter(o => o.trim() !== ''),
       votes: {}
     });
@@ -744,27 +780,27 @@ function PollCreator({ open, onClose, onSend }: { open: boolean, onClose: () => 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-8 max-w-sm">
+      <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-8 max-w-sm shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-black font-headline uppercase italic text-gradient">Create Poll</DialogTitle>
-          <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Gather feedback from the mesh</DialogDescription>
+          <DialogTitle className="text-2xl font-black font-headline uppercase italic text-gradient tracking-tight">Create Poll</DialogTitle>
+          <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Gather feedback from the digital mesh</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <div className="space-y-5 py-6">
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-primary">The Question</Label>
-            <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Best time for sync?" className="bg-white/5 border-white/10 rounded-xl h-12" />
+            <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">The Question</Label>
+            <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Protocol sync at 22:00?" className="bg-white/5 border-white/10 rounded-xl h-14 focus:ring-primary text-sm" />
           </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Options</Label>
+          <div className="space-y-3">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Options</Label>
             {options.map((opt, i) => (
-              <Input key={i} value={opt} onChange={(e) => handleOptionChange(i, e.target.value)} placeholder={`Option ${i+1}`} className="bg-white/5 border-white/10 rounded-xl h-10 mb-2" />
+              <Input key={i} value={opt} onChange={(e) => handleOptionChange(i, e.target.value)} placeholder={`Option ${i+1}`} className="bg-white/5 border-white/10 rounded-xl h-12 focus:ring-primary text-sm" />
             ))}
-            <Button variant="ghost" onClick={handleAddOption} className="text-[9px] uppercase font-black text-primary tracking-widest p-0 h-8 hover:bg-transparent">
-              <Plus className="w-3 h-3 mr-1" /> Add Option
+            <Button variant="ghost" onClick={handleAddOption} className="text-[9px] uppercase font-black text-primary tracking-widest p-0 h-8 hover:bg-transparent hover:text-white transition-colors">
+              <Plus className="w-3 h-3 mr-1" /> Add Signal Option
             </Button>
           </div>
         </div>
-        <Button onClick={handleCreate} disabled={!question.trim()} className="w-full h-14 bg-primary hover:glow-green text-primary-foreground font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl">Launch Poll</Button>
+        <Button onClick={handleCreate} disabled={!question.trim() || options.some(o => !o.trim())} className="w-full h-16 bg-primary hover:glow-green-bright text-primary-foreground font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl transition-all active:scale-95">Launch Poll Shard</Button>
       </DialogContent>
     </Dialog>
   );
@@ -795,26 +831,26 @@ function ContactPicker({ open, onClose, onSend }: { open: boolean, onClose: () =
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-sm">
+      <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-sm shadow-2xl">
         <DialogHeader className="p-8 pb-4">
-          <DialogTitle className="text-2xl font-black font-headline uppercase italic text-gradient">Share Contact</DialogTitle>
-          <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Broadcast a secure identity</DialogDescription>
+          <DialogTitle className="text-2xl font-black font-headline uppercase italic text-gradient tracking-tight">Share Contact</DialogTitle>
+          <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Relay a secure identity shard</DialogDescription>
         </DialogHeader>
-        <ScrollArea className="h-72 px-6 pb-6">
+        <ScrollArea className="h-80 px-6 pb-8">
           <div className="space-y-2">
             {profiles.map(p => (
               <Button key={p.id} onClick={() => { onSend({ uid: p.id, name: p.fullName || p.displayName || p.username, username: p.username }); onClose(); }} variant="ghost" className="w-full justify-start h-16 bg-white/[0.02] border border-white/5 rounded-2xl px-4 gap-4 hover:bg-primary/10 group transition-all">
                 <div className="w-10 h-10 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary group-hover:glow-green transition-all">{p.username[0].toUpperCase()}</div>
-                <div className="text-left">
-                  <p className="text-xs font-bold group-hover:text-primary transition-colors">{p.fullName}</p>
-                  <p className="text-[9px] uppercase font-bold text-muted-foreground">@{p.username}</p>
+                <div className="text-left flex-1 min-w-0">
+                  <p className="text-xs font-black uppercase truncate group-hover:text-primary transition-colors">{p.fullName}</p>
+                  <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-widest">@{p.username}</p>
                 </div>
               </Button>
             ))}
             {profiles.length === 0 && !loading && (
-              <div className="text-center py-12 opacity-30 text-[10px] uppercase font-black">Zero Contacts Found</div>
+              <div className="text-center py-20 opacity-30 text-[10px] font-black uppercase tracking-widest italic">Zero Identities Found</div>
             )}
-            {loading && <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>}
+            {loading && <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}
           </div>
         </ScrollArea>
       </DialogContent>
@@ -847,10 +883,10 @@ function ForwardPicker({ open, onClose, onForward }: { open: boolean, onClose: (
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-sm">
+      <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-sm shadow-2xl">
         <DialogHeader className="p-8 pb-4">
-          <DialogTitle className="text-2xl font-black font-headline uppercase italic text-gradient">Forward Signal</DialogTitle>
-          <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Relay this shard to another thread</DialogDescription>
+          <DialogTitle className="text-2xl font-black font-headline uppercase italic text-gradient tracking-tight">Forward Shard</DialogTitle>
+          <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Relay this signal to another thread</DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-80 px-6 pb-8">
           <div className="space-y-2">
@@ -859,11 +895,11 @@ function ForwardPicker({ open, onClose, onForward }: { open: boolean, onClose: (
               const p = profiles[otherId];
               const name = p?.displayName || p?.fullName || 'Secure User';
               return (
-                <Button key={c.id} onClick={() => onForward(c.id)} variant="ghost" className="w-full justify-start h-16 bg-white/[0.02] border border-white/5 rounded-2xl px-4 gap-4 hover:bg-primary/10 group">
+                <Button key={c.id} onClick={() => onForward(c.id)} variant="ghost" className="w-full justify-start h-16 bg-white/[0.02] border border-white/5 rounded-2xl px-4 gap-4 hover:bg-primary/10 group transition-all">
                   <div className="w-10 h-10 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary">{name[0].toUpperCase()}</div>
                   <div className="text-left min-w-0 flex-1">
-                    <p className="text-xs font-bold truncate group-hover:text-primary">{name}</p>
-                    <p className="text-[9px] uppercase font-bold text-muted-foreground truncate">{c.lastMessage || 'End-to-end encrypted'}</p>
+                    <p className="text-xs font-black uppercase truncate group-hover:text-primary transition-colors">{name}</p>
+                    <p className="text-[9px] uppercase font-bold text-muted-foreground truncate tracking-widest">{c.lastMessage || 'End-to-end encrypted'}</p>
                   </div>
                 </Button>
               );
