@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -28,7 +27,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 import { AddContactDialogContent } from '@/components/chat/AddContactDialogContent';
@@ -570,8 +569,11 @@ export function ChatSidebar() {
 
       <Dialog open={!!manageChatId} onOpenChange={() => setManageChatId(null)}>
         <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-6 rounded-[2rem] max-w-xs shadow-2xl">
-          <div className="space-y-6 text-center">
-            <h2 className="text-xl font-bold font-headline uppercase tracking-tight text-gradient">Manage Shard</h2>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold font-headline uppercase tracking-tight text-gradient text-center">Manage Shard</DialogTitle>
+            <DialogDescription className="sr-only">Choose a management action for this conversation shard.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 text-center pt-2">
             <div className="flex flex-col gap-2">
               <Button onClick={() => manageChatId && handleClearChat(manageChatId)} className="h-12 bg-white/5 border-white/5 hover:bg-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest">Clear History</Button>
               <Button onClick={() => manageChatId && handleDeleteChat(manageChatId)} variant="destructive" className="h-12 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-xl">Delete Chat</Button>
