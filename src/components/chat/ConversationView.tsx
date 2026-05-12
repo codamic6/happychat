@@ -60,6 +60,7 @@ type Message = {
   deletedFor?: string[];
   status?: 'sent' | 'delivered' | 'read';
   updatedAt?: any;
+  forwarded?: boolean;
   replyTo?: {
     id?: string;
     text: string;
@@ -256,6 +257,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     setInputText('');
     setReplyingTo(null);
     setShowActionMenu(false);
+    setShowPollCreator(false);
 
     let activeId = conversationId;
     let pIds = (conversation?.participantIds || [user.uid, otherProfile.id]).sort();
@@ -514,7 +516,20 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
       <footer className="bg-[#0a0a0a] border-t border-white/5 p-4 relative">
         <AnimatePresence>
-          {showActionMenu && (
+          {showPollCreator && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute bottom-full left-0 right-0 p-6 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
+            >
+              <PollCreatorInline 
+                onClose={() => setShowPollCreator(false)} 
+                onSend={(poll) => handleSendMessage({ poll })} 
+              />
+            </motion.div>
+          )}
+          {showActionMenu && !showPollCreator && (
             <motion.div 
               initial={{ opacity: 0, y: 20 }} 
               animate={{ opacity: 1, y: 0 }} 
@@ -567,13 +582,19 @@ export function ConversationView({ conversationId }: { conversationId: string })
           <Button 
             size="icon" 
             variant="ghost" 
-            onClick={() => setShowActionMenu(!showActionMenu)}
+            onClick={() => {
+              if (showPollCreator) {
+                setShowPollCreator(false);
+              } else {
+                setShowActionMenu(!showActionMenu);
+              }
+            }}
             className={cn(
               "rounded-xl h-12 w-12 shrink-0 bg-white/5 hover:bg-white/10 transition-all",
-              showActionMenu && "bg-primary/20 text-primary rotate-45"
+              (showActionMenu || showPollCreator) && "bg-primary/20 text-primary rotate-45"
             )}
           >
-            {showActionMenu ? <X className="w-6 h-6" /> : <MoreVertical className="w-6 h-6" />}
+            {(showActionMenu || showPollCreator) ? <X className="w-6 h-6" /> : <MoreVertical className="w-6 h-6" />}
           </Button>
 
           <div className="flex-1 relative">
@@ -603,7 +624,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
           <AlertDialogFooter className="flex flex-col gap-2">
             <Button onClick={() => deleteMessage('me')} className="h-12 bg-white/5 border border-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest">Delete for Me</Button>
             {deletingMessage?.senderId === user?.uid && (
-              <Button onClick={() => deleteMessage('everyone')} variant="destructive" className="h-12 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl glow-green-bright">Delete for Everyone</Button>
+              <Button onClick={() => deleteMessage('everyone')} variant="destructive" className="h-12 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl">Delete for Everyone</Button>
             )}
             <AlertDialogCancel className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white">Abort Deletion</AlertDialogCancel>
           </AlertDialogFooter>
@@ -617,13 +638,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
         onForward={handleForwardMessage} 
       />
 
-      {/* Poll Creator */}
-      <PollCreator 
-        open={showPollCreator} 
-        onClose={() => { setShowPollCreator(false); setShowActionMenu(false); }} 
-        onSend={(poll) => handleSendMessage({ poll })} 
-      />
-
       {/* Contact Picker */}
       <ContactPicker 
         open={showContactPicker} 
@@ -635,6 +649,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
 }
 
 function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward, onSelect, isSelected, highlight }: any) {
+  const db = useFirestore();
   const isOwn = msg.senderId === user?.uid;
   const isSystem = msg.isDeleted;
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -664,6 +679,19 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
     );
   };
 
+  const handleVote = async (optionIndex: number) => {
+    if (!user || !db || isSystem) return;
+    const msgRef = doc(db, 'conversations', msg.conversationId, 'messages', msg.id);
+    updateDoc(msgRef, {
+      [`poll.votes.${optionIndex}`]: increment(1)
+    }).catch(() => {});
+  };
+
+  const totalVotes = useMemo(() => {
+    if (!msg.poll?.votes) return 0;
+    return Object.values(msg.poll.votes).reduce((a: any, b: any) => a + b, 0) as number;
+  }, [msg.poll?.votes]);
+
   return (
     <div className={cn("flex w-full group relative", isOwn ? "justify-end" : "justify-start")}>
       <motion.div 
@@ -690,7 +718,7 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
           </div>
         )}
         {msg.poll && (
-          <div className="mb-2 p-5 bg-black/40 rounded-2xl border border-white/10 space-y-4 shadow-inner">
+          <div className="mb-2 p-5 bg-black/60 rounded-2xl border border-white/10 space-y-4 shadow-2xl min-w-[240px]">
              <div className="flex items-center gap-3 text-primary">
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                   <BarChart2 className="w-4 h-4" />
@@ -698,17 +726,32 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
                 <span className="font-black uppercase tracking-widest text-[11px]">{msg.poll.question}</span>
              </div>
              <div className="space-y-2">
-                {msg.poll.options.map((opt: string, i: number) => (
-                  <button key={i} className="w-full relative h-12 bg-white/5 border border-white/5 hover:bg-primary/20 rounded-xl px-4 overflow-hidden group transition-all">
-                    <div className="absolute inset-y-0 left-0 bg-primary/10 w-0 group-hover:w-[5%] transition-all" />
-                    <div className="relative flex justify-between items-center w-full">
-                      <span className="text-xs font-bold text-white/80 group-hover:text-white transition-colors">{opt}</span>
-                      <span className="text-[10px] font-black text-primary opacity-30 group-hover:opacity-100 transition-all">0%</span>
-                    </div>
-                  </button>
-                ))}
+                {msg.poll.options.map((opt: string, i: number) => {
+                  const votes = msg.poll?.votes?.[i] || 0;
+                  const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+                  
+                  return (
+                    <button 
+                      key={i} 
+                      onClick={() => handleVote(i)}
+                      disabled={isSystem}
+                      className="w-full relative h-12 bg-white/5 border border-white/5 hover:border-primary/30 rounded-xl px-4 overflow-hidden group transition-all"
+                    >
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                        className="absolute inset-y-0 left-0 bg-primary/10" 
+                      />
+                      <div className="relative flex justify-between items-center w-full z-10">
+                        <span className="text-xs font-bold text-white/80 group-hover:text-white transition-colors">{opt}</span>
+                        <span className="text-[10px] font-black text-primary opacity-60 group-hover:opacity-100 transition-all">{pct}%</span>
+                      </div>
+                    </button>
+                  );
+                })}
              </div>
-             <p className="text-[8px] font-black uppercase tracking-[0.2em] text-center text-muted-foreground pt-1">Decentralized Signal Poll</p>
+             <p className="text-[8px] font-black uppercase tracking-[0.2em] text-center text-muted-foreground pt-1">Decentralized Signal Poll • {totalVotes} Votes</p>
           </div>
         )}
         {msg.sharedContact && (
@@ -755,7 +798,7 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
   );
 }
 
-function PollCreator({ open, onClose, onSend }: { open: boolean, onClose: () => void, onSend: (poll: any) => void }) {
+function PollCreatorInline({ onClose, onSend }: { onClose: () => void, onSend: (poll: any) => void }) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
 
@@ -767,7 +810,7 @@ function PollCreator({ open, onClose, onSend }: { open: boolean, onClose: () => 
   };
 
   const handleCreate = () => {
-    if (!question.trim() || options.some(o => !o.trim())) return;
+    if (!question.trim() || options.filter(o => o.trim()).length < 2) return;
     onSend({
       question: question.trim(),
       options: options.filter(o => o.trim() !== ''),
@@ -775,34 +818,58 @@ function PollCreator({ open, onClose, onSend }: { open: boolean, onClose: () => 
     });
     setQuestion('');
     setOptions(['', '']);
-    onClose();
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-8 max-w-sm shadow-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-black font-headline uppercase italic text-gradient tracking-tight">Create Poll</DialogTitle>
-          <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Gather feedback from the digital mesh</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-5 py-6">
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">The Question</Label>
-            <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Protocol sync at 22:00?" className="bg-white/5 border-white/10 rounded-xl h-14 focus:ring-primary text-sm" />
-          </div>
-          <div className="space-y-3">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Options</Label>
-            {options.map((opt, i) => (
-              <Input key={i} value={opt} onChange={(e) => handleOptionChange(i, e.target.value)} placeholder={`Option ${i+1}`} className="bg-white/5 border-white/10 rounded-xl h-12 focus:ring-primary text-sm" />
-            ))}
-            <Button variant="ghost" onClick={handleAddOption} className="text-[9px] uppercase font-black text-primary tracking-widest p-0 h-8 hover:bg-transparent hover:text-white transition-colors">
-              <Plus className="w-3 h-3 mr-1" /> Add Signal Option
-            </Button>
-          </div>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-black font-headline uppercase italic text-gradient tracking-tight">Create Signal Poll</h2>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Gather feedback from the digital mesh</p>
         </div>
-        <Button onClick={handleCreate} disabled={!question.trim() || options.some(o => !o.trim())} className="w-full h-16 bg-primary hover:glow-green-bright text-primary-foreground font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl transition-all active:scale-95">Launch Poll Shard</Button>
-      </DialogContent>
-    </Dialog>
+        <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10 text-muted-foreground hover:text-white hover:bg-white/5">
+          <X className="w-5 h-5" />
+        </Button>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">The Question</Label>
+          <Input 
+            value={question} 
+            onChange={(e) => setQuestion(e.target.value)} 
+            placeholder="e.g. Protocol sync at 22:00?" 
+            className="bg-white/5 border-white/10 rounded-xl h-14 focus:ring-primary text-sm shadow-inner" 
+            autoFocus
+          />
+        </div>
+        <div className="space-y-3">
+          <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Options</Label>
+          <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
+            {options.map((opt, i) => (
+              <Input 
+                key={i} 
+                value={opt} 
+                onChange={(e) => handleOptionChange(i, e.target.value)} 
+                placeholder={`Option ${i+1}`} 
+                className="bg-white/5 border-white/10 rounded-xl h-11 focus:ring-primary text-sm" 
+              />
+            ))}
+          </div>
+          <Button variant="ghost" onClick={handleAddOption} className="text-[9px] uppercase font-black text-primary tracking-widest p-0 h-8 hover:bg-transparent hover:text-white transition-colors">
+            <Plus className="w-3 h-3 mr-1" /> Add Signal Option
+          </Button>
+        </div>
+      </div>
+
+      <Button 
+        onClick={handleCreate} 
+        disabled={!question.trim() || options.filter(o => o.trim()).length < 2} 
+        className="w-full h-16 bg-primary hover:glow-green-bright text-primary-foreground font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl transition-all active:scale-95"
+      >
+        Launch Poll Shard
+      </Button>
+    </div>
   );
 }
 
