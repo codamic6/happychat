@@ -426,9 +426,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
                        <p className={cn("text-[10px] uppercase font-bold tracking-widest shrink-0", isOtherTyping ? "text-primary animate-pulse" : otherProfile?.isOnline ? "text-primary" : "text-muted-foreground")}>
                         {isOtherTyping ? 'Typing...' : otherProfile?.isOnline ? 'Online' : 'Offline'}
                       </p>
-                      {contactRecord?.customName && contactRecord.customName !== realName && (
-                        <p className="text-[9px] text-muted-foreground truncate italic opacity-60">• Real: {realName}</p>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -443,7 +440,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
       </header>
 
       <ScrollArea className="flex-1 p-4">
-        <div className="max-w-4xl mx-auto space-y-4 pb-12">
+        <div className="max-w-4xl mx-auto space-y-3 pb-12">
           {filteredMessages.map((msg) => (
             <MessageRow 
               key={msg.id} msg={msg} user={user} isMobile={isMobile}
@@ -703,7 +700,6 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
     const msgRef = doc(db, 'conversations', msg.conversationId, 'messages', msg.id);
     
     // ONE PERSON ONE VOTE Protocol
-    // Map UID to the option index
     updateDoc(msgRef, {
       [`poll.voters.${user.uid}`]: optionIndex
     }).catch(() => {});
@@ -723,39 +719,39 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
   }, [msg.poll, voters, totalVotes]);
 
   return (
-    <div className={cn("flex w-full group relative", isOwn ? "justify-end" : "justify-start")}>
+    <div className={cn("flex w-full group relative mb-0.5", isOwn ? "justify-end" : "justify-start")}>
       <motion.div 
         onPointerDown={handlePointerDown} 
         onPointerUp={handlePointerUp} 
         onPointerLeave={handlePointerUp} 
         className={cn(
-          "max-w-[85%] md:max-w-[70%] p-2.5 px-4 rounded-2xl text-sm relative transition-all duration-300", 
+          "max-w-[80%] md:max-w-[65%] p-1.5 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words", 
           isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-[#050505] shadow-[0_0_20px_rgba(0,200,83,0.3)]", 
-          isSystem ? "bg-white/5 text-muted-foreground italic text-center px-8 border border-dashed border-white/10" : 
-          isOwn ? "bg-primary text-primary-foreground rounded-tr-none shadow-xl" : 
-          "bg-[#161616] text-white rounded-tl-none border border-white/5 shadow-lg"
+          isSystem ? "bg-white/5 text-muted-foreground italic text-center px-6 border border-dashed border-white/10" : 
+          isOwn ? "bg-primary text-primary-foreground rounded-tr-none shadow-lg" : 
+          "bg-[#161616] text-white rounded-tl-none border border-white/5 shadow-md"
         )}
       >
         {msg.forwarded && (
-          <div className="flex items-center gap-1.5 mb-1.5 opacity-60 text-[9px] font-black uppercase italic tracking-widest">
-            <Forward className="w-2.5 h-2.5" /> Relay Signal
+          <div className="flex items-center gap-1.5 mb-1 opacity-60 text-[8px] font-black uppercase italic tracking-widest">
+            <Forward className="w-2 h-2" /> Relay Signal
           </div>
         )}
         {msg.replyTo && (
-          <div className="mb-2 p-2 bg-black/20 rounded-lg border-l-2 border-primary text-[11px] opacity-80 truncate max-w-full">
-            <p className="font-bold text-primary mb-0.5 uppercase tracking-widest text-[9px]">{msg.replyTo.senderName}</p>
+          <div className="mb-1.5 p-1.5 bg-black/20 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate max-w-full">
+            <p className="font-bold text-primary mb-0.5 uppercase tracking-widest text-[8px]">{msg.replyTo.senderName}</p>
             {msg.replyTo.text}
           </div>
         )}
         {msg.poll && (
-          <div className="mb-2 p-5 bg-black/60 rounded-2xl border border-white/10 space-y-4 shadow-2xl min-w-[240px]">
-             <div className="flex items-center gap-3 text-primary">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                  <BarChart2 className="w-4 h-4" />
+          <div className="mb-1.5 p-3 bg-black/60 rounded-xl border border-white/10 space-y-3 shadow-2xl min-w-[200px]">
+             <div className="flex items-center gap-2 text-primary">
+                <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                  <BarChart2 className="w-3 h-3" />
                 </div>
-                <span className="font-black uppercase tracking-widest text-[11px]">{msg.poll.question}</span>
+                <span className="font-black uppercase tracking-widest text-[10px] truncate">{msg.poll.question}</span>
              </div>
-             <div className="space-y-2">
+             <div className="space-y-1.5">
                 {msg.poll.options.map((opt: string, i: number) => {
                   const pct = pollResults[i] || 0;
                   const isMyVote = myVote === i;
@@ -766,7 +762,7 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
                       onClick={() => handleVote(i)}
                       disabled={isSystem}
                       className={cn(
-                        "w-full relative h-12 bg-white/5 border rounded-xl px-4 overflow-hidden group transition-all",
+                        "w-full relative h-9 bg-white/5 border rounded-lg px-3 overflow-hidden group transition-all",
                         isMyVote ? "border-primary/50" : "border-white/5 hover:border-primary/30"
                       )}
                     >
@@ -777,54 +773,54 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
                         className={cn("absolute inset-y-0 left-0", isMyVote ? "bg-primary/20" : "bg-primary/10")}
                       />
                       <div className="relative flex justify-between items-center w-full z-10">
-                        <div className="flex items-center gap-2">
-                          <span className={cn("text-xs font-bold transition-colors", isMyVote ? "text-primary" : "text-white/80 group-hover:text-white")}>{opt}</span>
-                          {isMyVote && <UserCheck className="w-3 h-3 text-primary" />}
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={cn("text-[11px] font-bold transition-colors truncate", isMyVote ? "text-primary" : "text-white/80 group-hover:text-white")}>{opt}</span>
+                          {isMyVote && <UserCheck className="w-2.5 h-2.5 text-primary shrink-0" />}
                         </div>
-                        <span className={cn("text-[10px] font-black opacity-60 group-hover:opacity-100 transition-all", isMyVote ? "text-primary" : "text-muted-foreground")}>{pct}%</span>
+                        <span className={cn("text-[9px] font-black opacity-60 group-hover:opacity-100 transition-all shrink-0", isMyVote ? "text-primary" : "text-muted-foreground")}>{pct}%</span>
                       </div>
                     </button>
                   );
                 })}
              </div>
-             <p className="text-[8px] font-black uppercase tracking-[0.2em] text-center text-muted-foreground pt-1">Decentralized Signal Poll • {totalVotes} Unique Votes</p>
+             <p className="text-[7px] font-black uppercase tracking-[0.2em] text-center text-muted-foreground pt-0.5">Poll • {totalVotes} Votes</p>
           </div>
         )}
         {msg.sharedContact && (
-           <div className="mb-2 p-4 bg-[#0a0a0a] rounded-2xl border border-white/10 flex items-center gap-4 shadow-2xl">
-              <div className="w-12 h-12 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center text-primary font-black text-lg">
+           <div className="mb-1.5 p-3 bg-[#0a0a0a] rounded-xl border border-white/10 flex items-center gap-3 shadow-2xl">
+              <div className="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center text-primary font-black text-base shrink-0">
                  {msg.sharedContact.name.charAt(0)}
               </div>
               <div className="flex-1 min-w-0">
-                 <p className="text-sm font-black uppercase tracking-tight truncate text-white">{msg.sharedContact.name}</p>
-                 <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">@{msg.sharedContact.username}</p>
+                 <p className="text-xs font-black uppercase tracking-tight truncate text-white">{msg.sharedContact.name}</p>
+                 <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-widest truncate">@{msg.sharedContact.username}</p>
               </div>
-              <Button size="sm" className="h-10 px-5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary text-primary-foreground hover:glow-green transition-all shadow-lg active:scale-95">Add Link</Button>
+              <Button size="sm" className="h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-widest bg-primary text-primary-foreground hover:glow-green transition-all shadow-lg active:scale-95 shrink-0">Link</Button>
            </div>
         )}
-        {msg.text && <p className="leading-relaxed whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
-        <div className="flex justify-end gap-1.5 items-center mt-2 text-[8px] font-black uppercase opacity-60 tracking-widest">
+        {msg.text && <p className="leading-normal whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
+        <div className="flex justify-end gap-1 items-center mt-1 text-[7px] font-black uppercase opacity-60 tracking-widest">
           {msg.isEdited && <span className="mr-1 italic opacity-40">(edited)</span>}
           <span>{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
           {isOwn && !isSystem && (
             <div className="flex items-center ml-1">
-              {msg.status === 'read' ? <CheckCheck className="w-3 h-3 text-white" /> : <Check className="w-3 h-3 text-white/50" />}
+              {msg.status === 'read' ? <CheckCheck className="w-2.5 h-2.5 text-white" /> : <Check className="w-2.5 h-2.5 text-white/50" />}
             </div>
           )}
         </div>
 
         {!isSystem && !isMobile && (
-          <div className={cn("absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity z-10", isOwn ? "-left-14" : "-right-14")}>
+          <div className={cn("absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity z-10", isOwn ? "-left-10" : "-right-10")}>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-black/80 text-white hover:bg-primary shadow-2xl border border-white/10 backdrop-blur-xl"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#111] border-white/10 text-white min-w-[180px] rounded-2xl shadow-2xl z-[100] p-1.5">
-                <DropdownMenuItem onClick={onReply} className="gap-3 p-3 text-[10px] uppercase font-black tracking-widest cursor-pointer rounded-xl hover:bg-primary/10 hover:text-primary"><Reply className="w-3.5 h-3.5" /> Reply Signal</DropdownMenuItem>
-                <DropdownMenuItem onClick={onForward} className="gap-3 p-3 text-[10px] uppercase font-black tracking-widest cursor-pointer rounded-xl hover:bg-primary/10 hover:text-primary"><Forward className="w-3.5 h-3.5" /> Forward Shard</DropdownMenuItem>
+              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 rounded-full bg-black/80 text-white hover:bg-primary shadow-2xl border border-white/10 backdrop-blur-xl"><MoreVertical className="w-3 h-3" /></Button></DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-[#111] border-white/10 text-white min-w-[150px] rounded-xl shadow-2xl z-[100] p-1">
+                <DropdownMenuItem onClick={onReply} className="gap-2 p-2 text-[9px] uppercase font-black tracking-widest cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary"><Reply className="w-3 h-3" /> Reply</DropdownMenuItem>
+                <DropdownMenuItem onClick={onForward} className="gap-2 p-2 text-[9px] uppercase font-black tracking-widest cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary"><Forward className="w-3 h-3" /> Forward</DropdownMenuItem>
                 {isOwn && (
-                  <DropdownMenuItem onClick={onEdit} className="gap-3 p-3 text-[10px] uppercase font-black tracking-widest cursor-pointer rounded-xl hover:bg-primary/10 hover:text-primary"><Pencil className="w-3.5 h-3.5" /> Edit Shard</DropdownMenuItem>
+                  <DropdownMenuItem onClick={onEdit} className="gap-2 p-2 text-[9px] uppercase font-black tracking-widest cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary"><Pencil className="w-3 h-3" /> Edit</DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator className="bg-white/5 mx-1" />
-                <DropdownMenuItem onClick={onDelete} className="gap-3 p-3 text-[10px] uppercase font-black tracking-widest text-destructive cursor-pointer rounded-xl hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /> Wipe Message</DropdownMenuItem>
+                <DropdownMenuItem onClick={onDelete} className="gap-2 p-2 text-[9px] uppercase font-black tracking-widest text-destructive cursor-pointer rounded-lg hover:bg-destructive/10"><Trash2 className="w-3 h-3" /> Wipe</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
