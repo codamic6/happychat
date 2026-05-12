@@ -483,7 +483,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                     <div>
                       <h2 className="text-3xl font-black font-headline tracking-tighter uppercase">{mainName}</h2>
                       {contactRecord?.customName && contactRecord.customName !== realName && (
-                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-1">System Name: {realName}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-1">~ {realName}</p>
                       )}
                       <p className="text-primary text-[10px] font-bold uppercase tracking-widest mt-1">@{otherProfile.username}</p>
                     </div>
