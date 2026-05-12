@@ -374,18 +374,18 @@ export function ConversationView({ conversationId }: { conversationId: string })
   if (isUserLoading) return null;
 
   return (
-    <div className="flex-1 flex flex-col relative bg-[#050505] overflow-hidden">
-      {/* Mobile Selection Header */}
+    <div className="flex-1 flex flex-col min-w-0 bg-[#050505] overflow-hidden relative">
+      {/* Selection Header */}
       <AnimatePresence>
-        {selectedMessage && isMobile && (
+        {selectedMessage && (
           <motion.div 
             initial={{ y: -100 }} 
             animate={{ y: 0 }} 
             exit={{ y: -100 }}
-            className="absolute top-0 inset-x-0 h-16 bg-[#0a0a0a] border-b border-primary/20 flex items-center justify-between px-6 z-[100] shadow-2xl"
+            className="absolute top-0 inset-x-0 h-16 md:h-20 bg-[#0a0a0a] border-b border-primary/20 flex items-center justify-between px-4 md:px-8 z-[100] shadow-2xl"
           >
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => setSelectedMessage(null)} className="text-white"><X className="w-5 h-5" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedMessage(null)} className="text-white hover:bg-white/5"><X className="w-5 h-5" /></Button>
               <span className="text-[10px] font-black uppercase tracking-widest text-primary">Signal Selection</span>
             </div>
             <div className="flex items-center gap-1">
@@ -394,7 +394,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
               {selectedMessage.senderId === user?.uid && (
                 <Button variant="ghost" size="icon" onClick={() => { setEditingMessage(selectedMessage); setInputText(selectedMessage.text); setSelectedMessage(null); }} className="text-white hover:text-primary"><Pencil className="w-4 h-4" /></Button>
               )}
-              <Button variant="ghost" size="icon" onClick={() => { setDeletingMessage(selectedMessage); setSelectedMessage(null); }} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => { setDeletingMessage(selectedMessage); setSelectedMessage(null); }} className="text-destructive hover:bg-destructive/5"><Trash2 className="w-4 h-4" /></Button>
             </div>
           </motion.div>
         )}
@@ -405,32 +405,32 @@ export function ConversationView({ conversationId }: { conversationId: string })
           {isSearchMode ? (
             <motion.div key="search-header" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-3 w-full">
               <Button variant="ghost" size="icon" onClick={() => { setIsSearchMode(false); setSearchQuery(''); }} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
-              <div className="flex-1 relative">
+              <div className="flex-1 relative min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} autoFocus placeholder="Scan conversation..." className="bg-white/5 border-none h-11 pl-10 rounded-full" />
+                <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} autoFocus placeholder="Scan conversation..." className="bg-white/5 border-none h-11 pl-10 rounded-full w-full" />
               </div>
             </motion.div>
           ) : (
-            <motion.div key="normal-header" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center justify-between w-full">
+            <motion.div key="normal-header" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center justify-between w-full min-w-0">
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground"><ArrowLeft className="w-6 h-6" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground shrink-0"><ArrowLeft className="w-6 h-6" /></Button>
                 <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
                   <div className="w-11 h-11 rounded-full border border-primary/20 bg-[#111] flex items-center justify-center shrink-0">
-                    <span className="text-base font-bold text-primary not-italic flex items-center justify-center h-full w-full">{initial}</span>
+                    <span className="text-base font-bold text-primary not-italic flex items-center justify-center h-full w-full leading-none">{initial}</span>
                   </div>
-                  <div className="min-w-0">
-                    <h3 className="text-sm md:text-base font-bold text-white truncate flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm md:text-base font-bold text-white truncate uppercase tracking-tight font-headline">
                       {mainName}
                     </h3>
                     <div className="flex items-center gap-2 overflow-hidden">
-                       <p className={cn("text-[10px] uppercase font-bold tracking-widest shrink-0", isOtherTyping ? "text-primary animate-pulse" : otherProfile?.isOnline ? "text-primary" : "text-muted-foreground")}>
+                       <p className={cn("text-[10px] uppercase font-bold tracking-widest truncate", isOtherTyping ? "text-primary animate-pulse" : otherProfile?.isOnline ? "text-primary" : "text-muted-foreground")}>
                         {isOtherTyping ? 'Typing...' : otherProfile?.isOnline ? 'Online' : 'Offline'}
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0 ml-2">
                 <Button variant="ghost" size="icon" onClick={() => setIsSearchMode(true)} className="text-muted-foreground hover:text-primary"><Search className="w-5 h-5" /></Button>
                 <Button variant="ghost" size="icon" onClick={() => setShowProfile(true)} className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button>
               </div>
@@ -439,8 +439,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
         </AnimatePresence>
       </header>
 
-      <ScrollArea className="flex-1 p-4">
-        <div className="max-w-4xl mx-auto space-y-3 pb-12">
+      <ScrollArea className="flex-1 w-full overflow-x-hidden">
+        <div className="max-w-4xl mx-auto px-4 py-6 space-y-4 pb-12">
           {filteredMessages.map((msg) => (
             <MessageRow 
               key={msg.id} msg={msg} user={user} isMobile={isMobile}
@@ -453,7 +453,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
               highlight={searchQuery}
             />
           ))}
-          <div ref={scrollRef} />
+          <div ref={scrollRef} className="h-4" />
         </div>
       </ScrollArea>
 
@@ -461,60 +461,60 @@ export function ConversationView({ conversationId }: { conversationId: string })
         {showProfile && otherProfile && (
           <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute inset-y-0 right-0 w-full md:w-96 bg-[#0a0a0a] border-l border-white/5 z-[100] flex flex-col shadow-2xl">
             <div className="p-6 flex items-center justify-between border-b border-white/5">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Identity Information</h3>
-              <Button size="icon" variant="ghost" onClick={() => setShowProfile(false)} className="h-10 w-10 rounded-full"><X className="w-6 h-6" /></Button>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Identity Shard</h3>
+              <Button size="icon" variant="ghost" onClick={() => setShowProfile(false)} className="h-10 w-10 rounded-full hover:bg-white/5"><X className="w-6 h-6" /></Button>
             </div>
-            <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center text-center space-y-8">
-              <div className="w-32 h-32 rounded-full border-4 border-primary/20 bg-[#111] flex items-center justify-center">
-                <span className="text-5xl font-black text-primary not-italic flex items-center justify-center h-full w-full">{initial}</span>
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center text-center space-y-8 custom-scrollbar">
+              <div className="w-28 h-28 rounded-full border-4 border-primary/20 bg-[#111] flex items-center justify-center shadow-2xl shrink-0">
+                <span className="text-4xl font-black text-primary not-italic leading-none">{initial}</span>
               </div>
               
               <div className="w-full space-y-4">
                 {isEditingNickname ? (
                   <div className="space-y-3">
-                    <Input value={newNickname} onChange={(e) => setNewNickname(e.target.value)} placeholder="New identity handle..." className="bg-white/5 border-white/10 text-center text-lg font-bold h-14 rounded-xl" autoFocus />
+                    <Input value={newNickname} onChange={(e) => setNewNickname(e.target.value)} placeholder="Enter new identity..." className="bg-white/5 border-white/10 text-center text-base font-bold h-12 rounded-xl" autoFocus />
                     <div className="flex gap-2">
-                      <Button onClick={handleUpdateNickname} disabled={isSavingNickname} className="flex-1 h-12 bg-primary hover:glow-green text-primary-foreground font-bold uppercase text-xs rounded-xl">Save Shard</Button>
-                      <Button variant="ghost" onClick={() => setIsEditingNickname(false)} className="flex-1 h-12 text-xs font-bold uppercase text-muted-foreground">Cancel</Button>
+                      <Button onClick={handleUpdateNickname} disabled={isSavingNickname} className="flex-1 h-11 bg-primary hover:glow-green text-primary-foreground font-black uppercase text-[10px] tracking-widest rounded-xl">Save</Button>
+                      <Button variant="ghost" onClick={() => setIsEditingNickname(false)} className="flex-1 h-11 text-[10px] font-black uppercase text-muted-foreground">Cancel</Button>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div>
-                      <h2 className="text-3xl font-black font-headline tracking-tighter uppercase">{mainName}</h2>
+                    <div className="px-4">
+                      <h2 className="text-2xl font-black font-headline tracking-tighter uppercase text-white truncate">{mainName}</h2>
                       {contactRecord?.customName && contactRecord.customName !== realName && (
-                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-1">~ {realName}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-1 truncate">~ {realName}</p>
                       )}
-                      <p className="text-primary text-[10px] font-bold uppercase tracking-widest mt-1">@{otherProfile.username}</p>
+                      <p className="text-primary text-[10px] font-bold uppercase tracking-widest mt-1 truncate">@{otherProfile.username}</p>
                     </div>
                     {contactRecord && (
-                      <Button onClick={() => setIsEditingNickname(true)} className="w-full h-14 bg-white/5 border border-white/10 text-white font-bold uppercase text-xs rounded-xl hover:bg-white/10">
-                        <Pencil className="w-4 h-4 mr-2" /> Edit Nickname
+                      <Button onClick={() => setIsEditingNickname(true)} className="w-full h-14 bg-white/5 border border-white/10 text-white font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-white/10 px-6">
+                        <Pencil className="w-4 h-4 mr-2" /> Rename Shard
                       </Button>
                     )}
                   </div>
                 )}
               </div>
 
-              <div className="w-full bg-white/5 rounded-2xl p-6 border border-white/5 text-left space-y-6">
+              <div className="w-full bg-white/5 rounded-3xl p-6 border border-white/5 text-left space-y-6">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-2">
-                    <Info className="w-3 h-3" /> Digital Bio
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 mb-2">
+                    <Info className="w-3 h-3 text-primary" /> Digital Bio
                   </span>
-                  <p className="text-sm leading-relaxed">{otherProfile.about || "Digital identity on HappyChat."}</p>
+                  <p className="text-xs leading-relaxed text-white/80">{otherProfile.about || "Secure digital identity linked to HappyChat."}</p>
                 </div>
                 <div className="pt-4 border-t border-white/5 space-y-4">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-2">
-                      <Mail className="w-3 h-3" /> Email Hash
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 mb-2">
+                      <Mail className="w-3 h-3 text-primary" /> Email Hash
                     </span>
-                    <p className="text-sm text-primary truncate">{otherProfile.email}</p>
+                    <p className="text-xs text-primary truncate font-bold">{otherProfile.email}</p>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 mb-2">
-                      <AtSign className="w-3 h-3" /> System Key
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 mb-2">
+                      <AtSign className="w-3 h-3 text-primary" /> System Key
                     </span>
-                    <p className="text-sm text-white/80 truncate">@{otherProfile.username}</p>
+                    <p className="text-xs text-white/80 truncate font-mono tracking-tight">@{otherProfile.username}</p>
                   </div>
                 </div>
               </div>
@@ -523,14 +523,14 @@ export function ConversationView({ conversationId }: { conversationId: string })
         )}
       </AnimatePresence>
 
-      <footer className="bg-[#0a0a0a] border-t border-white/5 p-4 relative">
+      <footer className="bg-[#0a0a0a] border-t border-white/5 p-4 relative z-50">
         <AnimatePresence>
           {showPollCreator && (
             <motion.div 
               initial={{ opacity: 0, y: 20 }} 
               animate={{ opacity: 1, y: 0 }} 
               exit={{ opacity: 0, y: 20 }}
-              className="absolute bottom-full left-0 right-0 p-6 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
+              className="absolute bottom-full left-0 right-0 p-4 md:p-8 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,0,0,0.5)] overflow-hidden"
             >
               <PollCreatorInline 
                 onClose={() => setShowPollCreator(false)} 
@@ -543,7 +543,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
               initial={{ opacity: 0, y: 20 }} 
               animate={{ opacity: 1, y: 0 }} 
               exit={{ opacity: 0, y: 20 }}
-              className="absolute bottom-full left-0 right-0 p-6 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
+              className="absolute bottom-full left-0 right-0 p-4 md:p-8 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,0,0,0.5)] overflow-hidden"
             >
               <ContactPickerInline 
                 onClose={() => setShowContactPicker(false)} 
@@ -558,86 +558,88 @@ export function ConversationView({ conversationId }: { conversationId: string })
               exit={{ opacity: 0, y: 20 }}
               className="absolute bottom-full left-0 right-0 p-4 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
             >
-              <div className="max-w-5xl mx-auto grid grid-cols-2 gap-4">
+              <div className="max-w-4xl mx-auto grid grid-cols-2 gap-4">
                 <button 
                   onClick={() => setShowPollCreator(true)}
-                  className="flex flex-col items-center justify-center p-8 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group"
+                  className="flex flex-col items-center justify-center p-6 md:p-10 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group"
                 >
-                  <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center mb-4 group-hover:glow-green transition-all">
-                    <BarChart2 className="w-6 h-6 text-primary" />
+                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4 group-hover:glow-green transition-all">
+                    <BarChart2 className="w-5 h-5 md:w-7 md:h-7 text-primary" />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white">Create Poll</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white">Signal Poll</span>
                 </button>
                 <button 
                   onClick={() => setShowContactPicker(true)}
-                  className="flex flex-col items-center justify-center p-8 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group"
+                  className="flex flex-col items-center justify-center p-6 md:p-10 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group"
                 >
-                  <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center mb-4 group-hover:glow-green transition-all">
-                    <UserPlus className="w-6 h-6 text-primary" />
+                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4 group-hover:glow-green transition-all">
+                    <UserPlus className="w-5 h-5 md:w-7 md:h-7 text-primary" />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white">Share Contact</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white">Relay Shard</span>
                 </button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {replyingTo && (
-          <div className="px-4 py-3 bg-white/5 border-l-2 border-primary mb-3 flex justify-between items-center rounded-r-xl shadow-lg animate-in slide-in-from-bottom-2">
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-primary uppercase">Reply to {replyingTo.senderId === user?.uid ? 'You' : mainName}</p>
-              <p className="text-sm text-muted-foreground truncate">{replyingTo.text}</p>
+        <div className="max-w-4xl mx-auto">
+          {replyingTo && (
+            <div className="px-4 py-2 bg-white/5 border-l-2 border-primary mb-3 flex justify-between items-center rounded-r-xl shadow-lg animate-in slide-in-from-bottom-1">
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-black text-primary uppercase tracking-widest">Reply to {replyingTo.senderId === user?.uid ? 'You' : mainName}</p>
+                <p className="text-xs text-muted-foreground truncate">{replyingTo.text}</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setReplyingTo(null)} className="h-8 w-8 shrink-0 text-white/40 hover:text-white"><X className="w-4 h-4" /></Button>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setReplyingTo(null)} className="h-8 w-8 shrink-0"><X className="w-5 h-5" /></Button>
-          </div>
-        )}
-        {editingMessage && (
-          <div className="px-4 py-3 bg-white/5 border-l-2 border-amber-500 mb-3 flex justify-between items-center rounded-r-xl shadow-lg animate-in slide-in-from-bottom-2">
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-amber-500 uppercase">Editing Shard</p>
-              <p className="text-sm text-muted-foreground truncate">{editingMessage.text}</p>
+          )}
+          {editingMessage && (
+            <div className="px-4 py-2 bg-white/5 border-l-2 border-amber-500 mb-3 flex justify-between items-center rounded-r-xl shadow-lg animate-in slide-in-from-bottom-1">
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Updating Shard</p>
+                <p className="text-xs text-muted-foreground truncate">{editingMessage.text}</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => { setEditingMessage(null); setInputText(''); }} className="h-8 w-8 shrink-0 text-white/40 hover:text-white"><X className="w-4 h-4" /></Button>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => { setEditingMessage(null); setInputText(''); }} className="h-8 w-8 shrink-0"><X className="w-5 h-5" /></Button>
-          </div>
-        )}
-        <div className="flex items-center gap-3 max-w-5xl mx-auto">
-          <Button 
-            size="icon" 
-            variant="ghost" 
-            onClick={() => {
-              if (showPollCreator || showContactPicker) {
-                setShowPollCreator(false);
-                setShowContactPicker(false);
-              } else {
-                setShowActionMenu(!showActionMenu);
-              }
-            }}
-            className={cn(
-              "rounded-xl h-12 w-12 shrink-0 bg-white/5 hover:bg-white/10 transition-all",
-              (showActionMenu || showPollCreator || showContactPicker) && "bg-primary/20 text-primary rotate-45"
-            )}
-          >
-            {(showActionMenu || showPollCreator || showContactPicker) ? <X className="w-6 h-6" /> : <MoreVertical className="w-6 h-6" />}
-          </Button>
+          )}
+          <div className="flex items-center gap-3">
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              onClick={() => {
+                if (showPollCreator || showContactPicker) {
+                  setShowPollCreator(false);
+                  setShowContactPicker(false);
+                } else {
+                  setShowActionMenu(!showActionMenu);
+                }
+              }}
+              className={cn(
+                "rounded-xl h-11 w-11 md:h-12 md:w-12 shrink-0 bg-white/5 hover:bg-white/10 transition-all",
+                (showActionMenu || showPollCreator || showContactPicker) && "bg-primary/20 text-primary rotate-45"
+              )}
+            >
+              {(showActionMenu || showPollCreator || showContactPicker) ? <X className="w-6 h-6" /> : <MoreVertical className="w-6 h-6" />}
+            </Button>
 
-          <div className="flex-1 relative">
-            <Input 
-              value={inputText} 
-              onChange={(e) => setInputText(e.target.value)} 
-              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} 
-              placeholder={editingMessage ? "Update identity shard..." : "Type message..."} 
-              className="bg-white/5 border-white/10 h-12 rounded-xl focus:ring-primary focus-visible:ring-offset-0 text-sm" 
-            />
+            <div className="flex-1 relative min-w-0">
+              <Input 
+                value={inputText} 
+                onChange={(e) => setInputText(e.target.value)} 
+                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} 
+                placeholder={editingMessage ? "Update identity shard..." : "Type message..."} 
+                className="bg-white/5 border-white/10 h-11 md:h-12 rounded-xl focus:ring-primary focus-visible:ring-offset-0 text-sm w-full" 
+              />
+            </div>
+            <Button onClick={() => handleSendMessage()} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0 transition-all active:scale-90">
+              <Send className="w-5 h-5" />
+            </Button>
           </div>
-          <Button onClick={() => handleSendMessage()} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-12 w-12 rounded-xl shrink-0 transition-all active:scale-90">
-            <Send className="w-5 h-5" />
-          </Button>
         </div>
       </footer>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deletingMessage} onOpenChange={() => setDeletingMessage(null)}>
-        <AlertDialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2rem] shadow-2xl">
+        <AlertDialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2rem] shadow-2xl max-w-[calc(100%-2rem)] md:max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-headline uppercase tracking-tight text-gradient">Wipe Message?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">
@@ -649,7 +651,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
             {deletingMessage?.senderId === user?.uid && (
               <Button onClick={() => deleteMessage('everyone')} variant="destructive" className="h-12 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl">Delete for Everyone</Button>
             )}
-            <AlertDialogCancel className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white">Abort Deletion</AlertDialogCancel>
+            <AlertDialogCancel className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white h-10">Abort Deletion</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -698,8 +700,6 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
   const handleVote = async (optionIndex: number) => {
     if (!user || !db || isSystem || !msg.poll) return;
     const msgRef = doc(db, 'conversations', msg.conversationId, 'messages', msg.id);
-    
-    // ONE PERSON ONE VOTE Protocol
     updateDoc(msgRef, {
       [`poll.voters.${user.uid}`]: optionIndex
     }).catch(() => {});
@@ -719,86 +719,75 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
   }, [msg.poll, voters, totalVotes]);
 
   return (
-    <div className={cn("flex w-full group relative mb-0.5", isOwn ? "justify-end" : "justify-start")}>
+    <div className={cn("flex w-full group relative mb-0.5 min-w-0", isOwn ? "justify-end pl-8" : "justify-start pr-8")}>
       <motion.div 
         onPointerDown={handlePointerDown} 
         onPointerUp={handlePointerUp} 
         onPointerLeave={handlePointerUp} 
         className={cn(
-          "max-w-[80%] md:max-w-[65%] p-1.5 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words", 
-          isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-[#050505] shadow-[0_0_20px_rgba(0,200,83,0.3)]", 
-          isSystem ? "bg-white/5 text-muted-foreground italic text-center px-6 border border-dashed border-white/10" : 
+          "max-w-full p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0", 
+          isSelected && "ring-2 ring-primary shadow-[0_0_20px_rgba(0,200,83,0.3)] scale-[1.02]", 
+          isSystem ? "bg-white/5 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/10 text-[11px]" : 
           isOwn ? "bg-primary text-primary-foreground rounded-tr-none shadow-lg" : 
-          "bg-[#161616] text-white rounded-tl-none border border-white/5 shadow-md"
+          "bg-[#181818] text-white rounded-tl-none border border-white/5 shadow-md"
         )}
       >
         {msg.forwarded && (
           <div className="flex items-center gap-1.5 mb-1 opacity-60 text-[8px] font-black uppercase italic tracking-widest">
-            <Forward className="w-2 h-2" /> Relay Signal
+            <Forward className="w-2 h-2" /> Forwarded
           </div>
         )}
         {msg.replyTo && (
-          <div className="mb-1.5 p-1.5 bg-black/20 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate max-w-full">
+          <div className="mb-2 p-1.5 bg-black/20 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate max-w-full">
             <p className="font-bold text-primary mb-0.5 uppercase tracking-widest text-[8px]">{msg.replyTo.senderName}</p>
-            {msg.replyTo.text}
+            <span className="block truncate">{msg.replyTo.text}</span>
           </div>
         )}
         {msg.poll && (
-          <div className="mb-1.5 p-3 bg-black/60 rounded-xl border border-white/10 space-y-3 shadow-2xl min-w-[200px]">
+          <div className="mb-2 p-3 bg-black/60 rounded-xl border border-white/10 space-y-2.5 shadow-2xl min-w-[180px] max-w-full">
              <div className="flex items-center gap-2 text-primary">
-                <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                  <BarChart2 className="w-3 h-3" />
-                </div>
-                <span className="font-black uppercase tracking-widest text-[10px] truncate">{msg.poll.question}</span>
+                <BarChart2 className="w-3 h-3 shrink-0" />
+                <span className="font-black uppercase tracking-tight text-[10px] truncate">{msg.poll.question}</span>
              </div>
-             <div className="space-y-1.5">
+             <div className="space-y-1">
                 {msg.poll.options.map((opt: string, i: number) => {
                   const pct = pollResults[i] || 0;
                   const isMyVote = myVote === i;
-                  
                   return (
                     <button 
                       key={i} 
                       onClick={() => handleVote(i)}
                       disabled={isSystem}
                       className={cn(
-                        "w-full relative h-9 bg-white/5 border rounded-lg px-3 overflow-hidden group transition-all",
-                        isMyVote ? "border-primary/50" : "border-white/5 hover:border-primary/30"
+                        "w-full relative h-8 bg-white/5 border rounded-lg px-3 overflow-hidden group transition-all",
+                        isMyVote ? "border-primary/50" : "border-white/5 hover:border-primary/20"
                       )}
                     >
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ duration: 1, ease: "easeOut" }}
-                        className={cn("absolute inset-y-0 left-0", isMyVote ? "bg-primary/20" : "bg-primary/10")}
-                      />
-                      <div className="relative flex justify-between items-center w-full z-10">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className={cn("text-[11px] font-bold transition-colors truncate", isMyVote ? "text-primary" : "text-white/80 group-hover:text-white")}>{opt}</span>
-                          {isMyVote && <UserCheck className="w-2.5 h-2.5 text-primary shrink-0" />}
-                        </div>
-                        <span className={cn("text-[9px] font-black opacity-60 group-hover:opacity-100 transition-all shrink-0", isMyVote ? "text-primary" : "text-muted-foreground")}>{pct}%</span>
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} className={cn("absolute inset-y-0 left-0", isMyVote ? "bg-primary/20" : "bg-primary/10")} />
+                      <div className="relative flex justify-between items-center w-full z-10 gap-2">
+                        <span className={cn("text-[10px] font-bold truncate", isMyVote ? "text-primary" : "text-white/70 group-hover:text-white")}>{opt}</span>
+                        <span className="text-[8px] font-black opacity-50 shrink-0">{pct}%</span>
                       </div>
                     </button>
                   );
                 })}
              </div>
-             <p className="text-[7px] font-black uppercase tracking-[0.2em] text-center text-muted-foreground pt-0.5">Poll • {totalVotes} Votes</p>
+             <p className="text-[7px] font-black uppercase tracking-widest text-center text-muted-foreground opacity-50">{totalVotes} Votes</p>
           </div>
         )}
         {msg.sharedContact && (
-           <div className="mb-1.5 p-3 bg-[#0a0a0a] rounded-xl border border-white/10 flex items-center gap-3 shadow-2xl">
-              <div className="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center text-primary font-black text-base shrink-0">
+           <div className="mb-2 p-3 bg-[#0d0d0d] rounded-xl border border-white/10 flex items-center gap-3 shadow-2xl max-w-full">
+              <div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary font-black text-sm shrink-0">
                  {msg.sharedContact.name.charAt(0)}
               </div>
               <div className="flex-1 min-w-0">
-                 <p className="text-xs font-black uppercase tracking-tight truncate text-white">{msg.sharedContact.name}</p>
-                 <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-widest truncate">@{msg.sharedContact.username}</p>
+                 <p className="text-[11px] font-black uppercase tracking-tight truncate text-white">{msg.sharedContact.name}</p>
+                 <p className="text-[8px] uppercase font-bold text-muted-foreground tracking-widest truncate">@{msg.sharedContact.username}</p>
               </div>
-              <Button size="sm" className="h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-widest bg-primary text-primary-foreground hover:glow-green transition-all shadow-lg active:scale-95 shrink-0">Link</Button>
+              <Button size="sm" className="h-7 px-3 rounded-lg text-[8px] font-black uppercase tracking-widest bg-primary text-primary-foreground hover:glow-green transition-all shadow-lg shrink-0">Link</Button>
            </div>
         )}
-        {msg.text && <p className="leading-normal whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
+        {msg.text && <p className="leading-relaxed whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
         <div className="flex justify-end gap-1 items-center mt-1 text-[7px] font-black uppercase opacity-60 tracking-widest">
           {msg.isEdited && <span className="mr-1 italic opacity-40">(edited)</span>}
           <span>{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
@@ -810,10 +799,10 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
         </div>
 
         {!isSystem && !isMobile && (
-          <div className={cn("absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity z-10", isOwn ? "-left-10" : "-right-10")}>
+          <div className={cn("absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity z-10", isOwn ? "-left-9" : "-right-9")}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 rounded-full bg-black/80 text-white hover:bg-primary shadow-2xl border border-white/10 backdrop-blur-xl"><MoreVertical className="w-3 h-3" /></Button></DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#111] border-white/10 text-white min-w-[150px] rounded-xl shadow-2xl z-[100] p-1">
+              <DropdownMenuContent className="bg-[#111] border-white/10 text-white min-w-[140px] rounded-xl shadow-2xl z-[100] p-1">
                 <DropdownMenuItem onClick={onReply} className="gap-2 p-2 text-[9px] uppercase font-black tracking-widest cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary"><Reply className="w-3 h-3" /> Reply</DropdownMenuItem>
                 <DropdownMenuItem onClick={onForward} className="gap-2 p-2 text-[9px] uppercase font-black tracking-widest cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary"><Forward className="w-3 h-3" /> Forward</DropdownMenuItem>
                 {isOwn && (
@@ -853,42 +842,42 @@ function PollCreatorInline({ onClose, onSend }: { onClose: () => void, onSend: (
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-black font-headline uppercase italic text-gradient tracking-tight">Create Signal Poll</h2>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Gather feedback from the digital mesh</p>
+          <h2 className="text-lg md:text-xl font-black font-headline uppercase italic text-gradient tracking-tight">Signal Poll</h2>
+          <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Gather feedback from the mesh</p>
         </div>
         <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10 text-muted-foreground hover:text-white hover:bg-white/5">
           <X className="w-5 h-5" />
         </Button>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">The Question</Label>
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-[9px] font-black uppercase tracking-widest text-primary ml-1">The Question</Label>
           <Input 
             value={question} 
             onChange={(e) => setQuestion(e.target.value)} 
-            placeholder="e.g. Protocol sync at 22:00?" 
-            className="bg-white/5 border-white/10 rounded-xl h-14 focus:ring-primary text-sm shadow-inner" 
+            placeholder="e.g. Sync at 22:00?" 
+            className="bg-white/5 border-white/10 rounded-xl h-12 focus:ring-primary text-sm shadow-inner" 
             autoFocus
           />
         </div>
-        <div className="space-y-3">
-          <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Options</Label>
-          <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
+        <div className="space-y-2">
+          <Label className="text-[9px] font-black uppercase tracking-widest text-primary ml-1">Options</Label>
+          <div className="space-y-1.5 max-h-[120px] overflow-y-auto custom-scrollbar pr-1">
             {options.map((opt, i) => (
               <Input 
                 key={i} 
                 value={opt} 
                 onChange={(e) => handleOptionChange(i, e.target.value)} 
                 placeholder={`Option ${i+1}`} 
-                className="bg-white/5 border-white/10 rounded-xl h-11 focus:ring-primary text-sm" 
+                className="bg-white/5 border-white/10 rounded-xl h-10 focus:ring-primary text-xs" 
               />
             ))}
           </div>
-          <Button variant="ghost" onClick={handleAddOption} className="text-[9px] uppercase font-black text-primary tracking-widest p-0 h-8 hover:bg-transparent hover:text-white transition-colors">
+          <Button variant="ghost" onClick={handleAddOption} className="text-[8px] uppercase font-black text-primary tracking-widest p-0 h-6 hover:bg-transparent hover:text-white transition-colors">
             <Plus className="w-3 h-3 mr-1" /> Add Signal Option
           </Button>
         </div>
@@ -897,9 +886,9 @@ function PollCreatorInline({ onClose, onSend }: { onClose: () => void, onSend: (
       <Button 
         onClick={handleCreate} 
         disabled={!question.trim() || options.filter(o => o.trim()).length < 2} 
-        className="w-full h-16 bg-primary hover:glow-green-bright text-primary-foreground font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl transition-all active:scale-95"
+        className="w-full h-14 bg-primary hover:glow-green text-primary-foreground font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl transition-all active:scale-95"
       >
-        Launch Poll Shard
+        Establish Poll
       </Button>
     </div>
   );
@@ -929,36 +918,36 @@ function ContactPickerInline({ onClose, onSend }: { onClose: () => void, onSend:
   }, [user, db]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-black font-headline uppercase italic text-gradient tracking-tight">Share Identity Shard</h2>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Relay a secure link from your network</p>
+          <h2 className="text-lg md:text-xl font-black font-headline uppercase italic text-gradient tracking-tight">Identity Relay</h2>
+          <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Share a link from your mesh</p>
         </div>
         <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10 text-muted-foreground hover:text-white hover:bg-white/5">
           <X className="w-5 h-5" />
         </Button>
       </div>
 
-      <ScrollArea className="h-64 rounded-[2rem] bg-white/[0.02] border border-white/5 p-4">
+      <ScrollArea className="h-64 rounded-3xl bg-white/[0.02] border border-white/5 p-3">
         {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+          <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
         ) : profiles.length === 0 ? (
-          <div className="text-center py-20 opacity-30 text-[10px] font-black uppercase tracking-widest italic">Zero Identities Found</div>
+          <div className="text-center py-20 opacity-30 text-[9px] font-black uppercase tracking-widest italic">Zero Contacts in Mesh</div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {profiles.map(p => (
               <button 
                 key={p.id} 
                 onClick={() => onSend({ uid: p.id, name: p.fullName || p.displayName || p.username, username: p.username })}
-                className="w-full flex items-center h-16 bg-white/[0.03] border border-white/5 rounded-2xl px-4 gap-4 hover:bg-primary/10 group transition-all text-left"
+                className="w-full flex items-center h-14 bg-white/[0.03] border border-white/5 rounded-2xl px-4 gap-3 hover:bg-primary/10 group transition-all text-left"
               >
-                <div className="w-10 h-10 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary group-hover:glow-green transition-all uppercase">
+                <div className="w-8 h-8 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary group-hover:glow-green transition-all uppercase text-xs">
                   {p.username[0]}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black uppercase truncate group-hover:text-primary transition-colors text-white">{p.fullName}</p>
-                  <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-widest">@{p.username}</p>
+                  <p className="text-[11px] font-black uppercase truncate group-hover:text-primary transition-colors text-white">{p.fullName}</p>
+                  <p className="text-[8px] uppercase font-bold text-muted-foreground tracking-widest truncate">@{p.username}</p>
                 </div>
               </button>
             ))}
@@ -994,23 +983,23 @@ function ForwardPicker({ open, onClose, onForward }: { open: boolean, onClose: (
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-sm shadow-2xl">
-        <DialogHeader className="p-8 pb-4">
-          <DialogTitle className="text-2xl font-black font-headline uppercase italic text-gradient tracking-tight">Forward Shard</DialogTitle>
-          <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Relay this signal to another thread</DialogDescription>
+      <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-[calc(100%-2rem)] md:max-w-sm shadow-2xl">
+        <DialogHeader className="p-6 pb-4">
+          <DialogTitle className="text-xl font-black font-headline uppercase italic text-gradient tracking-tight text-center md:text-left">Forward Signal</DialogTitle>
+          <DialogDescription className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center md:text-left">Relay this shard to another thread</DialogDescription>
         </DialogHeader>
-        <ScrollArea className="h-80 px-6 pb-8">
-          <div className="space-y-2">
+        <ScrollArea className="h-80 px-4 pb-6">
+          <div className="space-y-1.5">
             {convs.map(c => {
               const otherId = c.participantIds.find((id: string) => id !== user?.uid);
               const p = profiles[otherId];
               const name = p?.displayName || p?.fullName || 'Secure User';
               return (
-                <Button key={c.id} onClick={() => onForward(c.id)} variant="ghost" className="w-full justify-start h-16 bg-white/[0.02] border border-white/5 rounded-2xl px-4 gap-4 hover:bg-primary/10 group transition-all">
-                  <div className="w-10 h-10 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary">{name[0].toUpperCase()}</div>
+                <Button key={c.id} onClick={() => onForward(c.id)} variant="ghost" className="w-full justify-start h-14 bg-white/[0.02] border border-white/5 rounded-2xl px-4 gap-3 hover:bg-primary/10 group transition-all">
+                  <div className="w-9 h-9 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary group-hover:glow-green transition-all text-sm">{name[0].toUpperCase()}</div>
                   <div className="text-left min-w-0 flex-1">
-                    <p className="text-xs font-black uppercase truncate group-hover:text-primary transition-colors">{name}</p>
-                    <p className="text-[9px] uppercase font-bold text-muted-foreground truncate tracking-widest">{c.lastMessage || 'End-to-end encrypted'}</p>
+                    <p className="text-[11px] font-black uppercase truncate group-hover:text-primary transition-colors text-white">{name}</p>
+                    <p className="text-[9px] uppercase font-bold text-muted-foreground truncate tracking-widest">{c.lastMessage || 'End-to-end link'}</p>
                   </div>
                 </Button>
               );
