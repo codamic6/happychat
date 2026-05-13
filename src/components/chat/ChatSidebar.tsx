@@ -361,7 +361,7 @@ export function ChatSidebar() {
                   >
                     <X className="w-4 h-4" />
                   </Button>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-primary italic">Mode: Active</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">Mode: Active</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="icon" onClick={() => { 
@@ -390,7 +390,9 @@ export function ChatSidebar() {
                   <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[8px] font-black tracking-widest uppercase mb-1">
                     <MessageCircle className="w-2 h-2" /> V2.6
                   </div>
-                  <h2 className="text-2xl md:text-3xl font-black font-headline text-white tracking-tighter uppercase italic truncate">Recents</h2>
+                  <h2 className="text-2xl md:text-3xl font-black font-headline text-white tracking-tighter uppercase truncate">
+                    {isMobile ? 'HappyChat' : 'Recents'}
+                  </h2>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

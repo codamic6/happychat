@@ -115,9 +115,9 @@ export default function RegisterPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-2"
               >
-                <Sparkles className="w-3 h-3" /> World's 1st Email Chat
+                <span className="w-3 h-3"><Sparkles className="w-full h-full" /></span> World's 1st Email Chat
               </motion.div>
-              <h2 className="text-3xl sm:text-4xl font-black font-headline text-white italic tracking-tight uppercase">Register</h2>
+              <h2 className="text-3xl sm:text-4xl font-black font-headline text-white tracking-tight uppercase">Register</h2>
               <p className="text-sm text-muted-foreground font-medium">Create your sovereign email identity.</p>
             </div>
 

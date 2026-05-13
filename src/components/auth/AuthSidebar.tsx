@@ -21,13 +21,13 @@ export function AuthSidebar() {
             <Zap className="text-primary-foreground h-12 w-12 fill-current" />
           </div>
           <div>
-            <h1 className="text-5xl font-black font-headline tracking-tighter text-white italic uppercase leading-none">HappyChat</h1>
+            <h1 className="text-5xl font-black font-headline tracking-tighter text-white uppercase leading-none">HappyChat</h1>
             <p className="text-[10px] text-primary font-black tracking-[0.4em] uppercase mt-2">Protocol Nexus v2.6.0</p>
           </div>
         </div>
 
         <div className="space-y-8">
-          <h2 className="text-7xl font-black font-headline leading-[0.9] text-gradient uppercase italic tracking-tighter">
+          <h2 className="text-7xl font-black font-headline leading-[0.9] text-gradient uppercase tracking-tighter">
             Private <br />
             Nexus. <br />
             <span className="text-primary">Evolved.</span>
@@ -51,7 +51,7 @@ export function AuthSidebar() {
             >
               <item.icon className="w-6 h-6 text-primary group-hover:glow-green transition-all" />
               <div>
-                <span className="block text-sm font-black text-white uppercase tracking-tight italic">{item.label}</span>
+                <span className="block text-sm font-black text-white uppercase tracking-tight">{item.label}</span>
                 <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">{item.desc}</span>
               </div>
             </motion.div>
@@ -66,7 +66,7 @@ export function AuthSidebar() {
                 <span className="text-[10px] font-black text-white uppercase tracking-widest">Mainnet Active</span>
               </div>
               <div className="h-4 w-px bg-white/10" />
-              <span className="text-[10px] font-black text-primary uppercase tracking-widest italic">0x2026_SECURE</span>
+              <span className="text-[10px] font-black text-primary uppercase tracking-widest">0x2026_SECURE</span>
            </div>
         </div>
       </motion.div>

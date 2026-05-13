@@ -72,7 +72,7 @@ export default function LoginPage() {
             <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center glow-green-bright shadow-2xl">
               <Zap className="text-primary-foreground h-10 w-10 fill-current" />
             </div>
-            <h1 className="text-2xl font-black font-headline text-white uppercase italic tracking-tighter">HappyChat 2026</h1>
+            <h1 className="text-2xl font-black font-headline text-white uppercase tracking-tighter">HappyChat 2026</h1>
           </div>
 
           <div className="glass p-8 sm:p-14 rounded-[3rem] border border-white/5 space-y-10 relative overflow-hidden shadow-2xl">
@@ -82,7 +82,7 @@ export default function LoginPage() {
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[9px] font-black uppercase tracking-[0.2em] mb-2">
                 <ShieldCheck className="w-3 h-3" /> Secure Handshake
               </div>
-              <h2 className="text-4xl font-black font-headline text-white italic tracking-tight uppercase">Login</h2>
+              <h2 className="text-4xl font-black font-headline text-white tracking-tight uppercase">Login</h2>
               <p className="text-sm text-muted-foreground font-medium">Verify your identity to enter the nexus.</p>
             </div>
 

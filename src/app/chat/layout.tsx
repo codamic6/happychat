@@ -91,7 +91,7 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
             <Sparkles className="w-12 h-12 text-primary" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase text-gradient italic">HappyChat</h2>
+            <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase text-gradient">HappyChat</h2>
             <div className="flex items-center justify-center gap-2 text-primary text-[10px] font-black uppercase tracking-[0.3em]">
               <Loader2 className="w-4 h-4 animate-spin" />
               Initializing Shard...
@@ -116,21 +116,6 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col h-screen bg-[#050505] text-white overflow-hidden relative">
-      <header className={cn(
-        "md:hidden flex items-center justify-between px-6 h-16 border-b border-white/5 bg-[#0a0a0a] shrink-0 z-50",
-        shouldHideSidebarOnMobile && "hidden"
-      )}>
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center glow-green">
-            <Zap className="text-primary-foreground h-5 w-5 fill-current" />
-          </div>
-          <span className="font-headline font-bold text-xl tracking-tight text-white uppercase italic">HappyChat</span>
-        </Link>
-        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
-           <Users className="w-4 h-4 text-muted-foreground" />
-        </div>
-      </header>
-
       <div className="flex flex-1 overflow-hidden h-full">
         <div className={cn(
           "hidden md:block shrink-0 h-full",

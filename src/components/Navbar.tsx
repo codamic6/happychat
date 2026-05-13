@@ -44,7 +44,7 @@ export function Navbar() {
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center glow-green transition-transform group-hover:scale-110">
             <Zap className="text-primary-foreground h-6 w-6 fill-current" />
           </div>
-          <span className="font-headline font-black text-2xl tracking-tighter text-white uppercase italic">HappyChat</span>
+          <span className="font-headline font-black text-2xl tracking-tighter text-white uppercase">HappyChat</span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -109,7 +109,7 @@ export function Navbar() {
                       <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center glow-green">
                         <Zap className="text-primary-foreground h-6 w-6 fill-current" />
                       </div>
-                      <span className="font-headline font-black text-2xl tracking-tighter text-white italic uppercase">HappyChat</span>
+                      <span className="font-headline font-black text-2xl tracking-tighter text-white uppercase">HappyChat</span>
                     </Link>
                     <SheetClose asChild>
                       <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white h-10 w-10">
@@ -126,7 +126,7 @@ export function Navbar() {
                         <Link
                           href="/chat"
                           onClick={() => setIsOpen(false)}
-                          className="flex items-center justify-between p-6 rounded-[2rem] text-2xl font-black italic uppercase text-primary hover:bg-primary/10 transition-all group bg-[#0d0d0d] border border-primary/20 mb-8 glow-green"
+                          className="flex items-center justify-between p-6 rounded-[2rem] text-2xl font-black uppercase text-primary hover:bg-primary/10 transition-all group bg-[#0d0d0d] border border-primary/20 mb-8 glow-green"
                         >
                           <div className="flex items-center gap-6">
                              <MessageSquare className="w-6 h-6" />
@@ -141,7 +141,7 @@ export function Navbar() {
                           key={link.href}
                           href={link.href}
                           onClick={() => setIsOpen(false)}
-                          className="flex items-center justify-between p-6 rounded-[2rem] text-2xl font-black italic uppercase text-white hover:bg-primary/10 hover:text-primary transition-all group bg-[#0d0d0d] border border-white/5"
+                          className="flex items-center justify-between p-6 rounded-[2rem] text-2xl font-black uppercase text-white hover:bg-primary/10 hover:text-primary transition-all group bg-[#0d0d0d] border border-white/5"
                         >
                           <div className="flex items-center gap-6">
                              <link.icon className="w-6 h-6 text-muted-foreground group-hover:text-primary" />

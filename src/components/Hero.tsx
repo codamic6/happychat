@@ -48,7 +48,7 @@ export function Hero() {
           {/* Main Headline */}
           <motion.h1 
             variants={itemVariants}
-            className="text-4xl sm:text-6xl md:text-9xl font-black font-headline tracking-tighter leading-[1] md:leading-[0.9] text-white italic uppercase break-words"
+            className="text-4xl sm:text-6xl md:text-9xl font-black font-headline tracking-tighter leading-[1] md:leading-[0.9] text-white uppercase break-words"
           >
             Universal <br />
             <span className="text-gradient">Messaging.</span>

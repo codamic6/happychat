@@ -17,7 +17,7 @@ export function Footer() {
               <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center glow-green transition-transform group-hover:scale-110">
                 <Zap className="text-primary-foreground h-6 w-6 fill-current" />
               </div>
-              <span className="font-headline font-black text-2xl md:text-3xl tracking-tighter text-white italic uppercase">HappyChat</span>
+              <span className="font-headline font-black text-2xl md:text-3xl tracking-tighter text-white uppercase">HappyChat</span>
             </Link>
             <p className="text-lg md:text-xl text-muted-foreground max-w-md font-medium leading-relaxed">
               World's 1st Email-Based Messenger. Redefining private communication through secure identity shards and cinematic design.
