@@ -139,7 +139,6 @@ export function ChatSidebar() {
   const holdTimer = useRef<NodeJS.Timeout | null>(null);
 
   const [manageChatId, setManageChatId] = useState<string | null>(null);
-  const [viewingProfile, setViewingProfile] = useState<UserProfile | null>(null);
   const [isNewContactOpen, setIsNewContactOpen] = useState(false);
 
   // SECURE QUERY
@@ -343,7 +342,6 @@ export function ChatSidebar() {
   return (
     <div className="flex flex-col h-full bg-[#080808] w-full overflow-hidden border-r border-white/5 relative">
       <header className="flex-none p-4 md:p-6 pb-2 space-y-4 md:space-y-6">
-        {/* TOP ROW: Title or Selection Bar */}
         <div className="h-12 flex items-center justify-between gap-2 overflow-hidden">
           <AnimatePresence mode="wait">
             {isSelectionMode && selectedConvId ? (
@@ -401,20 +399,20 @@ export function ChatSidebar() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-[#0a0a0a] border-white/10 p-1.5 rounded-xl min-w-[180px] shadow-2xl z-[120]">
-                    <DropdownMenuItem onClick={() => setIsNewContactOpen(true)} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
+                    <DropdownMenuItem onSelect={() => setIsNewContactOpen(true)} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
                       <Plus className="w-4 h-4" /> New Contact
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleMarkAllRead} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
+                    <DropdownMenuItem onSelect={handleMarkAllRead} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
                       <CheckCircle className="w-4 h-4" /> Mark all read
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push('/chat/archived')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
+                    <DropdownMenuItem onSelect={() => router.push('/chat/archived')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
                       <Archive className="w-4 h-4" /> Vault
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/5" />
-                    <DropdownMenuItem onClick={() => router.push('/chat/profile')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
+                    <DropdownMenuItem onSelect={() => router.push('/chat/profile')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
                       <UserCircle className="w-4 h-4" /> My Profile
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push('/chat/settings')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
+                    <DropdownMenuItem onSelect={() => router.push('/chat/settings')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
                       <Settings className="w-4 h-4" /> Settings
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -424,7 +422,6 @@ export function ChatSidebar() {
           </AnimatePresence>
         </div>
 
-        {/* SEARCH & ARCHIVE (Always Visible) */}
         <div className="space-y-3">
           <div className="relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
@@ -525,7 +522,6 @@ export function ChatSidebar() {
                           {unreadCount > 99 ? '99+' : unreadCount}
                         </Badge>
                       )}
-                      {/* PC ONLY: Show 3-dots menu icon */}
                       {!isMobile && !isSelectionMode && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -539,13 +535,13 @@ export function ChatSidebar() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-[#111] border-white/10 min-w-[160px] rounded-xl p-1.5 shadow-2xl z-[110]">
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); togglePin(conv.id, isPinned); }} className="gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-primary/10 text-white text-[9px] font-bold uppercase tracking-widest">
+                            <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); togglePin(conv.id, isPinned); }} className="gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-primary/10 text-white text-[9px] font-bold uppercase tracking-widest">
                               {isPinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />} {isPinned ? 'Unpin' : 'Pin'}
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); archiveChat(conv.id); }} className="gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-primary/10 text-white text-[9px] font-bold uppercase tracking-widest">
+                            <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); archiveChat(conv.id); }} className="gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-primary/10 text-white text-[9px] font-bold uppercase tracking-widest">
                               <Archive className="w-3 h-3" /> Archive
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setManageChatId(conv.id); }} className="gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-destructive/10 text-destructive text-[9px] font-bold uppercase tracking-widest">
+                            <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); setManageChatId(conv.id); }} className="gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-destructive/10 text-destructive text-[9px] font-bold uppercase tracking-widest">
                               <Trash2 className="w-3 h-3" /> Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -571,7 +567,7 @@ export function ChatSidebar() {
         <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-6 rounded-[2rem] max-w-xs shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold font-headline uppercase tracking-tight text-gradient text-center">Manage Shard</DialogTitle>
-            <DialogDescription className="sr-only">Choose a management action for this conversation shard.</DialogDescription>
+            <DialogDescription className="text-center text-[10px] font-bold uppercase text-muted-foreground">Select an operation for this link.</DialogDescription>
           </DialogHeader>
           <div className="space-y-6 text-center pt-2">
             <div className="flex flex-col gap-2">

@@ -64,6 +64,9 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
   const isProfilePage = pathname === '/chat/profile';
   const isStatusPage = pathname === '/chat/status';
   const isContactsPage = pathname === '/chat/contacts';
+  const isArchivedPage = pathname === '/chat/archived';
+  const isSettingsPage = pathname === '/chat/settings';
+  
   const isViewingStatus = isStatusPage && !!searchParams.get('uid');
 
   useEffect(() => {
@@ -108,11 +111,14 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
     { label: 'Profile', icon: UserCircle, href: '/chat/profile' },
   ];
 
+  const shouldHideSidebarOnMobile = isAtConversation || isProfilePage || isViewingStatus || isContactsPage || isArchivedPage || isSettingsPage;
+  const shouldHideMainOnMobile = !shouldHideSidebarOnMobile;
+
   return (
     <div className="flex flex-col h-screen bg-[#050505] text-white overflow-hidden relative">
       <header className={cn(
         "md:hidden flex items-center justify-between px-6 h-16 border-b border-white/5 bg-[#0a0a0a] shrink-0 z-50",
-        (isAtConversation || isProfilePage || isViewingStatus || isContactsPage) && "hidden"
+        shouldHideSidebarOnMobile && "hidden"
       )}>
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center glow-green">
@@ -136,14 +142,14 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
         <div className="flex flex-1 overflow-hidden h-full relative">
           <aside className={cn(
             "w-full md:w-80 border-r border-white/5 bg-[#0d0d0d] flex flex-col shrink-0 h-full transition-all duration-300",
-            (isAtConversation || isProfilePage || isViewingStatus || isContactsPage) ? "hidden md:flex" : "flex"
+            shouldHideSidebarOnMobile ? "hidden md:flex" : "flex"
           )}>
             {isStatusPage ? <StatusSidebar /> : <ChatSidebar />}
           </aside>
 
           <main className={cn(
             "flex-1 flex flex-col relative bg-[#050505] h-full overflow-hidden",
-            (!isAtConversation && !isProfilePage && !isViewingStatus && !isContactsPage) && "hidden md:flex"
+            shouldHideMainOnMobile && "hidden md:flex"
           )}>
             {children}
           </main>
@@ -152,7 +158,7 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
 
       <nav className={cn(
         "md:hidden h-20 bg-[#0d0d0d] border-t border-white/5 flex items-center justify-around px-4 pb-safe shrink-0 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]",
-        (isAtConversation || isProfilePage || isViewingStatus || isContactsPage) && "hidden"
+        shouldHideSidebarOnMobile && "hidden"
       )}>
         {mobileTabs.map((tab, idx) => {
           const isActive = pathname === tab.href;
