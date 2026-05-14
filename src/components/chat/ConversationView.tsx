@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -681,9 +680,9 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
             </div>
           )}
           {msg.text && <p className="leading-relaxed whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
-          <div className="flex justify-end gap-1.5 items-center mt-1 text-[7px] font-black uppercase opacity-60 tracking-widest">
-            {msg.isEdited && <span className="mr-1 italic opacity-40">(edited)</span>}
-            <span>{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
+          <div className="flex justify-end gap-1.5 items-center mt-1 text-[7px] font-black uppercase tracking-widest">
+            {msg.isEdited && <span className="mr-1 italic-bold opacity-70">(edited)</span>}
+            <span className="opacity-60">{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
             {isOwn && !isSystem && (
               <div className="flex items-center ml-1">
                 {msg.status === 'read' ? (
@@ -694,7 +693,7 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
                 ) : (
                   <Check 
                     strokeWidth={4} 
-                    className="w-3.5 h-3.5 text-white/40" 
+                    className="w-3.5 h-3.5 text-white" 
                   />
                 )}
               </div>
