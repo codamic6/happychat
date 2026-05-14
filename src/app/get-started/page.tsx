@@ -6,14 +6,13 @@ import { AuthInput } from '@/components/auth/AuthInput';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Zap, Mail, Lock, User, AtSign, Phone, ArrowRight, Loader2, Sparkles, UserPlus, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Zap, Mail, Lock, User, AtSign, Phone, ArrowRight, Loader2, Sparkles, UserPlus, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('');
@@ -28,7 +27,6 @@ export default function RegisterPage() {
   const db = useFirestore();
   const router = useRouter();
 
-  // Username availability check
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (username.length < 3) {
@@ -51,7 +49,7 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (usernameStatus === 'taken') {
-      toast({ variant: "destructive", title: "Identity Error", description: "This handle is already claimed in the mesh." });
+      toast({ variant: "destructive", title: "Identity Error", description: "This handle is already claimed." });
       return;
     }
     
@@ -73,15 +71,15 @@ export default function RegisterPage() {
       });
 
       toast({
-        title: "Protocol Initialized",
+        title: "Matrix Initialized",
         description: "Welcome to the 2026 Signal Mesh."
       });
       router.push('/chat');
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Registration Failed",
-        description: err.message || "Could not initialize shard."
+        title: "Initialization Failed",
+        description: err.message || "Could not synchronize shard."
       });
     } finally {
       setIsLoading(false);
@@ -93,38 +91,38 @@ export default function RegisterPage() {
       <FloatingBackground />
       <AuthSidebar />
 
-      <div className="flex items-center justify-center p-4 sm:p-12 relative z-10 w-full overflow-y-auto">
+      <div className="flex items-center justify-center p-4 sm:p-8 relative z-10 w-full overflow-y-auto custom-scrollbar">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="w-full max-w-xl mx-auto"
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-xl mx-auto py-12"
         >
-          <div className="lg:hidden flex flex-col items-center mb-8 space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center glow-green-bright shadow-2xl">
-              <Zap className="text-primary-foreground h-10 w-10 fill-current" />
+          <div className="lg:hidden flex flex-col items-center mb-10 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center glow-green-bright shadow-2xl">
+              <Zap className="text-primary-foreground h-8 w-8 fill-current" />
             </div>
           </div>
 
-          <div className="glass p-6 sm:p-12 rounded-[2.5rem] border border-white/5 space-y-8 relative overflow-hidden shadow-2xl max-w-full">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+          <div className="glass p-6 sm:p-12 rounded-[3rem] border border-white/5 space-y-10 relative overflow-hidden shadow-2xl max-w-full">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent animate-pulse" />
             
             <div className="text-center space-y-3 relative z-10">
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-2"
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[9px] font-black uppercase tracking-[0.2em] mb-2"
               >
-                <span className="w-3 h-3"><Sparkles className="w-full h-full" /></span> World's 1st Email Chat
+                <ShieldCheck className="w-3 h-3" /> Identity Protocol 2.6
               </motion.div>
-              <h2 className="text-3xl sm:text-4xl font-black font-headline text-white tracking-tight uppercase">Register</h2>
-              <p className="text-sm text-muted-foreground font-medium">Create your sovereign email identity.</p>
+              <h2 className="text-4xl font-bold font-headline text-white tracking-tight uppercase">Join Mesh</h2>
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Generate your unique email-based shard.</p>
             </div>
 
-            <form onSubmit={handleRegister} className="grid sm:grid-cols-2 gap-5 relative z-10">
+            <form onSubmit={handleRegister} className="grid sm:grid-cols-2 gap-6 relative z-10">
               <div className="sm:col-span-2">
                 <AuthInput
-                  label="Full Name"
+                  label="Legal Identity"
                   icon={User}
                   type="text"
                   value={fullName}
@@ -133,34 +131,37 @@ export default function RegisterPage() {
                   required
                 />
               </div>
+              
               <div className="relative">
                 <AuthInput
-                  label="Username"
+                  label="System Handle"
                   icon={AtSign}
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. genesis"
+                  placeholder="e.g. nexus_01"
                   required
-                  error={usernameStatus === 'taken' ? "Already taken" : undefined}
+                  error={usernameStatus === 'taken' ? "Handle Claimed" : undefined}
                 />
-                <div className="absolute right-4 top-[42px] -translate-y-1/2 z-30">
+                <div className="absolute right-4 top-[38px] -translate-y-1/2 z-30">
                   {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
                   {usernameStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-primary" />}
                   {usernameStatus === 'taken' && <AlertCircle className="w-4 h-4 text-destructive" />}
                 </div>
               </div>
+
               <AuthInput
-                label="Phone (Optional)"
+                label="Comm Link (Opt)"
                 icon={Phone}
                 type="tel"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+1 000 000 000"
+                placeholder="+1 000 000"
               />
+
               <div className="sm:col-span-2">
                 <AuthInput
-                  label="Email Address"
+                  label="Email Shard"
                   icon={Mail}
                   type="email"
                   value={email}
@@ -169,9 +170,10 @@ export default function RegisterPage() {
                   required
                 />
               </div>
+
               <div className="sm:col-span-2">
                 <AuthInput
-                  label="Secure Password"
+                  label="Encryption Key"
                   icon={Lock}
                   type="password"
                   value={password}
@@ -189,21 +191,21 @@ export default function RegisterPage() {
                 >
                   <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                   {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                    <span className="relative z-10 flex items-center justify-center">
-                      Initialize Shard
-                      <UserPlus className="w-4 h-4 ml-3 group-hover:scale-110 transition-transform" />
+                    <span className="relative z-10 flex items-center justify-center gap-3">
+                      Sync Shard
+                      <UserPlus className="w-4 h-4 group-hover:scale-110 transition-transform" />
                     </span>
                   )}
                 </Button>
+                
+                <p className="text-center text-[10px] text-muted-foreground uppercase font-black tracking-widest pt-4">
+                  Already synced? {' '}
+                  <Link href="/login" className="text-primary hover:underline ml-1">
+                    Access Nexus
+                  </Link>
+                </p>
               </div>
             </form>
-
-            <p className="text-center text-xs text-muted-foreground relative z-10 font-medium">
-              Already registered? {' '}
-              <Link href="/login" className="text-primary font-black uppercase tracking-widest hover:underline transition-all ml-1">
-                Access Nexus
-              </Link>
-            </p>
           </div>
         </motion.div>
       </div>
