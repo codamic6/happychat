@@ -87,7 +87,7 @@ export default function ProfilePage() {
     if (!user || isSaving || !db) return;
 
     if (usernameStatus === 'taken') {
-      toast({ variant: "destructive", title: "Identity Error", description: "Username is already claimed." });
+      toast({ variant: "destructive", title: "Error", description: "Username is already taken." });
       return;
     }
 
@@ -103,7 +103,7 @@ export default function ProfilePage() {
         isOnline: formData.showOnlineStatus ? true : false,
         updatedAt: serverTimestamp()
       });
-      toast({ title: "Shard Updated", description: "Identity parameters synchronized." });
+      toast({ title: "Updated", description: "Your profile has been saved." });
     } catch (err) {
       toast({ variant: "destructive", title: "Error", description: "Update failed." });
     } finally {
@@ -133,7 +133,7 @@ export default function ProfilePage() {
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest">
               <Settings className="w-3 h-3" /> Account Settings
             </div>
-            <h1 className="text-3xl md:text-6xl font-bold font-headline tracking-tighter text-gradient uppercase italic">My Profile</h1>
+            <h1 className="text-3xl md:text-6xl font-bold font-headline tracking-tighter text-gradient uppercase">My Profile</h1>
           </div>
         </div>
 
@@ -153,7 +153,7 @@ export default function ProfilePage() {
             <div className="w-full pt-4 space-y-3">
               <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group transition-all hover:bg-white/10">
                 <div className="flex flex-col items-start gap-0.5 text-left">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white">Online Visibility</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white">Online Status</span>
                   <p className="text-[8px] text-muted-foreground uppercase">Show when active</p>
                 </div>
                 <Switch 
@@ -175,7 +175,7 @@ export default function ProfilePage() {
             <form onSubmit={handleSave} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Display Name</Label>
                   <input 
                     value={formData.displayName}
                     onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
@@ -207,7 +207,7 @@ export default function ProfilePage() {
                   value={formData.about}
                   onChange={(e) => setFormData(prev => ({ ...prev, about: e.target.value }))}
                   className="min-h-[100px] bg-white/5 border-white/10 rounded-xl resize-none text-sm transition-all"
-                  placeholder="Digital creator on HappyChat..."
+                  placeholder="Tell us about yourself..."
                 />
               </div>
               <Button 
@@ -215,7 +215,7 @@ export default function ProfilePage() {
                 disabled={isSaving || usernameStatus === 'checking' || (usernameStatus === 'taken' && formData.username !== profile?.username)}
                 className="w-full h-14 bg-primary hover:glow-green-bright text-primary-foreground font-bold uppercase text-xs tracking-widest rounded-xl transition-all shadow-xl"
               >
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Profile'}
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Changes'}
               </Button>
             </form>
           </Card>

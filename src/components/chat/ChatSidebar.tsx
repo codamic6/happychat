@@ -289,7 +289,7 @@ export function ChatSidebar() {
       const convRef = doc(db, 'conversations', convId);
       batch.update(convRef, { lastMessage: "" });
       await batch.commit();
-      toast({ title: "History Wiped" });
+      toast({ title: "History Cleared" });
       setManageChatId(null);
     } catch (e) {
       toast({ variant: 'destructive', title: "Clear failed." });
@@ -361,7 +361,7 @@ export function ChatSidebar() {
                   >
                     <X className="w-4 h-4" />
                   </Button>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">Mode: Active</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">Selection Mode</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="icon" onClick={() => { 
@@ -388,10 +388,10 @@ export function ChatSidebar() {
               >
                 <div className="min-w-0 flex-1">
                   <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[8px] font-black tracking-widest uppercase mb-1">
-                    <MessageCircle className="w-2 h-2" /> V2.6
+                    <MessageCircle className="w-2 h-2" /> Live
                   </div>
                   <h2 className="text-2xl md:text-3xl font-black font-headline text-white tracking-tighter uppercase truncate">
-                    {isMobile ? 'HappyChat' : 'Recents'}
+                    {isMobile ? 'HappyChat' : 'Chats'}
                   </h2>
                 </div>
                 <DropdownMenu>
@@ -402,17 +402,17 @@ export function ChatSidebar() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-[#0a0a0a] border-white/10 p-1.5 rounded-xl min-w-[180px] shadow-2xl z-[120]">
                     <DropdownMenuItem onSelect={() => setIsNewContactOpen(true)} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
-                      <Plus className="w-4 h-4" /> New Contact
+                      <Plus className="w-4 h-4" /> Add Contact
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={handleMarkAllRead} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
                       <CheckCircle className="w-4 h-4" /> Mark all read
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => router.push('/chat/archived')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
-                      <Archive className="w-4 h-4" /> Vault
+                      <Archive className="w-4 h-4" /> Archived
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/5" />
                     <DropdownMenuItem onSelect={() => router.push('/chat/profile')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
-                      <UserCircle className="w-4 h-4" /> My Profile
+                      <UserCircle className="w-4 h-4" /> Profile
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => router.push('/chat/settings')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
                       <Settings className="w-4 h-4" /> Settings
@@ -430,7 +430,7 @@ export function ChatSidebar() {
             <Input 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search..." 
+              placeholder="Search chats..." 
               className="bg-white/[0.03] border-white/5 focus:border-primary/30 pl-11 h-11 text-xs rounded-xl focus-visible:ring-0 transition-all placeholder:text-muted-foreground/30 font-medium"
             />
           </div>
@@ -442,7 +442,7 @@ export function ChatSidebar() {
           >
             <div className="flex items-center gap-2">
               <Archive className="w-3 h-3" />
-              <span>Archived Shards</span>
+              <span>Archived Chats</span>
             </div>
             <ChevronRight className="w-3 h-3 opacity-30" />
           </Button>
@@ -464,7 +464,7 @@ export function ChatSidebar() {
             const isInSelection = isSelectionMode && selectedConvId === conv.id;
             const isTyping = otherId ? conv.typing?.[otherId] === true : false;
 
-            const rawLastMessage = conv.lastMessage || 'Secure link...';
+            const rawLastMessage = conv.lastMessage || 'Connected...';
             const displayLastMessage = rawLastMessage.length > 20 
               ? rawLastMessage.substring(0, 20) + '...' 
               : rawLastMessage;
@@ -559,7 +559,7 @@ export function ChatSidebar() {
           {filteredConversations.length === 0 && (
             <div className="py-24 text-center space-y-4 opacity-30 px-4">
               <MessageCircle className="w-8 h-8 mx-auto text-white/50" />
-              <p className="text-[9px] font-black uppercase tracking-[0.2em]">No conversations found</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em]">No chats yet</p>
             </div>
           )}
         </div>
@@ -568,12 +568,12 @@ export function ChatSidebar() {
       <Dialog open={!!manageChatId} onOpenChange={() => setManageChatId(null)}>
         <DialogContent className="bg-[#0a0a0a] border-white/5 text-white p-6 rounded-[2rem] max-w-xs shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold font-headline uppercase tracking-tight text-gradient text-center">Manage Shard</DialogTitle>
-            <DialogDescription className="text-center text-[10px] font-bold uppercase text-muted-foreground">Select an operation for this link.</DialogDescription>
+            <DialogTitle className="text-xl font-bold font-headline uppercase tracking-tight text-gradient text-center">Manage Chat</DialogTitle>
+            <DialogDescription className="text-center text-[10px] font-bold uppercase text-muted-foreground">What would you like to do?</DialogDescription>
           </DialogHeader>
           <div className="space-y-6 text-center pt-2">
             <div className="flex flex-col gap-2">
-              <Button onClick={() => manageChatId && handleClearChat(manageChatId)} className="h-12 bg-white/5 border-white/5 hover:bg-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest">Clear History</Button>
+              <Button onClick={() => manageChatId && handleClearChat(manageChatId)} className="h-12 bg-white/5 border-white/5 hover:bg-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest">Clear Messages</Button>
               <Button onClick={() => manageChatId && handleDeleteChat(manageChatId)} variant="destructive" className="h-12 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-xl">Delete Chat</Button>
             </div>
           </div>

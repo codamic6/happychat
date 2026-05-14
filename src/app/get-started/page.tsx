@@ -49,7 +49,7 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (usernameStatus === 'taken') {
-      toast({ variant: "destructive", title: "Identity Error", description: "This handle is already claimed." });
+      toast({ variant: "destructive", title: "Username Error", description: "This handle is already taken." });
       return;
     }
     
@@ -71,15 +71,15 @@ export default function RegisterPage() {
       });
 
       toast({
-        title: "Matrix Initialized",
-        description: "Welcome to the 2026 Signal Mesh."
+        title: "Welcome!",
+        description: "Your account has been created."
       });
       router.push('/chat');
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Initialization Failed",
-        description: err.message || "Could not synchronize shard."
+        title: "Signup Failed",
+        description: err.message || "Could not create your account."
       });
     } finally {
       setIsLoading(false);
@@ -113,35 +113,35 @@ export default function RegisterPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[9px] font-black uppercase tracking-[0.2em] mb-2"
               >
-                <ShieldCheck className="w-3 h-3" /> Identity Protocol 2.6
+                <ShieldCheck className="w-3 h-3" /> Secure Signup
               </motion.div>
-              <h2 className="text-4xl font-bold font-headline text-white tracking-tight uppercase">Join Mesh</h2>
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Generate your unique email-based shard.</p>
+              <h2 className="text-4xl font-bold font-headline text-white tracking-tight uppercase">Join Now</h2>
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Create your simple email-based account.</p>
             </div>
 
             <form onSubmit={handleRegister} className="grid sm:grid-cols-2 gap-6 relative z-10">
               <div className="sm:col-span-2">
                 <AuthInput
-                  label="Legal Identity"
+                  label="Full Name"
                   icon={User}
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Satoshi Nakamoto"
+                  placeholder="e.g. John Doe"
                   required
                 />
               </div>
               
               <div className="relative">
                 <AuthInput
-                  label="System Handle"
+                  label="Username"
                   icon={AtSign}
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. nexus_01"
+                  placeholder="e.g. user_01"
                   required
-                  error={usernameStatus === 'taken' ? "Handle Claimed" : undefined}
+                  error={usernameStatus === 'taken' ? "Taken" : undefined}
                 />
                 <div className="absolute right-4 top-[38px] -translate-y-1/2 z-30">
                   {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
@@ -151,7 +151,7 @@ export default function RegisterPage() {
               </div>
 
               <AuthInput
-                label="Comm Link (Opt)"
+                label="Phone (Optional)"
                 icon={Phone}
                 type="tel"
                 value={phoneNumber}
@@ -161,19 +161,19 @@ export default function RegisterPage() {
 
               <div className="sm:col-span-2">
                 <AuthInput
-                  label="Email Shard"
+                  label="Email Address"
                   icon={Mail}
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="nexus@happychat.io"
+                  placeholder="name@email.com"
                   required
                 />
               </div>
 
               <div className="sm:col-span-2">
                 <AuthInput
-                  label="Encryption Key"
+                  label="Secure Password"
                   icon={Lock}
                   type="password"
                   value={password}
@@ -192,16 +192,16 @@ export default function RegisterPage() {
                   <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                   {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                     <span className="relative z-10 flex items-center justify-center gap-3">
-                      Sync Shard
+                      Create Account
                       <UserPlus className="w-4 h-4 group-hover:scale-110 transition-transform" />
                     </span>
                   )}
                 </Button>
                 
                 <p className="text-center text-[10px] text-muted-foreground uppercase font-black tracking-widest pt-4">
-                  Already synced? {' '}
+                  Already have an account? {' '}
                   <Link href="/login" className="text-primary hover:underline ml-1">
-                    Access Nexus
+                    Sign In
                   </Link>
                 </p>
               </div>

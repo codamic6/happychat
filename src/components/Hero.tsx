@@ -41,7 +41,7 @@ export function Hero() {
           <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl group cursor-default">
             <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
             <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-white/60 group-hover:text-primary transition-colors">
-              World's 1st Email-Based Messenger
+              The First Email-Based Messenger
             </span>
           </motion.div>
 
@@ -50,7 +50,7 @@ export function Hero() {
             variants={itemVariants}
             className="text-4xl sm:text-6xl md:text-9xl font-black font-headline tracking-tighter leading-[1] md:leading-[0.9] text-white uppercase break-words"
           >
-            Universal <br />
+            Easy <br />
             <span className="text-gradient">Messaging.</span>
           </motion.h1>
 
@@ -59,8 +59,8 @@ export function Hero() {
             variants={itemVariants}
             className="text-lg md:text-2xl text-muted-foreground max-w-3xl mx-auto font-medium leading-relaxed px-4"
           >
-            The world's first chat platform that uses your email identity as a universal secure shard. 
-            No phone number forced, no barriers—if they have an email, you have a connection.
+            The simple chat app that uses your email to keep you connected. 
+            No phone number needed—if they have an email, you can talk.
           </motion.p>
 
           {/* Action Buttons */}
@@ -73,7 +73,7 @@ export function Hero() {
             </Link>
             <Link href="/email-protocol" className="w-full sm:w-auto">
               <Button variant="ghost" size="lg" className="w-full sm:w-auto h-14 md:h-16 px-8 md:px-10 rounded-2xl border border-white/10 text-white font-black uppercase tracking-widest text-sm md:text-base hover:bg-white/5 transition-all">
-                The Protocol
+                How it works
               </Button>
             </Link>
           </motion.div>
@@ -84,10 +84,10 @@ export function Hero() {
             className="pt-8 md:pt-12 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 opacity-40 grayscale group hover:grayscale-0 transition-all duration-700"
           >
             {[
-              { icon: Mail, label: "Email Native" },
-              { icon: Globe, label: "Global Identity" },
-              { icon: Lock, label: "Zero-Knowledge" },
-              { icon: Sparkles, label: "Quantum Ready" }
+              { icon: Mail, label: "Email Based" },
+              { icon: Globe, label: "Global Reach" },
+              { icon: Lock, label: "Private Chat" },
+              { icon: Sparkles, label: "Fast & Clean" }
             ].map((badge, i) => (
               <div key={i} className="flex flex-col items-center gap-2">
                 <badge.icon className="w-5 h-5 md:w-6 md:h-6 text-white" />
