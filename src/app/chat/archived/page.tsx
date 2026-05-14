@@ -98,7 +98,7 @@ export default function ArchivedChatsPage() {
       });
       toast({ title: "Restored", description: "Chat returned to Recents." });
     } catch (e) {
-      toast({ variant: 'destructive', title: "Error", description: "Restore protocol failed." });
+      toast({ variant: 'destructive', title: "Error", description: "Restore failed." });
     }
   };
 
@@ -118,8 +118,8 @@ export default function ArchivedChatsPage() {
             <ArrowLeft className="w-6 h-6" />
           </Button>
           <div className="flex flex-col">
-            <h1 className="text-2xl md:text-3xl font-black font-headline text-gradient tracking-tight uppercase italic">Archived Vault</h1>
-            <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Storage Shard Alpha</p>
+            <h1 className="text-2xl md:text-3xl font-black font-headline text-gradient tracking-tight uppercase">Archived Chats</h1>
+            <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Storage Area A</p>
           </div>
         </div>
       </header>
@@ -132,7 +132,7 @@ export default function ArchivedChatsPage() {
             <Input 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search the vault..." 
+              placeholder="Search archived chats..." 
               className="bg-transparent border-none text-white text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 h-full w-full"
             />
           </div>
@@ -162,7 +162,7 @@ export default function ArchivedChatsPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                        <h3 className="font-bold text-white uppercase tracking-tight truncate font-headline">{name}</h3>
-                       <p className="text-[10px] text-muted-foreground truncate">{conv.lastMessage || 'End-to-end encrypted storage...'}</p>
+                       <p className="text-[10px] text-muted-foreground truncate">{conv.lastMessage || 'Private chat content...'}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button 
@@ -196,8 +196,8 @@ export default function ArchivedChatsPage() {
                 <Archive className="w-10 h-10 text-white" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-bold uppercase tracking-widest text-white">Vault Empty</h3>
-                <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-muted-foreground max-w-xs leading-relaxed">No archived shards found in current encryption layer</p>
+                <h3 className="text-xl font-bold uppercase tracking-widest text-white">Empty</h3>
+                <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-muted-foreground max-w-xs leading-relaxed">No archived chats found</p>
               </div>
             </div>
           )}

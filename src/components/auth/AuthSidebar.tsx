@@ -22,27 +22,27 @@ export function AuthSidebar() {
           </div>
           <div>
             <h1 className="text-5xl font-black font-headline tracking-tighter text-white uppercase leading-none">HappyChat</h1>
-            <p className="text-[10px] text-primary font-black tracking-[0.4em] uppercase mt-2">Protocol Nexus v2.6.0</p>
+            <p className="text-[10px] text-primary font-black tracking-[0.4em] uppercase mt-2">Secure App v1.0</p>
           </div>
         </div>
 
         <div className="space-y-8">
           <h2 className="text-7xl font-black font-headline leading-[0.9] text-gradient uppercase tracking-tighter">
             Private <br />
-            Nexus. <br />
+            App. <br />
             <span className="text-primary">Evolved.</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-lg font-medium leading-relaxed">
-            The standard for secure, zero-knowledge communication in 2026. Join the global mesh network.
+            The standard for secure, private communication. Join our global network today.
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-6 max-w-xl">
           {[
-            { icon: Lock, label: "Post-Quantum Secure", desc: "Future-proof keys" },
-            { icon: Sparkles, label: "Neural Engine", desc: "On-edge logic" },
-            { icon: Shield, label: "Zero Knowledge", desc: "We see nothing" },
-            { icon: Globe, label: "Global Mesh", desc: "No central point" }
+            { icon: Lock, label: "Advanced Security", desc: "Always protected" },
+            { icon: Sparkles, label: "Smart System", desc: "Easy to use" },
+            { icon: Shield, label: "Total Privacy", desc: "We see nothing" },
+            { icon: Globe, label: "Global Network", desc: "Fast everywhere" }
           ].map((item, i) => (
             <motion.div
               key={i}
@@ -58,15 +58,15 @@ export function AuthSidebar() {
           ))}
         </div>
 
-        {/* Floating Protocol Status */}
+        {/* Floating System Status */}
         <div className="pt-8">
            <div className="inline-flex items-center gap-4 px-6 py-3 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
-                <span className="text-[10px] font-black text-white uppercase tracking-widest">Mainnet Active</span>
+                <span className="text-[10px] font-black text-white uppercase tracking-widest">System Active</span>
               </div>
               <div className="h-4 w-px bg-white/10" />
-              <span className="text-[10px] font-black text-primary uppercase tracking-widest">0x2026_SECURE</span>
+              <span className="text-[10px] font-black text-primary uppercase tracking-widest">SECURE_CONNECTION</span>
            </div>
         </div>
       </motion.div>

@@ -143,7 +143,7 @@ export default function RegisterPage() {
                   required
                   error={usernameStatus === 'taken' ? "Taken" : undefined}
                 />
-                <div className="absolute right-4 top-[38px] -translate-y-1/2 z-30">
+                <div className="absolute right-4 top-7 -translate-y-1/2 z-30 flex items-center">
                   {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
                   {usernameStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-primary" />}
                   {usernameStatus === 'taken' && <AlertCircle className="w-4 h-4 text-destructive" />}

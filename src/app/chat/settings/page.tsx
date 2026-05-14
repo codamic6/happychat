@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -19,22 +18,22 @@ export default function SettingsPage() {
     {
       title: "Security & Privacy",
       items: [
-        { icon: Shield, label: "End-to-End Protocol", desc: "Signal Mesh v2.6 active", type: "status" },
-        { icon: Lock, label: "Two-Factor Auth", desc: "Hardware key recommended", type: "toggle", checked: true },
+        { icon: Shield, label: "Secure Connection", desc: "Secure system active", type: "status" },
+        { icon: Lock, label: "Two-Factor Auth", desc: "Extra protection recommended", type: "toggle", checked: true },
         { icon: Eye, label: "Read Receipts", desc: "Let others see when you read", type: "toggle", checked: true },
       ]
     },
     {
       title: "Interface",
       items: [
-        { icon: Smartphone, label: "Haptic Feedback", desc: "Force gesture response", type: "toggle", checked: true },
-        { icon: Bell, label: "Pulse Notifications", desc: "Critical priority only", type: "toggle", checked: false },
+        { icon: Smartphone, label: "Haptic Feedback", desc: "Vibrate on interactions", type: "toggle", checked: true },
+        { icon: Bell, label: "Notifications", desc: "Alerts for new messages", type: "toggle", checked: false },
       ]
     },
     {
       title: "Network",
       items: [
-        { icon: Globe, label: "Proxy Sharding", desc: "Hide IP via global nodes", type: "toggle", checked: false },
+        { icon: Globe, label: "Global Routing", desc: "Optimize your connection", type: "toggle", checked: false },
       ]
     }
   ];
@@ -47,8 +46,8 @@ export default function SettingsPage() {
             <ArrowLeft className="w-6 h-6" />
           </Button>
           <div className="flex flex-col">
-            <h1 className="text-2xl md:text-3xl font-black font-headline text-gradient tracking-tight uppercase italic">Settings</h1>
-            <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Protocol Nexus Config</p>
+            <h1 className="text-2xl md:text-3xl font-black font-headline text-gradient tracking-tight uppercase">Settings</h1>
+            <p className="text-[10px] text-primary font-bold uppercase tracking-widest">App Settings</p>
           </div>
         </div>
       </header>
@@ -83,7 +82,7 @@ export default function SettingsPage() {
           ))}
 
           <div className="pt-12 text-center opacity-30">
-            <p className="text-[9px] font-black uppercase tracking-[0.5em] text-white">System Build: 0x2026AF-STABLE</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.5em] text-white">App Version: 1.0.0</p>
           </div>
         </div>
       </ScrollArea>

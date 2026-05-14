@@ -1,4 +1,3 @@
-
 'use client';
 
 import { MessageSquare, Sparkles } from 'lucide-react';
@@ -15,12 +14,12 @@ export default function ChatEmptyPage() {
         <MessageSquare className="w-12 h-12 text-primary" />
       </motion.div>
       <div className="space-y-2">
-        <h3 className="text-sm font-black uppercase tracking-[0.4em] italic text-white font-headline">Select a Conversation</h3>
-        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Secure Signal Protocol Phase II Active</p>
+        <h3 className="text-sm font-black uppercase tracking-[0.4em] text-white font-headline">Select a Conversation</h3>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Secure System Active</p>
       </div>
       <div className="pt-8 flex items-center gap-2 text-primary/40 text-[10px] font-black uppercase tracking-widest">
         <Sparkles className="w-3 h-3" />
-        AI Neural Copilot Ready
+        AI Assistant Ready
       </div>
     </div>
   );

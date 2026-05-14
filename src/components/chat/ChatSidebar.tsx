@@ -249,7 +249,7 @@ export function ChatSidebar() {
       await updateDoc(convRef, { pinnedBy: isCurrentlyPinned ? arrayRemove(user.uid) : arrayUnion(user.uid) });
       toast({ title: isCurrentlyPinned ? "Unpinned" : "Pinned" });
     } catch (e) {
-      toast({ variant: 'destructive', title: "Pin operation failed." });
+      toast({ variant: 'destructive', title: "Could not pin chat." });
     }
   };
 
@@ -260,7 +260,7 @@ export function ChatSidebar() {
       await updateDoc(convRef, { archivedBy: arrayUnion(user.uid) });
       toast({ title: "Archived" });
     } catch (e) {
-      toast({ variant: 'destructive', title: "Archiving failed." });
+      toast({ variant: 'destructive', title: "Could not archive chat." });
     }
   };
 
@@ -306,7 +306,7 @@ export function ChatSidebar() {
       setSelectedConvId(null);
       setManageChatId(null);
     } catch (e) {
-      toast({ variant: 'destructive', title: "Removal failed." });
+      toast({ variant: 'destructive', title: "Could not delete chat." });
     }
   };
 
@@ -408,7 +408,7 @@ export function ChatSidebar() {
                       <CheckCircle className="w-4 h-4" /> Mark all read
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => router.push('/chat/archived')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
-                      <Archive className="w-4 h-4" /> Archived
+                      <Archive className="w-4 h-4" /> Archived Chats
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/5" />
                     <DropdownMenuItem onSelect={() => router.push('/chat/profile')} className="rounded-lg p-2.5 gap-3 uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">

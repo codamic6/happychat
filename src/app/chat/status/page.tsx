@@ -210,7 +210,7 @@ export default function StatusImmersivePage() {
         </div>
         <div className="space-y-2">
           <h3 className="text-sm font-bold uppercase tracking-[0.4em] text-white font-headline">Select a Moment</h3>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Secure Private Stories Active</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Private Updates Active</p>
         </div>
       </div>
     );
@@ -253,7 +253,7 @@ export default function StatusImmersivePage() {
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-white uppercase tracking-tight font-headline truncate">Moment</p>
+              <p className="text-sm font-bold text-white uppercase tracking-tight font-headline truncate">Update</p>
               <p className="text-[10px] text-primary font-black uppercase tracking-widest flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> Live
               </p>
@@ -325,7 +325,7 @@ export default function StatusImmersivePage() {
                 onFocus={() => setIsPaused(true)}
                 onBlur={() => !isSending && setIsPaused(false)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSendReply()}
-                placeholder="Reply to Moment..." 
+                placeholder="Reply to Update..." 
                 className="bg-white/10 border-white/10 rounded-full h-12 text-sm text-white placeholder:text-white/30 focus-visible:ring-primary focus-visible:ring-offset-0 px-6" 
               />
             </div>

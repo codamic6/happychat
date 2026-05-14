@@ -8,12 +8,12 @@ import { Card } from '@/components/ui/card';
 
 export default function StatusPage() {
   const nodes = [
-    { city: "London", region: "EU-WEST-1", status: "Operational", latency: "4ms" },
-    { city: "New York", region: "US-EAST-1", status: "Operational", latency: "2ms" },
-    { city: "Tokyo", region: "AP-NORTHEAST-1", status: "Operational", latency: "9ms" },
-    { city: "Singapore", region: "AP-SOUTHEAST-1", status: "Operational", latency: "7ms" },
-    { city: "São Paulo", region: "SA-EAST-1", status: "Operational", latency: "12ms" },
-    { city: "Sydney", region: "AP-SOUTHEAST-2", status: "Operational", latency: "15ms" },
+    { city: "London", region: "EU-1", status: "Online", latency: "4ms" },
+    { city: "New York", region: "US-1", status: "Online", latency: "2ms" },
+    { city: "Tokyo", region: "JP-1", status: "Online", latency: "9ms" },
+    { city: "Singapore", region: "SG-1", status: "Online", latency: "7ms" },
+    { city: "São Paulo", region: "BR-1", status: "Online", latency: "12ms" },
+    { city: "Sydney", region: "AU-1", status: "Online", latency: "15ms" },
   ];
 
   return (
@@ -28,26 +28,26 @@ export default function StatusPage() {
               animate={{ opacity: 1, scale: 1 }}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black tracking-widest uppercase"
             >
-              <Activity className="w-3 h-3" /> System Integrity Monitor
+              <Activity className="w-3 h-3" /> System Health Monitor
             </motion.div>
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-5xl md:text-9xl font-black font-headline text-gradient uppercase italic leading-none tracking-tighter"
             >
-              All Systems <br />Nominal.
+              Systems <br />Online.
             </motion.h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-medium">
-              Real-time visualization of the HappyChat global node network and cryptographic mesh integrity.
+              Real-time view of our global network and system health.
             </p>
           </div>
 
           {/* Current Status Overview */}
           <div className="grid md:grid-cols-3 gap-6 mb-12">
             {[
-              { label: "Messaging Engine", val: "100%", icon: Zap },
-              { label: "Quantum Encryption", val: "Active", icon: Shield },
-              { label: "Global Latency", val: "8.4ms", icon: Clock },
+              { label: "App Speed", val: "Fast", icon: Zap },
+              { label: "Security System", val: "Active", icon: Shield },
+              { label: "Average Response", val: "8.4ms", icon: Clock },
             ].map((stat, i) => (
               <motion.div
                 key={i}
@@ -71,11 +71,11 @@ export default function StatusPage() {
             <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
               <div className="flex items-center gap-3">
                 <Globe className="text-primary w-5 h-5" />
-                <h2 className="text-xl font-black font-headline text-white uppercase italic tracking-tight">Global Signal Nodes</h2>
+                <h2 className="text-xl font-black font-headline text-white uppercase italic tracking-tight">Global System Nodes</h2>
               </div>
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30">
                 <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
-                <span className="text-[10px] font-black text-primary uppercase">Live Sync</span>
+                <span className="text-[10px] font-black text-primary uppercase">Active Sync</span>
               </div>
             </div>
             
@@ -88,11 +88,11 @@ export default function StatusPage() {
                   </div>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
-                      <span className="text-muted-foreground">Network ID</span>
+                      <span className="text-muted-foreground">ID</span>
                       <span className="text-white font-code">{node.region}</span>
                     </div>
                     <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
-                      <span className="text-muted-foreground">Latency</span>
+                      <span className="text-muted-foreground">Speed</span>
                       <span className="text-primary">{node.latency}</span>
                     </div>
                     <div className="pt-4">
@@ -108,9 +108,9 @@ export default function StatusPage() {
 
           {/* Incident Log */}
           <div className="max-w-2xl mx-auto space-y-6">
-            <h3 className="text-sm font-black text-center text-muted-foreground uppercase tracking-[0.4em]">Protocol Logs</h3>
+            <h3 className="text-sm font-black text-center text-muted-foreground uppercase tracking-[0.4em]">System Logs</h3>
             <div className="glass p-8 rounded-[2rem] border border-white/5 text-center">
-              <p className="text-sm font-medium text-white/40 italic">No security incidents or downtime recorded in the last 90 cycles.</p>
+              <p className="text-sm font-medium text-white/40 italic">No issues recorded in the last 90 days.</p>
             </div>
           </div>
         </div>

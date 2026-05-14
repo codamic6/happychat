@@ -94,7 +94,7 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
             <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase text-gradient">HappyChat</h2>
             <div className="flex items-center justify-center gap-2 text-primary text-[10px] font-black uppercase tracking-[0.3em]">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Initializing Shard...
+              Initializing App...
             </div>
           </div>
         </motion.div>

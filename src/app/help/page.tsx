@@ -10,20 +10,20 @@ import { Input } from '@/components/ui/input';
 export default function HelpPage() {
   const faqs = [
     {
-      q: "Is HappyChat really secure in 2026?",
-      a: "Beyond traditional encryption, we've moved to a post-quantum cryptographic model. This means your messages are future-proofed against upcoming decryption technologies."
+      q: "Is HappyChat really secure?",
+      a: "Yes. We use an advanced security system that keeps your messages safe. This means your messages are protected against current and future threats."
     },
     {
       q: "How do I recover my account?",
-      a: "HappyChat is zero-knowledge. Your recovery keys are generated locally. If you lose them, even we cannot regain access to your data. Store your recovery phrases in a physical vault."
+      a: "HappyChat is private. Your recovery keys are created on your device. If you lose them, even we cannot get your data back. Keep your recovery info in a safe place."
     },
     {
       q: "Can I use HappyChat on multiple devices?",
-      a: "Yes. Our multi-device protocol shards your key across authorized nodes, allowing seamless syncing without compromising the primary security layer."
+      a: "Yes. Our multi-device system syncs your key across your devices, allowing you to stay connected without losing any security."
     },
     {
-      q: "What are 'Moments'?",
-      a: "Moments are temporary, end-to-end encrypted status updates that vanish after 24 hours. They are sharded across our network and never stored on permanent disks."
+      q: "What are 'Updates'?",
+      a: "Updates are private, encrypted status messages that disappear after 24 hours. They are stored securely across our network."
     }
   ];
 
@@ -39,7 +39,7 @@ export default function HelpPage() {
               animate={{ opacity: 1, y: 0 }}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black tracking-widest uppercase"
             >
-              <HelpCircle className="w-3 h-3" /> Intelligence Portal
+              <HelpCircle className="w-3 h-3" /> Help Center
             </motion.div>
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
@@ -47,7 +47,7 @@ export default function HelpPage() {
               transition={{ delay: 0.1 }}
               className="text-5xl md:text-9xl font-black font-headline text-gradient uppercase italic leading-none tracking-tighter"
             >
-              How Can <br />We Assist?
+              How Can <br />We Help?
             </motion.h1>
             
             <motion.div 
@@ -58,7 +58,7 @@ export default function HelpPage() {
             >
               <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <Input 
-                placeholder="Search knowledge base..." 
+                placeholder="Search our help center..." 
                 className="h-16 pl-16 pr-8 bg-white/5 border-white/10 rounded-2xl focus-visible:ring-primary text-lg"
               />
             </motion.div>
@@ -67,7 +67,7 @@ export default function HelpPage() {
           <div className="grid lg:grid-cols-3 gap-8 mb-24">
              <div className="lg:col-span-2 space-y-6">
                 <div className="glass p-8 md:p-12 rounded-[3rem] border border-white/5">
-                  <h2 className="text-3xl font-black font-headline text-white mb-10 uppercase italic tracking-tight">Core Inquiries</h2>
+                  <h2 className="text-3xl font-black font-headline text-white mb-10 uppercase italic tracking-tight">Common Questions</h2>
                   <Accordion type="single" collapsible className="w-full">
                     {faqs.map((faq, i) => (
                       <AccordionItem key={i} value={`item-${i}`} className="border-white/5 py-4">
@@ -89,9 +89,9 @@ export default function HelpPage() {
                      <MessageSquare className="text-primary w-6 h-6" />
                    </div>
                    <h3 className="text-xl font-black font-headline text-white uppercase italic">Direct Support</h3>
-                   <p className="text-sm text-muted-foreground leading-relaxed">Encrypted channels are open 24/7 for Enterprise Tier users.</p>
+                   <p className="text-sm text-muted-foreground leading-relaxed">Support channels are open 24/7 for our users.</p>
                    <button className="flex items-center gap-2 text-[10px] font-black uppercase text-primary tracking-widest group">
-                      Open Secure Ticket <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                      Get Help Now <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                    </button>
                 </div>
 
@@ -100,16 +100,16 @@ export default function HelpPage() {
                      <Zap className="text-white w-6 h-6" />
                    </div>
                    <h3 className="text-xl font-black font-headline text-white uppercase italic">Quick Start</h3>
-                   <p className="text-sm text-muted-foreground leading-relaxed">Get up to speed with our 0x2026 deployment guide.</p>
+                   <p className="text-sm text-muted-foreground leading-relaxed">Learn how to use the app in just a few minutes.</p>
                    <button className="flex items-center gap-2 text-[10px] font-black uppercase text-white tracking-widest group">
-                      View Documentation <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                      Read the Guide <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                    </button>
                 </div>
              </div>
           </div>
 
           <div className="text-center py-20 border-t border-white/5">
-            <p className="text-muted-foreground font-medium text-lg">Still seeking clarity? Contact the core team at <span className="text-primary font-black underline cursor-pointer">nexus@happychat.io</span></p>
+            <p className="text-muted-foreground font-medium text-lg">Still need help? Email us at <span className="text-primary font-black underline cursor-pointer">hello@happychat.io</span></p>
           </div>
         </div>
       </div>
