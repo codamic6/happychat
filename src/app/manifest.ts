@@ -11,12 +11,12 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#00c853',
     icons: [
       {
-        src: 'https://picsum.photos/seed/hc-brand/192/192',
+        src: '/mob.png',
         sizes: '192x192',
         type: 'image/png',
       },
       {
-        src: 'https://picsum.photos/seed/hc-brand/512/512',
+        src: '/mob.png',
         sizes: '512x512',
         type: 'image/png',
       },

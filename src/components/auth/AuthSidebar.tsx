@@ -3,23 +3,20 @@
 import { motion } from 'framer-motion';
 import { Shield, Sparkles, Lock, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 function BrandLogo({ className }: { className?: string }) {
   return (
     <div className={cn("relative group", className)}>
       <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-50 group-hover:opacity-100 transition-opacity" />
-      <svg 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2.5" 
-        strokeLinecap="round" 
-        strokeLinejoin="round" 
-        className="w-full h-full text-primary relative z-10"
-      >
-        <path d="M21 11.5C21 16.75 16.75 21 11.5 21c-1.92 0-3.7-.57-5.2-1.55L3 21l1.55-3.3c-1-1.5-1.55-3.28-1.55-5.2C3 7.25 7.25 3 12.5 3c5.25 0 8.5 4.25 8.5 8.5z" />
-        <path d="m7 9 5 3.5 5-3.5v7H7V9z" />
-      </svg>
+      <Image 
+        src="/Logo.png" 
+        alt="HappyChat Logo" 
+        width={100} 
+        height={100} 
+        className="relative z-10 w-full h-full object-contain"
+        priority
+      />
     </div>
   );
 }
@@ -41,7 +38,7 @@ export function AuthSidebar() {
           <BrandLogo className="w-20 h-20 shadow-[0_0_50px_rgba(0,200,83,0.4)] transition-transform hover:rotate-6 duration-500" />
           <div>
             <h1 className="text-5xl font-black font-headline tracking-tighter text-white uppercase leading-none">HappyChat</h1>
-            <p className="text-[10px] text-primary font-black tracking-[0.4em] uppercase mt-2">Secure System v1.0</p>
+            <p className="text-[10px] text-primary font-black tracking-[0.4em] uppercase mt-2">App System v1.0</p>
           </div>
         </div>
 

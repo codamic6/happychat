@@ -8,23 +8,20 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '@/firebase';
+import Image from 'next/image';
 
 function BrandLogo({ className }: { className?: string }) {
   return (
     <div className={cn("relative group", className)}>
       <div className="absolute inset-0 bg-primary/20 blur-md rounded-full opacity-50 group-hover:opacity-100 transition-opacity" />
-      <svg 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2.5" 
-        strokeLinecap="round" 
-        strokeLinejoin="round" 
-        className="w-full h-full text-primary relative z-10"
-      >
-        <path d="M21 11.5C21 16.75 16.75 21 11.5 21c-1.92 0-3.7-.57-5.2-1.55L3 21l1.55-3.3c-1-1.5-1.55-3.28-1.55-5.2C3 7.25 7.25 3 12.5 3c5.25 0 8.5 4.25 8.5 8.5z" />
-        <path d="m7 9 5 3.5 5-3.5v7H7V9z" />
-      </svg>
+      <Image 
+        src="/Logo.png" 
+        alt="HappyChat Logo" 
+        width={40} 
+        height={40} 
+        className="relative z-10 w-full h-full object-contain"
+        priority
+      />
     </div>
   );
 }
@@ -119,7 +116,7 @@ export function Navbar() {
                 <SheetContent side="right" className="w-full bg-[#050505] border-l border-white/5 p-0 flex flex-col">
                   <SheetHeader className="sr-only">
                     <SheetTitle>Navigation Menu</SheetTitle>
-                    <SheetDescription>Access platform sections and account management.</SheetDescription>
+                    <SheetDescription>Access sections and account management.</SheetDescription>
                   </SheetHeader>
                   
                   <div className="p-8 flex items-center justify-between border-b border-white/5 bg-[#0a0a0a]">
