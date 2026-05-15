@@ -1,5 +1,3 @@
-'use server';
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -114,7 +112,7 @@ type Conversation = {
 
 const QUICK_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥'];
 
-// Curated list of expressive facial emojis
+// Pure facial expression and emotion library (no objects, cars, or food)
 const EXTENDED_EMOJIS = Array.from(new Set([
   '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '🥲', '☺️', 
   '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', 
