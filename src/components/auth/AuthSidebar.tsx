@@ -1,7 +1,28 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Zap, Shield, Sparkles, MessageCircle, Lock, UserCheck, Globe, Cpu } from 'lucide-react';
+import { Shield, Sparkles, Lock, Globe } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+function BrandLogo({ className }: { className?: string }) {
+  return (
+    <div className={cn("relative group", className)}>
+      <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-50 group-hover:opacity-100 transition-opacity" />
+      <svg 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2.5" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className="w-full h-full text-primary relative z-10"
+      >
+        <path d="M21 11.5C21 16.75 16.75 21 11.5 21c-1.92 0-3.7-.57-5.2-1.55L3 21l1.55-3.3c-1-1.5-1.55-3.28-1.55-5.2C3 7.25 7.25 3 12.5 3c5.25 0 8.5 4.25 8.5 8.5z" />
+        <path d="m7 9 5 3.5 5-3.5v7H7V9z" />
+      </svg>
+    </div>
+  );
+}
 
 export function AuthSidebar() {
   return (
@@ -17,12 +38,10 @@ export function AuthSidebar() {
         className="relative z-10 space-y-16"
       >
         <div className="flex items-center gap-5">
-          <div className="w-20 h-20 rounded-[2rem] bg-primary flex items-center justify-center glow-green-bright shadow-[0_0_50px_rgba(0,200,83,0.4)] transition-transform hover:rotate-12 duration-500">
-            <Zap className="text-primary-foreground h-12 w-12 fill-current" />
-          </div>
+          <BrandLogo className="w-20 h-20 shadow-[0_0_50px_rgba(0,200,83,0.4)] transition-transform hover:rotate-6 duration-500" />
           <div>
             <h1 className="text-5xl font-black font-headline tracking-tighter text-white uppercase leading-none">HappyChat</h1>
-            <p className="text-[10px] text-primary font-black tracking-[0.4em] uppercase mt-2">Secure App v1.0</p>
+            <p className="text-[10px] text-primary font-black tracking-[0.4em] uppercase mt-2">Secure System v1.0</p>
           </div>
         </div>
 
@@ -47,7 +66,7 @@ export function AuthSidebar() {
             <motion.div
               key={i}
               whileHover={{ scale: 1.02, backgroundColor: 'rgba(255,255,255,0.05)' }}
-              className="p-6 rounded-[2rem] glass border border-white/5 space-y-3 transition-all group"
+              className="p-6 rounded-[2.5rem] glass border border-white/5 space-y-3 transition-all group"
             >
               <item.icon className="w-6 h-6 text-primary group-hover:glow-green transition-all" />
               <div>
@@ -66,7 +85,7 @@ export function AuthSidebar() {
                 <span className="text-[10px] font-black text-white uppercase tracking-widest">System Active</span>
               </div>
               <div className="h-4 w-px bg-white/10" />
-              <span className="text-[10px] font-black text-primary uppercase tracking-widest">SECURE_CONNECTION</span>
+              <span className="text-[10px] font-black text-primary uppercase tracking-widest">SECURE_APP</span>
            </div>
         </div>
       </motion.div>

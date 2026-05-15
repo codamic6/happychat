@@ -6,12 +6,33 @@ import { AuthInput } from '@/components/auth/AuthInput';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Zap, Mail, Lock, ArrowRight, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+
+function BrandLogo({ className }: { className?: string }) {
+  return (
+    <div className={cn("relative group", className)}>
+      <div className="absolute inset-0 bg-primary/20 blur-md rounded-full opacity-50 group-hover:opacity-100 transition-opacity" />
+      <svg 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2.5" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className="w-full h-full text-primary relative z-10"
+      >
+        <path d="M21 11.5C21 16.75 16.75 21 11.5 21c-1.92 0-3.7-.57-5.2-1.55L3 21l1.55-3.3c-1-1.5-1.55-3.28-1.55-5.2C3 7.25 7.25 3 12.5 3c5.25 0 8.5 4.25 8.5 8.5z" />
+        <path d="m7 9 5 3.5 5-3.5v7H7V9z" />
+      </svg>
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -51,14 +72,11 @@ export default function LoginPage() {
         >
           {/* Mobile Branding */}
           <div className="lg:hidden flex flex-col items-center mb-10 space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center glow-green-bright shadow-2xl">
-              <Zap className="text-primary-foreground h-8 w-8 fill-current" />
-            </div>
+            <BrandLogo className="w-14 h-14" />
             <h1 className="text-xl font-bold font-headline text-white uppercase tracking-tighter">HappyChat</h1>
           </div>
 
           <div className="glass p-8 sm:p-12 rounded-[2.5rem] border border-white/5 space-y-8 relative overflow-hidden shadow-2xl group">
-            {/* Energy Core Pulse */}
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent animate-pulse" />
             
             <div className="text-center space-y-3 relative z-10">
@@ -116,7 +134,7 @@ export default function LoginPage() {
             <div className="pt-6 text-center space-y-4 relative z-10">
               <div className="flex items-center gap-2 justify-center opacity-30">
                 <Sparkles className="w-3 h-3 text-primary" />
-                <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white">Private Chat Active</span>
+                <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white">App System Active</span>
               </div>
               
               <p className="text-xs text-muted-foreground font-medium">
@@ -128,8 +146,8 @@ export default function LoginPage() {
             </div>
           </div>
           
-          <div className="mt-8 text-center opacity-20 hover:opacity-50 transition-opacity">
-            <p className="text-[8px] font-black uppercase tracking-[0.5em] text-white">Version: 1.0.0 Stable</p>
+          <div className="mt-8 text-center opacity-20">
+            <p className="text-[8px] font-black uppercase tracking-[0.5em] text-white">Version: 1.0.2 Stable</p>
           </div>
         </motion.div>
       </div>

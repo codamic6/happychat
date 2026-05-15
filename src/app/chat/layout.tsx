@@ -7,10 +7,30 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { IconRail } from '@/components/chat/IconRail';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { StatusSidebar } from '@/components/chat/StatusSidebar';
-import { Loader2, Sparkles, MessageSquare, Globe, Users, UserCircle, Zap } from 'lucide-react';
+import { Loader2, MessageSquare, Globe, Users, UserCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+
+function BrandLogo({ className }: { className?: string }) {
+  return (
+    <div className={cn("relative group", className)}>
+      <div className="absolute inset-0 bg-primary/20 blur-md rounded-full opacity-50 group-hover:opacity-100 transition-opacity" />
+      <svg 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2.5" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className="w-full h-full text-primary relative z-10"
+      >
+        <path d="M21 11.5C21 16.75 16.75 21 11.5 21c-1.92 0-3.7-.57-5.2-1.55L3 21l1.55-3.3c-1-1.5-1.55-3.28-1.55-5.2C3 7.25 7.25 3 12.5 3c5.25 0 8.5 4.25 8.5 8.5z" />
+        <path d="m7 9 5 3.5 5-3.5v7H7V9z" />
+      </svg>
+    </div>
+  );
+}
 
 function ChatLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -50,7 +70,6 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
     };
   }, [user, db]);
 
-  // Define pages that should NOT be treated as specific conversation views
   const isExcludedFromConversation = [
     '/chat',
     '/chat/profile',
@@ -87,14 +106,14 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
           exit={{ opacity: 0, scale: 1.1 }}
           className="relative z-10 text-center space-y-6"
         >
-          <div className="w-24 h-24 bg-primary/20 rounded-3xl flex items-center justify-center mx-auto glow-green animate-pulse">
-            <Sparkles className="w-12 h-12 text-primary" />
+          <div className="w-24 h-24 flex items-center justify-center mx-auto">
+            <BrandLogo className="w-full h-full" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase text-gradient">HappyChat</h2>
+            <h2 className="text-2xl font-bold font-headline text-white tracking-tighter uppercase">HappyChat</h2>
             <div className="flex items-center justify-center gap-2 text-primary text-[10px] font-black uppercase tracking-[0.3em]">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Initializing App...
+              Starting App...
             </div>
           </div>
         </motion.div>

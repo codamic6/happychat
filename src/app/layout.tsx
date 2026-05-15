@@ -4,8 +4,8 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'HappyChat | World\'s 1st Email-Based Messenger',
-  description: 'The world\'s 1st email-based chat app. Secure, private, and accessible to everyone with an email address. Join the 2026 Signal Mesh.',
+  title: 'HappyChat | Simple Email-Based Messaging',
+  description: 'The world\'s simplest email-based messaging app. Secure, private, and accessible to everyone with an email address.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -36,7 +36,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet" />
-        <link rel="apple-touch-icon" href="https://picsum.photos/seed/hc/180/180" />
+        <link rel="apple-touch-icon" href="https://picsum.photos/seed/hc-brand/180/180" />
       </head>
       <body className="font-body antialiased selection:bg-primary selection:text-primary-foreground overflow-x-hidden">
         <FirebaseClientProvider { ...{}}>
