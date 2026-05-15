@@ -42,8 +42,8 @@ service cloud.firestore {
         allow read: if isConversationParticipant(conversationId);
         allow create: if isConversationParticipant(conversationId);
         
-        // TEMP DEBUG RULE - Keeping as requested to help isolate client-side logic
-        allow update: if true;
+        // Allow updating for reactions and edit status
+        allow update: if isConversationParticipant(conversationId);
         
         allow delete: if isConversationParticipant(conversationId);
       }

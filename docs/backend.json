@@ -110,6 +110,7 @@
         "isDeleted": { "type": "boolean" },
         "deletedFor": { "type": "array", "items": { "type": "string" } },
         "replyTo": { "type": "object" },
+        "reactions": { "type": "object", "description": "Map of user IDs to their emoji reaction." },
         "poll": {
           "type": "object",
           "properties": {
@@ -145,8 +146,6 @@
   "auth": {
     "providers": [
       "password",
-      "google.com",
-      "github.com",
       "anonymous"
     ]
   },

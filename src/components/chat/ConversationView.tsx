@@ -1,10 +1,11 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, Search, MoreVertical, X, Info, ArrowLeft, Loader2,
   Check, Reply, CheckCheck, Trash2, Pencil, Plus, Tag, Mail, AtSign,
-  Share2, BarChart2, UserPlus, Forward, MessageSquare, User, UserCheck
+  Share2, BarChart2, UserPlus, Forward, MessageSquare, User, UserCheck, Smile
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,7 +41,7 @@ import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@
 import { 
   doc, query, collection, serverTimestamp, 
   getDocs, where, addDoc, updateDoc, increment, onSnapshot, writeBatch,
-  arrayUnion, arrayRemove
+  arrayUnion, arrayRemove, deleteField
 } from 'firebase/firestore';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -48,6 +49,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 type Message = {
   id: string;
@@ -61,6 +63,7 @@ type Message = {
   status?: 'sent' | 'delivered' | 'read';
   updatedAt?: any;
   forwarded?: boolean;
+  reactions?: Record<string, string>;
   replyTo?: {
     id?: string;
     text: string;
@@ -106,6 +109,8 @@ type Conversation = {
   hiddenFor?: string[];
   unreadCount?: Record<string, number>;
 };
+
+const COMMON_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥'];
 
 export function ConversationView({ conversationId }: { conversationId: string }) {
   const { user, isUserLoading } = useUser();
@@ -364,6 +369,19 @@ export function ConversationView({ conversationId }: { conversationId: string })
     }
   };
 
+  const handleReact = async (message: Message, emoji: string) => {
+    if (!user || !db || message.isDeleted) return;
+    const msgRef = doc(db, 'conversations', message.conversationId, 'messages', message.id);
+    
+    // Toggle reaction: if already reacted with same emoji, remove it
+    if (message.reactions?.[user.uid] === emoji) {
+      await updateDoc(msgRef, { [`reactions.${user.uid}`]: deleteField() });
+    } else {
+      await updateDoc(msgRef, { [`reactions.${user.uid}`]: emoji });
+    }
+    setSelectedMessage(null);
+  };
+
   const isOtherTyping = useMemo(() => {
     if (!conversation?.typing || !otherProfile) return false;
     return conversation.typing[otherProfile.id] === true;
@@ -387,7 +405,29 @@ export function ConversationView({ conversationId }: { conversationId: string })
           >
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => setSelectedMessage(null)} className="text-white hover:bg-white/5"><X className="w-5 h-5" /></Button>
+              
+              {/* Quick Reaction Bar */}
+              <div className="hidden md:flex items-center gap-1.5 p-1 bg-white/5 rounded-full border border-white/5">
+                {COMMON_EMOJIS.map(emoji => (
+                  <button key={emoji} onClick={() => handleReact(selectedMessage, emoji)} className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-full transition-all text-lg scale-90 hover:scale-125">
+                    {emoji}
+                  </button>
+                ))}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="w-8 h-8 flex items-center justify-center hover:bg-primary/20 hover:text-primary rounded-full transition-all bg-white/5 border border-white/5">
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 bg-[#0d0d0d] border-white/10 p-2 rounded-2xl shadow-2xl">
+                    <div className="flex gap-2">
+                      <Input placeholder="Type emoji..." className="h-10 bg-white/5 border-white/10 rounded-xl" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') handleReact(selectedMessage, (e.target as HTMLInputElement).value); }} />
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
+
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" onClick={() => { setReplyingTo(selectedMessage); setSelectedMessage(null); }} className="text-white hover:text-primary"><Reply className="w-4 h-4" /></Button>
               <Button variant="ghost" size="icon" onClick={() => { setForwardingMessage(selectedMessage); setSelectedMessage(null); }} className="text-white hover:text-primary"><Forward className="w-4 h-4" /></Button>
@@ -395,6 +435,28 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 <Button variant="ghost" size="icon" onClick={() => { setEditingMessage(selectedMessage); setInputText(selectedMessage.text); setSelectedMessage(null); }} className="text-white hover:text-primary"><Pencil className="w-4 h-4" /></Button>
               )}
               <Button variant="ghost" size="icon" onClick={() => { setDeletingMessage(selectedMessage); setSelectedMessage(null); }} className="text-destructive hover:bg-destructive/5"><Trash2 className="w-4 h-4" /></Button>
+            </div>
+
+            {/* Mobile Reaction Bar Overlay */}
+            <div className="md:hidden absolute top-full left-0 right-0 p-3 bg-black/80 backdrop-blur-3xl flex items-center justify-center gap-2 border-b border-white/5 overflow-x-auto no-scrollbar">
+              {COMMON_EMOJIS.map(emoji => (
+                <button key={emoji} onClick={() => handleReact(selectedMessage, emoji)} className="w-10 h-10 flex items-center justify-center bg-white/5 rounded-full text-xl active:scale-125 transition-transform shrink-0">
+                  {emoji}
+                </button>
+              ))}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="w-10 h-10 flex items-center justify-center bg-primary/20 text-primary rounded-full shrink-0 border border-primary/20">
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[calc(100vw-2rem)] bg-[#0d0d0d] border-white/10 p-3 rounded-2xl shadow-2xl mb-4" side="bottom">
+                   <div className="space-y-3">
+                      <p className="text-[9px] font-black uppercase text-primary tracking-widest text-center">Enter Any Emoji</p>
+                      <Input placeholder="Search emojis..." className="h-12 bg-white/5 border-white/10 rounded-xl text-center text-lg" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') handleReact(selectedMessage, (e.target as HTMLInputElement).value); }} />
+                   </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </motion.div>
         )}
@@ -632,6 +694,15 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
     return counts.map(c => totalVotes > 0 ? Math.round((c / totalVotes) * 100) : 0);
   }, [msg.poll, voters, totalVotes]);
 
+  const reactionSummary = useMemo(() => {
+    if (!msg.reactions) return null;
+    const counts: Record<string, number> = {};
+    Object.values(msg.reactions).forEach(emoji => {
+      counts[emoji as string] = (counts[emoji as string] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [msg.reactions]);
+
   return (
     <div className="flex w-full group relative mb-1 min-w-0 items-center overflow-hidden">
       <div className="absolute left-0 flex items-center justify-center w-14 h-full pointer-events-none z-0">
@@ -645,60 +716,81 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
         onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp} 
         className={cn("w-full flex z-10", isOwn ? "justify-end" : "justify-start")}
       >
-        <div 
-          className={cn(
-            "max-w-[85%] p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0 shadow-sm", 
-            isSelected && "ring-2 ring-primary shadow-[0_0_20px_rgba(0,200,83,0.3)] scale-[1.02]", 
-            isSystem ? "bg-white/5 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/10 text-[11px] mx-auto" : isOwn ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-[#181818] text-white rounded-tl-none border border-white/5"
-          )}
-        >
-          {msg.forwarded && <div className="flex items-center gap-1.5 mb-1 opacity-60 text-[8px] font-black uppercase italic tracking-widest"><Forward className="w-2 h-2" /> Forwarded</div>}
-          {msg.replyTo && <div className="mb-2 p-1.5 bg-black/20 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate max-w-full"><p className="font-bold text-primary mb-0.5 uppercase tracking-widest text-[8px]">{msg.replyTo.senderName}</p><span className="block truncate">{msg.replyTo.text}</span></div>}
-          {msg.poll && (
-            <div className="mb-2 p-3 bg-black/60 rounded-xl border border-white/10 space-y-2.5 shadow-2xl min-w-[180px] max-w-full">
-              <div className="flex items-center gap-2 text-primary"><BarChart2 className="w-3 h-3 shrink-0" /><span className="font-black uppercase tracking-tight text-[10px] truncate">{msg.poll.question}</span></div>
-              <div className="space-y-1">
-                  {msg.poll.options.map((opt: string, i: number) => {
-                    const pct = pollResults[i] || 0;
-                    const isMyVote = myVote === i;
-                    return (
-                      <button key={i} onClick={() => handleVote(i)} disabled={isSystem} className={cn("w-full relative h-8 bg-white/5 border rounded-lg px-3 overflow-hidden group transition-all", isMyVote ? "border-primary/50" : "border-white/5 hover:border-primary/20")}>
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} className={cn("absolute inset-y-0 left-0", isMyVote ? "bg-primary/20" : "bg-primary/10")} />
-                        <div className="relative flex justify-between items-center w-full z-10 gap-2"><span className={cn("text-[10px] font-bold truncate", isMyVote ? "text-primary" : "text-white/70 group-hover:text-white")}>{opt}</span><span className="text-[8px] font-black opacity-50 shrink-0">{pct}%</span></div>
-                      </button>
-                    );
-                  })}
-              </div>
-              <p className="text-[7px] font-black uppercase tracking-widest text-center text-muted-foreground opacity-50">{totalVotes} Votes</p>
-            </div>
-          )}
-          {msg.sharedContact && (
-            <div className="mb-2 p-3 bg-[#0d0d0d] rounded-xl border border-white/10 flex items-center gap-3 shadow-2xl max-w-full">
-                <div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary font-black text-sm shrink-0">{msg.sharedContact.name.charAt(0)}</div>
-                <div className="flex-1 min-w-0"><p className="text-[11px] font-black uppercase tracking-tight truncate text-white">{msg.sharedContact.name}</p><p className="text-[8px] uppercase font-bold text-muted-foreground tracking-widest truncate">@{msg.sharedContact.username}</p></div>
-                <Button size="sm" className="h-7 px-3 rounded-lg text-[8px] font-black uppercase tracking-widest bg-primary text-primary-foreground hover:glow-green transition-all shadow-lg shrink-0">View</Button>
-            </div>
-          )}
-          {msg.text && <p className="leading-relaxed whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
-          <div className="flex justify-end gap-1.5 items-center mt-1 text-[7px] font-black uppercase tracking-widest">
-            {msg.isEdited && <span className="mr-1 italic-bold opacity-70">(edited)</span>}
-            <span className="opacity-60">{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
-            {isOwn && !isSystem && (
-              <div className="flex items-center ml-1">
-                {msg.status === 'read' ? (
-                  <CheckCheck 
-                    strokeWidth={5} 
-                    className="w-3.5 h-3.5 text-white drop-shadow-[0_0_8px_rgba(255,255,255,1)]" 
-                  /> 
-                ) : (
-                  <Check 
-                    strokeWidth={4} 
-                    className="w-3.5 h-3.5 text-white" 
-                  />
-                )}
+        <div className="relative max-w-[85%] group/bubble">
+          <div 
+            onClick={() => !isMobile && onSelect()}
+            className={cn(
+              "p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0 shadow-sm cursor-pointer", 
+              isSelected && "ring-2 ring-primary shadow-[0_0_20px_rgba(0,200,83,0.3)] scale-[1.02]", 
+              isSystem ? "bg-white/5 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/10 text-[11px] mx-auto" : isOwn ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-[#181818] text-white rounded-tl-none border border-white/5"
+            )}
+          >
+            {msg.forwarded && <div className="flex items-center gap-1.5 mb-1 opacity-60 text-[8px] font-black uppercase italic tracking-widest"><Forward className="w-2 h-2" /> Forwarded</div>}
+            {msg.replyTo && <div className="mb-2 p-1.5 bg-black/20 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate max-w-full"><p className="font-bold text-primary mb-0.5 uppercase tracking-widest text-[8px]">{msg.replyTo.senderName}</p><span className="block truncate">{msg.replyTo.text}</span></div>}
+            {msg.poll && (
+              <div className="mb-2 p-3 bg-black/60 rounded-xl border border-white/10 space-y-2.5 shadow-2xl min-w-[180px] max-w-full">
+                <div className="flex items-center gap-2 text-primary"><BarChart2 className="w-3 h-3 shrink-0" /><span className="font-black uppercase tracking-tight text-[10px] truncate">{msg.poll.question}</span></div>
+                <div className="space-y-1">
+                    {msg.poll.options.map((opt: string, i: number) => {
+                      const pct = pollResults[i] || 0;
+                      const isMyVote = myVote === i;
+                      return (
+                        <button key={i} onClick={() => handleVote(i)} disabled={isSystem} className={cn("w-full relative h-8 bg-white/5 border rounded-lg px-3 overflow-hidden group transition-all", isMyVote ? "border-primary/50" : "border-white/5 hover:border-primary/20")}>
+                          <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} className={cn("absolute inset-y-0 left-0", isMyVote ? "bg-primary/20" : "bg-primary/10")} />
+                          <div className="relative flex justify-between items-center w-full z-10 gap-2"><span className={cn("text-[10px] font-bold truncate", isMyVote ? "text-primary" : "text-white/70 group-hover:text-white")}>{opt}</span><span className="text-[8px] font-black opacity-50 shrink-0">{pct}%</span></div>
+                        </button>
+                      );
+                    })}
+                </div>
+                <p className="text-[7px] font-black uppercase tracking-widest text-center text-muted-foreground opacity-50">{totalVotes} Votes</p>
               </div>
             )}
+            {msg.sharedContact && (
+              <div className="mb-2 p-3 bg-[#0d0d0d] rounded-xl border border-white/10 flex items-center gap-3 shadow-2xl max-w-full">
+                  <div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary font-black text-sm shrink-0">{msg.sharedContact.name.charAt(0)}</div>
+                  <div className="flex-1 min-w-0"><p className="text-[11px] font-black uppercase tracking-tight truncate text-white">{msg.sharedContact.name}</p><p className="text-[8px] uppercase font-bold text-muted-foreground tracking-widest truncate">@{msg.sharedContact.username}</p></div>
+                  <Button size="sm" className="h-7 px-3 rounded-lg text-[8px] font-black uppercase tracking-widest bg-primary text-primary-foreground hover:glow-green transition-all shadow-lg shrink-0">View</Button>
+              </div>
+            )}
+            {msg.text && <p className="leading-relaxed whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
+            <div className="flex justify-end gap-1.5 items-center mt-1 text-[7px] font-black uppercase tracking-widest">
+              {msg.isEdited && <span className="mr-1 italic-bold opacity-70">(edited)</span>}
+              <span className="opacity-60">{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
+              {isOwn && !isSystem && (
+                <div className="flex items-center ml-1">
+                  {msg.status === 'read' ? (
+                    <CheckCheck 
+                      strokeWidth={5} 
+                      className="w-3.5 h-3.5 text-white drop-shadow-[0_0_8px_rgba(255,255,255,1)]" 
+                    /> 
+                  ) : (
+                    <Check 
+                      strokeWidth={4} 
+                      className="w-3.5 h-3.5 text-white" 
+                    />
+                  )}
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Reaction Display */}
+          {reactionSummary && reactionSummary.length > 0 && (
+            <div className={cn(
+              "flex flex-wrap gap-1 mt-1",
+              isOwn ? "justify-end" : "justify-start"
+            )}>
+              {reactionSummary.map(([emoji, count]) => (
+                <div 
+                  key={emoji} 
+                  className="inline-flex items-center gap-1 bg-[#111] border border-white/10 rounded-full px-2 py-0.5 shadow-lg group/reaction transition-all hover:scale-110"
+                >
+                  <span className="text-xs">{emoji}</span>
+                  {count > 1 && <span className="text-[8px] font-black text-primary uppercase">{count}</span>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </motion.div>
     </div>
