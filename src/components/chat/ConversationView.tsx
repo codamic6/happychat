@@ -595,7 +595,7 @@ function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highli
     <div className="flex w-full group relative mb-1 min-w-0 items-center overflow-visible">
       <motion.div 
         onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp} 
-        className={cn("w-full flex z-10 items-center gap-2 overflow-visible group/row", isOwn ? "justify-end flex-row-reverse" : "justify-start flex-row")}
+        className={cn("w-full flex z-10 items-center gap-2 overflow-visible group/row", isOwn ? "flex-row-reverse justify-start" : "flex-row justify-start")}
       >
         <div className="relative max-w-[85%] overflow-visible">
           <Popover open={isSelected} onOpenChange={(open) => !open && onSelect(null)}>
@@ -712,7 +712,7 @@ function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highli
 function UserProfileOverlay({ profile, contact, onClose }: { profile: UserProfile, contact: ContactRecord | null, onClose: () => void }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/80 backdrop-blur-2xl z-[100] flex items-center justify-center p-6">
-      <div className="w-full max-w-sm glass border-white/10 rounded-[3rem] p-8 space-y-8 relative shadow-2xl">
+      <div className="w-full max-sm glass border-white/10 rounded-[3rem] p-8 space-y-8 relative shadow-2xl">
         <Button variant="ghost" size="icon" onClick={onClose} className="absolute top-6 right-6 rounded-full h-10 w-10 text-white/40 hover:text-white"><X className="w-6 h-6" /></Button>
         <div className="flex flex-col items-center text-center space-y-6">
           <div className="relative">
