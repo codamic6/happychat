@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -136,13 +135,13 @@ const EXTENDED_EMOJIS = [
 
 const THEMES = [
   { id: 'default', name: 'Midnight Pro', bg: 'bg-[#050505]', preview: '#050505' },
-  { id: 'grid', name: 'Cyber Mesh', bg: 'bg-[#050505] bg-[url("https://www.transparenttextures.com/patterns/carbon-fibre.png")] bg-fixed', preview: '#111' },
-  { id: 'nebula', name: 'Space Nebula', bg: 'bg-[#050505] bg-[url("https://picsum.photos/seed/nebula1/1200/800")] bg-cover bg-center bg-fixed bg-no-repeat', preview: '#2e1065' },
-  { id: 'desert', name: 'Desert Night', bg: 'bg-[#050505] bg-[url("https://picsum.photos/seed/desert1/1200/800")] bg-cover bg-center bg-fixed', preview: '#431407' },
-  { id: 'matrix', name: 'Matrix Code', bg: 'bg-[#050505] bg-[url("https://www.transparenttextures.com/patterns/digital-trace.png")] bg-repeat bg-fixed opacity-90', preview: '#064e3b' },
-  { id: 'ocean', name: 'Ocean Depth', bg: 'bg-[#050505] bg-[url("https://picsum.photos/seed/ocean1/1200/800")] bg-cover bg-center bg-fixed', preview: '#164e63' },
-  { id: 'sunset', name: 'Sunset Violet', bg: 'bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#4c1d95] bg-fixed', preview: '#312e81' },
-  { id: 'abstract', name: 'Fluid Abstract', bg: 'bg-[#050505] bg-[url("https://picsum.photos/seed/abstract1/1200/800")] bg-cover bg-center bg-fixed', preview: '#1e293b' },
+  { id: 'grid', name: 'Cyber Mesh', bg: 'bg-[#050505] bg-[radial-gradient(#1a1a1a_1px,transparent_1px)] [background-size:24px_24px]', preview: '#111' },
+  { id: 'nebula', name: 'Space Nebula', bg: 'bg-[#050505] bg-[radial-gradient(circle_at_top_right,rgba(29,78,216,0.15),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(126,34,206,0.15),transparent_40%)]', preview: '#2e1065' },
+  { id: 'desert', name: 'Desert Night', bg: 'bg-gradient-to-br from-[#1a0f02] via-[#431407] to-[#1a0f02]', preview: '#431407' },
+  { id: 'ocean', name: 'Ocean Depth', bg: 'bg-gradient-to-b from-[#020617] via-[#0f172a] to-[#1e293b]', preview: '#164e63' },
+  { id: 'sunset', name: 'Sunset Violet', bg: 'bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#4c1d95]', preview: '#312e81' },
+  { id: 'crimson', name: 'Crimson Edge', bg: 'bg-gradient-to-tr from-[#000] via-[#450a0a] to-[#000]', preview: '#450a0a' },
+  { id: 'emerald', name: 'Emerald Peak', bg: 'bg-[#050505] bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.06)_0%,transparent_70%)]', preview: '#064e3b' },
 ];
 
 const BUBBLE_COLORS = [
@@ -676,19 +675,19 @@ function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highli
   }, [msg.reactions]);
 
   return (
-    <div className="flex w-full group relative mb-1 min-w-0 items-center overflow-visible">
+    <div className={cn("flex w-full group relative mb-1 min-w-0 items-center overflow-visible", isOwn ? "justify-end" : "justify-start")}>
       <motion.div 
         onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp} 
-        className={cn("w-full flex z-10 items-center gap-2 overflow-visible group/row", isOwn ? "flex-row-reverse justify-start" : "flex-row justify-start")}
+        className={cn("max-w-[85%] flex z-10 items-center gap-2 overflow-visible group/row", isOwn ? "flex-row-reverse" : "flex-row")}
       >
-        <div className="relative max-w-[85%] overflow-visible">
+        <div className="relative overflow-visible">
           <Popover open={isSelected} onOpenChange={(open) => !open && onSelect(null)}>
             <PopoverTrigger asChild>
               <div 
                 className={cn(
                   "p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0 shadow-sm cursor-pointer", 
                   isSelected && "ring-2 ring-primary shadow-[0_0_20px_rgba(0,200,83,0.3)] scale-[1.02]", 
-                  isSystem ? "bg-white/10 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/20 text-[11px] mx-auto" : isOwn ? cn(bubbleClass || "bg-primary text-primary-foreground", "rounded-tr-none shadow-lg") : "bg-[#181818]/90 backdrop-blur-md text-white rounded-tl-none border border-white/10"
+                  isSystem ? "bg-white/10 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/20 text-[11px]" : isOwn ? cn(bubbleClass || "bg-primary text-primary-foreground", "rounded-tr-none shadow-lg") : "bg-[#181818]/90 backdrop-blur-md text-white rounded-tl-none border border-white/10"
                 )}
               >
                 {msg.forwarded && <div className="flex items-center gap-1.5 mb-1 opacity-60 text-[8px] font-black uppercase italic tracking-widest"><Forward className="w-2 h-2" /> Forwarded</div>}
