@@ -372,8 +372,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const handleReact = async (message: Message, emoji: string) => {
     if (!user || !db || message.isDeleted) return;
     const msgRef = doc(db, 'conversations', message.conversationId, 'messages', message.id);
-    
-    // Toggle reaction: if already reacted with same emoji, remove it
     if (message.reactions?.[user.uid] === emoji) {
       await updateDoc(msgRef, { [`reactions.${user.uid}`]: deleteField() });
     } else {
@@ -396,7 +394,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-[#050505] overflow-hidden relative">
       <AnimatePresence>
-        {selectedMessage && (
+        {selectedMessage && isMobile && (
           <motion.div 
             initial={{ y: -100 }} 
             animate={{ y: 0 }} 
@@ -405,27 +403,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
           >
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => setSelectedMessage(null)} className="text-white hover:bg-white/5"><X className="w-5 h-5" /></Button>
-              
-              {/* Quick Reaction Bar */}
-              <div className="hidden md:flex items-center gap-1.5 p-1 bg-white/5 rounded-full border border-white/5">
-                {COMMON_EMOJIS.map(emoji => (
-                  <button key={emoji} onClick={() => handleReact(selectedMessage, emoji)} className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-full transition-all text-lg scale-90 hover:scale-125">
-                    {emoji}
-                  </button>
-                ))}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button className="w-8 h-8 flex items-center justify-center hover:bg-primary/20 hover:text-primary rounded-full transition-all bg-white/5 border border-white/5">
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-64 bg-[#0d0d0d] border-white/10 p-2 rounded-2xl shadow-2xl">
-                    <div className="flex gap-2">
-                      <Input placeholder="Type emoji..." className="h-10 bg-white/5 border-white/10 rounded-xl" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') handleReact(selectedMessage, (e.target as HTMLInputElement).value); }} />
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
             </div>
 
             <div className="flex items-center gap-1">
@@ -438,7 +415,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
             </div>
 
             {/* Mobile Reaction Bar Overlay */}
-            <div className="md:hidden absolute top-full left-0 right-0 p-3 bg-black/80 backdrop-blur-3xl flex items-center justify-center gap-2 border-b border-white/5 overflow-x-auto no-scrollbar">
+            <div className="absolute top-full left-0 right-0 p-3 bg-black/80 backdrop-blur-3xl flex items-center justify-center gap-2 border-b border-white/5 overflow-x-auto no-scrollbar">
               {COMMON_EMOJIS.map(emoji => (
                 <button key={emoji} onClick={() => handleReact(selectedMessage, emoji)} className="w-10 h-10 flex items-center justify-center bg-white/5 rounded-full text-xl active:scale-125 transition-transform shrink-0">
                   {emoji}
@@ -511,94 +488,30 @@ export function ConversationView({ conversationId }: { conversationId: string })
               onEdit={() => { setEditingMessage(msg); setInputText(msg.text); }}
               onForward={() => setForwardingMessage(msg)}
               onSelect={() => setSelectedMessage(msg)}
+              onReact={(emoji: string) => handleReact(msg, emoji)}
               isSelected={selectedMessage?.id === msg.id}
               highlight={searchQuery}
+              mainName={mainName}
             />
           ))}
           <div ref={scrollRef} className="h-4" />
         </div>
       </ScrollArea>
 
-      <AnimatePresence>
-        {showProfile && otherProfile && (
-          <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute inset-y-0 right-0 w-full md:w-96 bg-[#0a0a0a] border-l border-white/5 z-[100] flex flex-col shadow-2xl">
-            <div className="p-6 flex items-center justify-between border-b border-white/5">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">User Profile</h3>
-              <Button size="icon" variant="ghost" onClick={() => setShowProfile(false)} className="h-10 w-10 rounded-full hover:bg-white/5"><X className="w-6 h-6" /></Button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center text-center space-y-8 custom-scrollbar">
-              <div className="w-28 h-28 rounded-full border-4 border-primary/20 bg-[#111] flex items-center justify-center shadow-2xl shrink-0">
-                <span className="text-4xl font-black text-primary not-italic leading-none">{initial}</span>
-              </div>
-              
-              <div className="w-full space-y-4">
-                {isEditingNickname ? (
-                  <div className="space-y-3">
-                    <Input value={newNickname} onChange={(e) => setNewNickname(e.target.value)} placeholder="Enter new name..." className="bg-white/5 border-white/10 text-center text-base font-bold h-12 rounded-xl" autoFocus />
-                    <div className="flex gap-2">
-                      <Button onClick={handleUpdateNickname} disabled={isSavingNickname} className="flex-1 h-11 bg-primary hover:glow-green text-primary-foreground font-black uppercase text-[10px] tracking-widest rounded-xl">Save</Button>
-                      <Button variant="ghost" onClick={() => setIsEditingNickname(false)} className="flex-1 h-11 text-[10px] font-black uppercase text-muted-foreground">Cancel</Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="px-4">
-                      <h2 className="text-2xl font-black font-headline tracking-tighter uppercase text-white truncate">{mainName}</h2>
-                      {contactRecord?.customName && contactRecord.customName !== realName && (
-                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-1 truncate">~ {realName}</p>
-                      )}
-                      <p className="text-primary text-[10px] font-bold uppercase tracking-widest mt-1 truncate">@{otherProfile.username}</p>
-                    </div>
-                    {contactRecord && (
-                      <Button onClick={() => setIsEditingNickname(true)} className="w-full h-14 bg-white/5 border border-white/10 text-white font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-white/10 px-6">
-                        <Pencil className="w-4 h-4 mr-2" /> Rename Contact
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="w-full bg-white/5 rounded-3xl p-6 border border-white/5 text-left space-y-6">
-                <div>
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 mb-2">
-                    <Info className="w-3 h-3 text-primary" /> About
-                  </span>
-                  <p className="text-xs leading-relaxed text-white/80">{otherProfile.about || "Digital profile on HappyChat."}</p>
-                </div>
-                <div className="pt-4 border-t border-white/5 space-y-4">
-                  <div>
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 mb-2">
-                      <Mail className="w-3 h-3 text-primary" /> Email
-                    </span>
-                    <p className="text-xs text-primary truncate font-bold">{otherProfile.email}</p>
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 mb-2">
-                      <AtSign className="w-3 h-3 text-primary" /> Username
-                    </span>
-                    <p className="text-xs text-white/80 truncate font-mono tracking-tight">@{otherProfile.username}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
-
       <footer className="bg-[#0a0a0a] border-t border-white/5 p-4 relative z-50">
         <AnimatePresence>
           {showPollCreator && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute bottom-full left-0 right-0 p-4 md:p-8 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute bottom-full left-0 right-0 p-4 md:p-8 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,200,83,0.5)] overflow-hidden">
               <PollCreatorInline onClose={() => setShowPollCreator(false)} onSend={(poll) => handleSendMessage({ poll })} />
             </motion.div>
           )}
           {showContactPicker && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute bottom-full left-0 right-0 p-4 md:p-8 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute bottom-full left-0 right-0 p-4 md:p-8 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,200,83,0.5)] overflow-hidden">
               <ContactPickerInline onClose={() => setShowContactPicker(false)} onSend={(contact) => handleSendMessage({ sharedContact: contact })} />
             </motion.div>
           )}
           {showActionMenu && !showPollCreator && !showContactPicker && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute bottom-full left-0 right-0 p-4 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute bottom-full left-0 right-0 p-4 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,200,83,0.5)]">
               <div className="max-w-4xl mx-auto grid grid-cols-2 gap-4">
                 <button onClick={() => setShowPollCreator(true)} className="flex flex-col items-center justify-center p-6 md:p-10 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group">
                   <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4 group-hover:glow-green transition-all"><BarChart2 className="w-5 h-5 md:w-7 md:h-7 text-primary" /></div>
@@ -654,7 +567,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   );
 }
 
-function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward, onSelect, isSelected, highlight }: any) {
+function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward, onSelect, onReact, isSelected, highlight, mainName }: any) {
   const db = useFirestore();
   const isOwn = msg.senderId === user?.uid;
   const isSystem = msg.isDeleted;
@@ -705,23 +618,25 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
 
   return (
     <div className="flex w-full group relative mb-1 min-w-0 items-center overflow-hidden">
-      <div className="absolute left-0 flex items-center justify-center w-14 h-full pointer-events-none z-0">
-        <motion.div style={{ opacity: swipeOpacity, scale: swipeScale }} className="flex items-center justify-center w-8 h-8 bg-primary/20 rounded-full border border-primary/30 shadow-[0_0_15px_rgba(0,200,83,0.2)]">
-          <Reply className="w-4 h-4 text-primary" />
-        </motion.div>
-      </div>
+      {isMobile && (
+        <div className="absolute left-0 flex items-center justify-center w-14 h-full pointer-events-none z-0">
+          <motion.div style={{ opacity: swipeOpacity, scale: swipeScale }} className="flex items-center justify-center w-8 h-8 bg-primary/20 rounded-full border border-primary/30 shadow-[0_0_15px_rgba(0,200,83,0.2)]">
+            <Reply className="w-4 h-4 text-primary" />
+          </motion.div>
+        </div>
+      )}
 
       <motion.div 
         drag={isMobile ? "x" : false} dragConstraints={{ left: 0, right: 100 }} dragElastic={0.15} dragSnapToOrigin onDragEnd={handleDragEnd} style={{ x: dragX }}
         onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp} 
-        className={cn("w-full flex z-10", isOwn ? "justify-end" : "justify-start")}
+        className={cn("w-full flex z-10 items-center gap-2", isOwn ? "justify-end flex-row" : "justify-start flex-row")}
       >
         <div className="relative max-w-[85%] group/bubble">
           <div 
-            onClick={() => !isMobile && onSelect()}
+            onClick={() => isMobile && onSelect()}
             className={cn(
               "p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0 shadow-sm cursor-pointer", 
-              isSelected && "ring-2 ring-primary shadow-[0_0_20px_rgba(0,200,83,0.3)] scale-[1.02]", 
+              isSelected && isMobile && "ring-2 ring-primary shadow-[0_0_20px_rgba(0,200,83,0.3)] scale-[1.02]", 
               isSystem ? "bg-white/5 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/10 text-[11px] mx-auto" : isOwn ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-[#181818] text-white rounded-tl-none border border-white/5"
             )}
           >
@@ -735,7 +650,7 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
                       const pct = pollResults[i] || 0;
                       const isMyVote = myVote === i;
                       return (
-                        <button key={i} onClick={() => handleVote(i)} disabled={isSystem} className={cn("w-full relative h-8 bg-white/5 border rounded-lg px-3 overflow-hidden group transition-all", isMyVote ? "border-primary/50" : "border-white/5 hover:border-primary/20")}>
+                        <button key={i} onClick={(e) => { e.stopPropagation(); handleVote(i); }} disabled={isSystem} className={cn("w-full relative h-8 bg-white/5 border rounded-lg px-3 overflow-hidden group transition-all", isMyVote ? "border-primary/50" : "border-white/5 hover:border-primary/20")}>
                           <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} className={cn("absolute inset-y-0 left-0", isMyVote ? "bg-primary/20" : "bg-primary/10")} />
                           <div className="relative flex justify-between items-center w-full z-10 gap-2"><span className={cn("text-[10px] font-bold truncate", isMyVote ? "text-primary" : "text-white/70 group-hover:text-white")}>{opt}</span><span className="text-[8px] font-black opacity-50 shrink-0">{pct}%</span></div>
                         </button>
@@ -774,7 +689,6 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
             </div>
           </div>
 
-          {/* Reaction Display */}
           {reactionSummary && reactionSummary.length > 0 && (
             <div className={cn(
               "flex flex-wrap gap-1 mt-1",
@@ -792,6 +706,100 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
             </div>
           )}
         </div>
+
+        {/* PC Selection Menu Button and Patti */}
+        {!isMobile && !msg.isDeleted && (
+          <div className="opacity-0 group-hover/bubble:opacity-100 transition-opacity flex items-center shrink-0">
+             <Popover open={isSelected} onOpenChange={(open) => !open && onSelect(null)}>
+               <PopoverTrigger asChild>
+                 <Button 
+                   variant="ghost" 
+                   size="icon" 
+                   onClick={() => onSelect(msg)} 
+                   className={cn(
+                     "h-8 w-8 rounded-full text-muted-foreground hover:text-white bg-white/5", 
+                     isSelected && "opacity-100 text-primary ring-2 ring-primary/20"
+                   )}
+                 >
+                   <MoreVertical className="w-4 h-4" />
+                 </Button>
+               </PopoverTrigger>
+               <PopoverContent 
+                 side={isOwn ? "left" : "right"} 
+                 align="center" 
+                 sideOffset={10}
+                 className="p-1.5 bg-[#0a0a0a]/95 backdrop-blur-xl border-white/10 rounded-full shadow-2xl flex items-center gap-1.5 w-auto max-w-none z-[120]"
+               >
+                 {/* Reaction Patti */}
+                 <div className="flex items-center gap-1 border-r border-white/5 pr-2 mr-1">
+                   {COMMON_EMOJIS.map(emoji => (
+                     <button 
+                       key={emoji} 
+                       onClick={() => { onReact(emoji); onSelect(null); }} 
+                       className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-full transition-all text-lg scale-90 hover:scale-125"
+                     >
+                       {emoji}
+                     </button>
+                   ))}
+                   <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="w-8 h-8 flex items-center justify-center hover:bg-primary/20 hover:text-primary rounded-full transition-all bg-white/5 border border-white/5">
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 bg-[#0d0d0d] border-white/10 p-2 rounded-2xl shadow-2xl mb-2" side="top">
+                        <div className="flex gap-2">
+                          <Input 
+                            placeholder="Emoji..." 
+                            className="h-10 bg-white/5 border-white/10 rounded-xl" 
+                            autoFocus 
+                            onKeyDown={(e) => { 
+                              if (e.key === 'Enter') {
+                                onReact((e.target as HTMLInputElement).value);
+                                onSelect(null);
+                              }
+                            }} 
+                          />
+                        </div>
+                      </PopoverContent>
+                   </Popover>
+                 </div>
+                 
+                 {/* Action Patti */}
+                 <div className="flex items-center gap-1 px-1">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={() => { onReply(); onSelect(null); }} className="h-8 w-8 text-white hover:text-primary rounded-full"><Reply className="w-4 h-4" /></Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-black border-white/10 text-[9px] font-black uppercase tracking-widest">Reply</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={() => { onForward(); onSelect(null); }} className="h-8 w-8 text-white hover:text-primary rounded-full"><Forward className="w-4 h-4" /></Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-black border-white/10 text-[9px] font-black uppercase tracking-widest">Forward</TooltipContent>
+                      </Tooltip>
+                      {isOwn && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => { onEdit(); onSelect(null); }} className="h-8 w-8 text-white hover:text-primary rounded-full"><Pencil className="w-4 h-4" /></Button>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-black border-white/10 text-[9px] font-black uppercase tracking-widest">Edit</TooltipContent>
+                        </Tooltip>
+                      )}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={() => { onDelete(); onSelect(null); }} className="h-8 w-8 text-destructive hover:bg-destructive/5 rounded-full"><Trash2 className="w-4 h-4" /></Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-black border-white/10 text-[9px] font-black uppercase tracking-widest">Delete</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                 </div>
+               </PopoverContent>
+             </Popover>
+          </div>
+        )}
       </motion.div>
     </div>
   );
@@ -875,3 +883,5 @@ function ForwardPicker({ open, onClose, onForward }: { open: boolean, onClose: (
     </Dialog>
   );
 }
+
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
