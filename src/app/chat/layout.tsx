@@ -18,7 +18,7 @@ function BrandLogo({ className }: { className?: string }) {
     <div className={cn("relative group", className)}>
       <div className="absolute inset-0 bg-primary/20 blur-md rounded-full opacity-50 group-hover:opacity-100 transition-opacity" />
       <Image 
-        src="/Logo.png" 
+        src="/Logoo.png" 
         alt="HappyChat Logo" 
         width={100} 
         height={100} 
