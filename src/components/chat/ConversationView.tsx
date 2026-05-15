@@ -119,7 +119,8 @@ const EXTENDED_EMOJIS = [
   '😴', '🤮', '🤯', '🥳', '🥺', '💩', '👻', '💀', '👽', '👾',
   '🤖', '🎃', '😺', '🤲', '💪', '🧠', '👑', '💄', '💍', '💼',
   '📱', '💻', '🎥', '⚽', '🏀', '🎮', '🚗', '🛸', '🚀', '🌌',
-  '🌍', '🌈', '☀️', '🌙', '🌊', '🔥', '💧', '🥗', '🍩', '🥤'
+  '🌍', '🌈', '☀️', '🌙', '🌊', '💧', '🥗', '🍩', '🥤', '🍔',
+  '🍟', '🍦', '🍰', '🍫', '🍿', '🍩', '🍪', '🥑', '🍍', '🍉'
 ];
 
 export function ConversationView({ conversationId }: { conversationId: string }) {
@@ -385,7 +386,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
             <motion.div key="selection-header" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex items-center justify-between w-full h-full px-2">
               <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" onClick={() => setSelectedMessage(null)} className="text-primary hover:bg-primary/10 rounded-full"><X className="w-5 h-5" /></Button>
-                <span className="text-[11px] font-black uppercase tracking-widest text-primary">Message Selected</span>
               </div>
               <div className="flex items-center gap-1">
                 <TooltipProvider>
@@ -551,10 +551,6 @@ function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highli
   const isSystem = msg.isDeleted;
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const dragX = useMotionValue(0);
-  const swipeOpacity = useTransform(dragX, [0, 60], [0, 1]);
-  const swipeScale = useTransform(dragX, [0, 60], [0.5, 1.1]);
-
   const handlePointerDown = () => {
     if (!isMobile) return;
     holdTimerRef.current = setTimeout(() => { onSelect(msg); if (window.navigator.vibrate) window.navigator.vibrate(50); }, 600); 
@@ -597,9 +593,9 @@ function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highli
     <div className="flex w-full group relative mb-1 min-w-0 items-center overflow-visible">
       <motion.div 
         onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp} 
-        className={cn("w-full flex z-10 items-center gap-2 overflow-visible", isOwn ? "justify-end flex-row" : "justify-start flex-row")}
+        className={cn("w-full flex z-10 items-center gap-2 overflow-visible group/row", isOwn ? "justify-end flex-row-reverse" : "justify-start flex-row")}
       >
-        <div className="relative max-w-[85%] group/bubble overflow-visible">
+        <div className="relative max-w-[85%] overflow-visible">
           <Popover open={isSelected} onOpenChange={(open) => !open && onSelect(null)}>
             <PopoverTrigger asChild>
               <div 
@@ -647,7 +643,7 @@ function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highli
               </div>
             </PopoverTrigger>
             <PopoverContent 
-              side={isMobile ? "bottom" : "bottom"} 
+              side="bottom" 
               align={isOwn ? "end" : "start"} 
               sideOffset={8}
               className="p-1 bg-[#0a0a0a]/95 backdrop-blur-3xl border-white/10 rounded-2xl shadow-2xl flex items-center gap-1.5 w-auto z-[120]"
@@ -700,7 +696,7 @@ function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highli
         </div>
 
         {!isMobile && !msg.isDeleted && (
-          <div className="opacity-0 group-hover/bubble:opacity-100 transition-opacity flex items-center shrink-0">
+          <div className="opacity-0 group-hover/row:opacity-100 transition-opacity flex items-center shrink-0">
              <Button variant="ghost" size="icon" onClick={() => onSelect(msg)} className="h-8 w-8 rounded-full text-muted-foreground hover:text-white bg-white/5">
                <MoreVertical className="w-4 h-4" />
              </Button>
