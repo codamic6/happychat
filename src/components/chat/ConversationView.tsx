@@ -111,17 +111,19 @@ type Conversation = {
 };
 
 const QUICK_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥'];
-const EXTENDED_EMOJIS = [
+
+// Deduplicated list of extended emojis
+const EXTENDED_EMOJIS = Array.from(new Set([
   '❤️', '👍', '😂', '😮', '😢', '🙏', '🔥', '🎉', '✨', '👏', 
   '💯', '🚀', '👀', '🤔', '😎', '😴', '😭', '😡', '✅', '❌',
   '🌈', '🍕', '🍺', '💡', '🎵', '📍', '💎', '🎁', '🎈', '⭐',
   '🤣', '😅', '😊', '😍', '😘', '😋', '😜', '🤨', '🙄', '🤤',
-  '😴', '🤮', '🤯', '🥳', '🥺', '💩', '👻', '💀', '👽', '👾',
-  '🤖', '🎃', '😺', '🤲', '💪', '🧠', '👑', '💄', '💍', '💼',
-  '📱', '💻', '🎥', '⚽', '🏀', '🎮', '🚗', '🛸', '🚀', '🌌',
-  '🌍', '🌈', '☀️', '🌙', '🌊', '💧', '🥗', '🍩', '🥤', '🍔',
-  '🍟', '🍦', '🍰', '🍫', '🍿', '🍩', '🍪', '🥑', '🍍', '🍉'
-];
+  '🤮', '🤯', '🥳', '🥺', '💩', '👻', '💀', '👽', '👾', '🤖', 
+  '🎃', '😺', '🤲', '💪', '🧠', '👑', '💄', '💍', '💼', '📱', 
+  '💻', '🎥', '⚽', '🏀', '🎮', '🚗', '🛸', '🌍', '☀️', '🌙', 
+  '🌊', '💧', '🥗', '🍩', '🥤', '🍔', '🍟', '🍦', '🍰', '🍫', 
+  '🍿', '🍪', '🥑', '🍍', '🍉'
+]));
 
 export function ConversationView({ conversationId }: { conversationId: string }) {
   const { user, isUserLoading } = useUser();
@@ -650,7 +652,7 @@ function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highli
             >
               {QUICK_EMOJIS.map(emoji => (
                 <button 
-                  key={emoji} 
+                  key={`quick-${emoji}`} 
                   onClick={() => { onReact(emoji); }} 
                   className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-full transition-all text-lg active:scale-125"
                 >
@@ -663,11 +665,11 @@ function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highli
                      <Plus className="w-4 h-4" />
                    </button>
                  </PopoverTrigger>
-                 <PopoverContent className="w-64 bg-[#0d0d0d] border-white/10 p-3 rounded-2xl shadow-2xl mb-2" side="top" align="center">
+                 <PopoverContent className="w-64 bg-[#0d0d0d] border-white/10 p-3 rounded-2xl shadow-2xl mb-2 z-[130]" side="top" align="center">
                    <div className="grid grid-cols-6 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-1">
                      {EXTENDED_EMOJIS.map(emoji => (
                        <button 
-                         key={emoji} 
+                         key={`ext-${emoji}`} 
                          onClick={() => { onReact(emoji); }} 
                          className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg text-lg transition-transform active:scale-150"
                        >
@@ -757,7 +759,7 @@ function PollCreatorInline({ onClose, onSend }: { onClose: () => void, onSend: (
       <div className="flex items-center justify-between"><div><h2 className="text-lg md:text-xl font-black font-headline uppercase italic text-gradient tracking-tight">Create Poll</h2><p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Ask a question to the group</p></div><Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10 text-muted-foreground hover:text-white hover:bg-white/5"><X className="w-5 h-5" /></Button></div>
       <div className="grid md:grid-cols-2 gap-4">
         <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase tracking-widest text-primary ml-1">The Question</Label><Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Meet at 8 PM?" className="bg-white/5 border-white/10 rounded-xl h-12 focus:ring-primary text-sm shadow-inner" autoFocus /></div>
-        <div className="space-y-2"><Label className="text-[9px] font-black uppercase tracking-widest text-primary ml-1">Options</Label><div className="space-y-1.5 max-h-[120px] overflow-y-auto custom-scrollbar pr-1">{options.map((opt, i) => (<Input key={i} value={opt} onChange={(e) => handleOptionChange(i, e.target.value)} placeholder={`Option ${i+1}`} className="bg-white/5 border-white/10 rounded-xl h-10 focus:ring-primary text-xs" />))}</div><Button variant="ghost" onClick={handleAddOption} className="text-[8px] uppercase font-black text-primary tracking-widest p-0 h-6 hover:bg-transparent hover:text-white transition-colors"><Plus className="w-3 h-3 mr-1" /> Add Option</Button></div>
+        <div className="space-y-2"><Label className="text-[9px] font-black uppercase tracking-widest text-primary ml-1">Options</Label><div className="space-y-1.5 max-h-[120px] overflow-y-auto custom-scrollbar pr-1">{options.map((opt, i) => (<Input key={`opt-${i}`} value={opt} onChange={(e) => handleOptionChange(i, e.target.value)} placeholder={`Option ${i+1}`} className="bg-white/5 border-white/10 rounded-xl h-10 focus:ring-primary text-xs" />))}</div><Button variant="ghost" onClick={handleAddOption} className="text-[8px] uppercase font-black text-primary tracking-widest p-0 h-6 hover:bg-transparent hover:text-white transition-colors"><Plus className="w-3 h-3 mr-1" /> Add Option</Button></div>
       </div>
       <Button onClick={handleCreate} disabled={!question.trim() || options.filter(o => o.trim()).length < 2} className="w-full h-14 bg-primary hover:glow-green text-primary-foreground font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl transition-all active:scale-95">Send Poll</Button>
     </div>
@@ -787,7 +789,7 @@ function ContactPickerInline({ onClose, onSend }: { onClose: () => void, onSend:
     <div className="max-w-4xl mx-auto space-y-4">
       <div className="flex items-center justify-between"><div><h2 className="text-lg md:text-xl font-black font-headline uppercase italic text-gradient tracking-tight">Share Contact</h2><p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Send a contact to this chat</p></div><Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10 text-muted-foreground hover:text-white hover:bg-white/5"><X className="w-5 h-5" /></Button></div>
       <ScrollArea className="h-64 rounded-3xl bg-white/[0.02] border border-white/5 p-3">
-        {loading ? (<div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>) : profiles.length === 0 ? (<div className="text-center py-20 opacity-30 text-[9px] font-black uppercase tracking-widest italic">No Contacts Found</div>) : (<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">{profiles.map(p => (<button key={p.id} onClick={() => onSend({ uid: p.id, name: p.fullName || p.displayName || p.username, username: p.username })} className="w-full flex items-center h-14 bg-white/[0.03] border border-white/5 rounded-2xl px-4 gap-3 hover:bg-primary/10 group transition-all text-left"><div className="w-8 h-8 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary group-hover:glow-green transition-all uppercase text-xs">{p.username[0]}</div><div className="flex-1 min-w-0"><p className="text-[11px] font-black uppercase truncate group-hover:text-primary transition-colors text-white">{p.fullName}</p><p className="text-[8px] uppercase font-bold text-muted-foreground tracking-widest truncate">@{p.username}</p></div></button>))}</div>)}
+        {loading ? (<div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>) : profiles.length === 0 ? (<div className="text-center py-20 opacity-30 text-[9px] font-black uppercase tracking-widest italic">No Contacts Found</div>) : (<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">{profiles.map(p => (<button key={`contact-${p.id}`} onClick={() => onSend({ uid: p.id, name: p.fullName || p.displayName || p.username, username: p.username })} className="w-full flex items-center h-14 bg-white/[0.03] border border-white/5 rounded-2xl px-4 gap-3 hover:bg-primary/10 group transition-all text-left"><div className="w-8 h-8 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary group-hover:glow-green transition-all uppercase text-xs">{p.username[0]}</div><div className="flex-1 min-w-0"><p className="text-[11px] font-black uppercase truncate group-hover:text-primary transition-colors text-white">{p.fullName}</p><p className="text-[8px] uppercase font-bold text-muted-foreground tracking-widest truncate">@{p.username}</p></div></button>))}</div>)}
       </ScrollArea>
     </div>
   );
@@ -817,7 +819,7 @@ function ForwardPicker({ open, onClose, onForward }: { open: boolean, onClose: (
       <DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-[calc(100%-2rem)] md:max-w-sm shadow-2xl">
         <DialogHeader className="p-6 pb-4"><DialogTitle className="text-xl font-black font-headline uppercase italic text-gradient tracking-tight text-center md:text-left">Share Message</DialogTitle><DialogDescription className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center md:text-left">Send this to another chat</DialogDescription></DialogHeader>
         <ScrollArea className="h-80 px-4 pb-6">
-          <div className="space-y-1.5">{convs.map(c => { const otherId = c.participantIds.find((id: string) => id !== user?.uid); const p = profiles[otherId]; const name = p?.displayName || p?.fullName || 'User'; return (<Button key={c.id} onClick={() => onForward(c.id)} variant="ghost" className="w-full justify-start h-14 bg-white/[0.02] border border-white/5 rounded-2xl px-4 gap-3 hover:bg-primary/10 group transition-all"><div className="w-9 h-9 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary group-hover:glow-green transition-all text-sm">{name[0].toUpperCase()}</div><div className="text-left min-w-0 flex-1"><p className="text-[11px] font-black uppercase truncate group-hover:text-primary transition-colors text-white">{name}</p><p className="text-[9px] uppercase font-bold text-muted-foreground truncate tracking-widest">{c.lastMessage || 'Recent chat'}</p></div></Button>); })}</div>
+          <div className="space-y-1.5">{convs.map(c => { const otherId = c.participantIds.find((id: string) => id !== user?.uid); const p = profiles[otherId]; const name = p?.displayName || p?.fullName || 'User'; return (<Button key={`forward-${c.id}`} onClick={() => onForward(c.id)} variant="ghost" className="w-full justify-start h-14 bg-white/[0.02] border border-white/5 rounded-2xl px-4 gap-3 hover:bg-primary/10 group transition-all"><div className="w-9 h-9 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary group-hover:glow-green transition-all text-sm">{name[0].toUpperCase()}</div><div className="text-left min-w-0 flex-1"><p className="text-[11px] font-black uppercase truncate group-hover:text-primary transition-colors text-white">{name}</p><p className="text-[9px] uppercase font-bold text-muted-foreground truncate tracking-widest">{c.lastMessage || 'Recent chat'}</p></div></Button>); })}</div>
         </ScrollArea>
       </DialogContent>
     </Dialog>
