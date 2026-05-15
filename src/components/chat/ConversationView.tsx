@@ -1,3 +1,5 @@
+'use server';
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -42,7 +44,7 @@ import {
   getDocs, where, addDoc, updateDoc, increment, onSnapshot, writeBatch,
   arrayUnion, arrayRemove, deleteField
 } from 'firebase/firestore';
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -112,17 +114,22 @@ type Conversation = {
 
 const QUICK_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥'];
 
-// Deduplicated list of extended emojis
+// Curated list of expressive facial emojis
 const EXTENDED_EMOJIS = Array.from(new Set([
-  '❤️', '👍', '😂', '😮', '😢', '🙏', '🔥', '🎉', '✨', '👏', 
-  '💯', '🚀', '👀', '🤔', '😎', '😴', '😭', '😡', '✅', '❌',
-  '🌈', '🍕', '🍺', '💡', '🎵', '📍', '💎', '🎁', '🎈', '⭐',
-  '🤣', '😅', '😊', '😍', '😘', '😋', '😜', '🤨', '🙄', '🤤',
-  '🤮', '🤯', '🥳', '🥺', '💩', '👻', '💀', '👽', '👾', '🤖', 
-  '🎃', '😺', '🤲', '💪', '🧠', '👑', '💄', '💍', '💼', '📱', 
-  '💻', '🎥', '⚽', '🏀', '🎮', '🚗', '🛸', '🌍', '☀️', '🌙', 
-  '🌊', '💧', '🥗', '🍩', '🥤', '🍔', '🍟', '🍦', '🍰', '🍫', 
-  '🍿', '🍪', '🥑', '🍍', '🍉'
+  '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '🥲', '☺️', 
+  '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', 
+  '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', 
+  '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', 
+  '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', 
+  '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', 
+  '😥', '😓', '🤗', '🤔', '🫣', '🤭', '🫢', '🫡', '🤫', '🫠', 
+  '🤥', '😶', '🫥', '😐', '😑', '😬', '🫨', '🙄', '😯', '😦', 
+  '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '😵‍💫', '🤐', 
+  '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', 
+  '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', 
+  '🤖', '🎃', '😺', '😸', '😻', '😼', '😽', '😾', '😿', '🙀',
+  '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '❣️',
+  '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '🤝', '🙏'
 ]));
 
 export function ConversationView({ conversationId }: { conversationId: string }) {
