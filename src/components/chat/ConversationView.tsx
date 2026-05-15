@@ -1,10 +1,11 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, Search, MoreVertical, X, Info, ArrowLeft, Loader2,
   Check, Reply, CheckCheck, Trash2, Pencil, Plus, Tag, Mail, AtSign,
-  Share2, BarChart2, UserPlus, Forward, MessageSquare, User, UserCheck, Smile
+  Share2, BarChart2, UserPlus, Forward, MessageSquare, User, UserCheck, Smile, Palette, Paintbrush
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,10 @@ import {
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger,
-  DropdownMenuSeparator
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { 
   Dialog, 
@@ -93,6 +97,8 @@ type UserProfile = {
   about?: string;
   isOnline?: boolean;
   showOnlineStatus?: boolean;
+  preferredTheme?: string;
+  preferredBubbleColor?: string;
 };
 
 type ContactRecord = {
@@ -112,8 +118,7 @@ type Conversation = {
 
 const QUICK_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥'];
 
-// Pure facial expression and emotion library (no objects, cars, or food)
-const EXTENDED_EMOJIS = Array.from(new Set([
+const EXTENDED_EMOJIS = [
   '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '🥲', '☺️', 
   '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', 
   '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', 
@@ -126,9 +131,30 @@ const EXTENDED_EMOJIS = Array.from(new Set([
   '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', 
   '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', 
   '🤖', '🎃', '😺', '😸', '😻', '😼', '😽', '😾', '😿', '🙀',
-  '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '❣️',
-  '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '🤝', '🙏'
-]));
+  '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '❣️'
+];
+
+const THEMES = [
+  { id: 'default', name: 'Midnight Pro', bg: 'bg-[#050505]', preview: '#050505' },
+  { id: 'grid', name: 'Cyber Mesh', bg: 'bg-[#050505] bg-[url("https://www.transparenttextures.com/patterns/carbon-fibre.png")] bg-fixed', preview: '#111' },
+  { id: 'nebula', name: 'Space Nebula', bg: 'bg-[#050505] bg-[url("https://picsum.photos/seed/nebula1/1200/800")] bg-cover bg-center bg-fixed bg-no-repeat', preview: '#2e1065' },
+  { id: 'desert', name: 'Desert Night', bg: 'bg-[#050505] bg-[url("https://picsum.photos/seed/desert1/1200/800")] bg-cover bg-center bg-fixed', preview: '#431407' },
+  { id: 'matrix', name: 'Matrix Code', bg: 'bg-[#050505] bg-[url("https://www.transparenttextures.com/patterns/digital-trace.png")] bg-repeat bg-fixed opacity-90', preview: '#064e3b' },
+  { id: 'ocean', name: 'Ocean Depth', bg: 'bg-[#050505] bg-[url("https://picsum.photos/seed/ocean1/1200/800")] bg-cover bg-center bg-fixed', preview: '#164e63' },
+  { id: 'sunset', name: 'Sunset Violet', bg: 'bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#4c1d95] bg-fixed', preview: '#312e81' },
+  { id: 'abstract', name: 'Fluid Abstract', bg: 'bg-[#050505] bg-[url("https://picsum.photos/seed/abstract1/1200/800")] bg-cover bg-center bg-fixed', preview: '#1e293b' },
+];
+
+const BUBBLE_COLORS = [
+  { id: 'primary', name: 'Happy Green', class: 'bg-primary text-primary-foreground', hex: '#00c853' },
+  { id: 'blue', name: 'Royal Blue', class: 'bg-blue-600 text-white', hex: '#2563eb' },
+  { id: 'purple', name: 'Deep Purple', class: 'bg-purple-600 text-white', hex: '#9333ea' },
+  { id: 'red', name: 'Ruby Red', class: 'bg-red-600 text-white', hex: '#dc2626' },
+  { id: 'amber', name: 'Amber Glow', class: 'bg-amber-500 text-black', hex: '#f59e0b' },
+  { id: 'pink', name: 'Rose Pink', class: 'bg-pink-600 text-white', hex: '#db2777' },
+  { id: 'teal', name: 'Teal Ocean', class: 'bg-teal-600 text-white', hex: '#0d9488' },
+  { id: 'indigo', name: 'Indigo Night', class: 'bg-indigo-600 text-white', hex: '#4f46e5' },
+];
 
 export function ConversationView({ conversationId }: { conversationId: string }) {
   const { user, isUserLoading } = useUser();
@@ -169,6 +195,17 @@ export function ConversationView({ conversationId }: { conversationId: string })
   }, [db, conversationId, isNewChat, user?.uid]);
   
   const { data: rawMessages } = useCollection<Message>(msgQuery);
+
+  const userProfileRef = useMemoFirebase(() => (user?.uid ? doc(db, 'users', user.uid) : null), [db, user?.uid]);
+  const { data: currentUserProfile } = useDoc<UserProfile>(userProfileRef);
+
+  const activeTheme = useMemo(() => {
+    return THEMES.find(t => t.id === currentUserProfile?.preferredTheme) || THEMES[0];
+  }, [currentUserProfile?.preferredTheme]);
+
+  const activeBubbleColor = useMemo(() => {
+    return BUBBLE_COLORS.find(c => c.id === currentUserProfile?.preferredBubbleColor) || BUBBLE_COLORS[0];
+  }, [currentUserProfile?.preferredBubbleColor]);
 
   const messages = useMemo(() => {
     if (!rawMessages || !user?.uid) return [];
@@ -328,6 +365,11 @@ export function ConversationView({ conversationId }: { conversationId: string })
     }).catch(() => {});
   };
 
+  const updatePreference = async (key: string, value: string) => {
+    if (!user || !db) return;
+    updateDoc(doc(db, 'users', user.uid), { [key]: value }).catch(() => {});
+  };
+
   const deleteMessage = async (mode: 'me' | 'everyone') => {
     if (!user?.uid || !db || !deletingMessage) return;
     const ref = doc(db, 'conversations', conversationId, 'messages', deletingMessage.id);
@@ -386,7 +428,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   if (isUserLoading) return null;
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#050505] overflow-hidden relative">
+    <div className={cn("flex-1 flex flex-col min-w-0 overflow-hidden relative transition-all duration-1000", activeTheme.bg)}>
       <header className="flex-none h-20 px-4 border-b border-white/5 flex items-center justify-between z-[60] bg-black/80 backdrop-blur-3xl">
         <AnimatePresence mode="wait">
           {selectedMessage ? (
@@ -455,7 +497,43 @@ export function ConversationView({ conversationId }: { conversationId: string })
               </div>
               <div className="flex items-center gap-1 shrink-0 ml-2">
                 <Button variant="ghost" size="icon" onClick={() => setIsSearchMode(true)} className="text-muted-foreground hover:text-primary"><Search className="w-5 h-5" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => setShowProfile(true)} className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-[#0d0d0d] border-white/10 p-1.5 rounded-xl min-w-[200px] shadow-2xl z-[120]">
+                    <DropdownMenuItem onSelect={() => setShowProfile(true)} className="gap-3 p-2.5 rounded-lg uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
+                      <Info className="w-4 h-4" /> View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-white/5" />
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="gap-3 p-2.5 rounded-lg uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
+                        <Palette className="w-4 h-4" /> Chat Themes
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="bg-[#0d0d0d] border-white/10 p-2 rounded-xl min-w-[180px] shadow-2xl">
+                        {THEMES.map(theme => (
+                          <DropdownMenuItem key={theme.id} onSelect={() => updatePreference('preferredTheme', theme.id)} className="gap-3 p-2 rounded-lg cursor-pointer hover:bg-white/5">
+                            <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: theme.preview }} />
+                            <span className={cn("text-[9px] font-black uppercase tracking-widest", activeTheme.id === theme.id ? "text-primary" : "text-white/60")}>{theme.name}</span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="gap-3 p-2.5 rounded-lg uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
+                        <Paintbrush className="w-4 h-4" /> Bubble Color
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="bg-[#0d0d0d] border-white/10 p-2 rounded-xl min-w-[180px] shadow-2xl">
+                        {BUBBLE_COLORS.map(color => (
+                          <DropdownMenuItem key={color.id} onSelect={() => updatePreference('preferredBubbleColor', color.id)} className="gap-3 p-2 rounded-lg cursor-pointer hover:bg-white/5">
+                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: color.hex }} />
+                            <span className={cn("text-[9px] font-black uppercase tracking-widest", activeBubbleColor.id === color.id ? "text-primary" : "text-white/60")}>{color.name}</span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </motion.div>
           )}
@@ -467,6 +545,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
           {filteredMessages.map((msg) => (
             <MessageRow 
               key={msg.id} msg={msg} user={user} isMobile={isMobile}
+              bubbleClass={activeBubbleColor.class}
               onSelect={(m: any) => setSelectedMessage(m)}
               onReact={(emoji: string) => handleReact(msg, emoji)}
               isSelected={selectedMessage?.id === msg.id}
@@ -477,7 +556,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
         </div>
       </ScrollArea>
 
-      <footer className="bg-[#0a0a0a] border-t border-white/5 p-4 relative z-50">
+      <footer className="bg-black/80 backdrop-blur-3xl border-t border-white/5 p-4 relative z-50">
         <AnimatePresence>
           {showPollCreator && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute bottom-full left-0 right-0 p-4 md:p-8 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,200,83,0.5)] overflow-hidden">
@@ -520,7 +599,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
               {(showActionMenu || showPollCreator || showContactPicker) ? <X className="w-6 h-6" /> : <MoreVertical className="w-6 h-6" />}
             </Button>
             <div className="flex-1 relative min-w-0">
-              <Input value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} placeholder={editingMessage ? "Update message..." : "Type message..."} className="bg-white/5 border-white/10 h-11 md:h-12 rounded-xl focus:ring-primary focus-visible:ring-offset-0 text-sm w-full" />
+              <Input value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} placeholder={editingMessage ? "Update message..." : "Type message..."} className="bg-white/10 border-white/10 h-11 md:h-12 rounded-xl focus:ring-primary focus-visible:ring-offset-0 text-sm w-full text-white" />
             </div>
             <Button onClick={() => handleSendMessage()} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0 transition-all active:scale-90"><Send className="w-5 h-5" /></Button>
           </div>
@@ -552,7 +631,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   );
 }
 
-function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highlight }: any) {
+function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highlight, bubbleClass }: any) {
   const db = useFirestore();
   const isOwn = msg.senderId === user?.uid;
   const isSystem = msg.isDeleted;
@@ -609,11 +688,11 @@ function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highli
                 className={cn(
                   "p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0 shadow-sm cursor-pointer", 
                   isSelected && "ring-2 ring-primary shadow-[0_0_20px_rgba(0,200,83,0.3)] scale-[1.02]", 
-                  isSystem ? "bg-white/5 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/10 text-[11px] mx-auto" : isOwn ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-[#181818] text-white rounded-tl-none border border-white/5"
+                  isSystem ? "bg-white/10 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/20 text-[11px] mx-auto" : isOwn ? cn(bubbleClass || "bg-primary text-primary-foreground", "rounded-tr-none shadow-lg") : "bg-[#181818]/90 backdrop-blur-md text-white rounded-tl-none border border-white/10"
                 )}
               >
                 {msg.forwarded && <div className="flex items-center gap-1.5 mb-1 opacity-60 text-[8px] font-black uppercase italic tracking-widest"><Forward className="w-2 h-2" /> Forwarded</div>}
-                {msg.replyTo && <div className="mb-2 p-1.5 bg-black/20 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate max-w-full"><p className="font-bold text-primary mb-0.5 uppercase tracking-widest text-[8px]">{msg.replyTo.senderName}</p><span className="block truncate">{msg.replyTo.text}</span></div>}
+                {msg.replyTo && <div className="mb-2 p-1.5 bg-black/40 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate max-w-full"><p className="font-bold text-primary mb-0.5 uppercase tracking-widest text-[8px]">{msg.replyTo.senderName}</p><span className="block truncate">{msg.replyTo.text}</span></div>}
                 {msg.poll && (
                   <div className="mb-2 p-3 bg-black/60 rounded-xl border border-white/10 space-y-2.5 shadow-2xl min-w-[180px] max-w-full">
                     <div className="flex items-center gap-2 text-primary"><BarChart2 className="w-3 h-3 shrink-0" /><span className="font-black uppercase tracking-tight text-[10px] truncate">{msg.poll.question}</span></div>
@@ -672,9 +751,9 @@ function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highli
                  </PopoverTrigger>
                  <PopoverContent className="w-64 bg-[#0d0d0d] border-white/10 p-3 rounded-2xl shadow-2xl mb-2 z-[130]" side="top" align="center">
                    <div className="grid grid-cols-6 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-1">
-                     {EXTENDED_EMOJIS.map(emoji => (
+                     {EXTENDED_EMOJIS.map((emoji, idx) => (
                        <button 
-                         key={`ext-${emoji}`} 
+                         key={`ext-${emoji}-${idx}`} 
                          onClick={() => { onReact(emoji); }} 
                          className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg text-lg transition-transform active:scale-150"
                        >
@@ -693,7 +772,7 @@ function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highli
               isOwn ? "justify-end" : "justify-start"
             )}>
               {reactionSummary.map(([emoji, count]) => (
-                <div key={emoji} className="inline-flex items-center gap-1 bg-[#111] border border-white/10 rounded-full px-2 py-0.5 shadow-lg transition-all hover:scale-110">
+                <div key={emoji} className="inline-flex items-center gap-1 bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-2 py-0.5 shadow-lg transition-all hover:scale-110">
                   <span className="text-xs">{emoji}</span>
                   {count > 1 && <span className="text-[8px] font-black text-primary uppercase">{count}</span>}
                 </div>

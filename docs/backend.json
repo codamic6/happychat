@@ -40,6 +40,14 @@
           "type": "boolean",
           "description": "Privacy setting to show or hide online status."
         },
+        "preferredTheme": {
+          "type": "string",
+          "description": "Selected background theme ID."
+        },
+        "preferredBubbleColor": {
+          "type": "string",
+          "description": "Selected bubble color ID for own messages."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time"
