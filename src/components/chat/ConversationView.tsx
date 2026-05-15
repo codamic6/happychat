@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -115,7 +114,12 @@ const QUICK_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥'];
 const EXTENDED_EMOJIS = [
   '❤️', '👍', '😂', '😮', '😢', '🙏', '🔥', '🎉', '✨', '👏', 
   '💯', '🚀', '👀', '🤔', '😎', '😴', '😭', '😡', '✅', '❌',
-  '🌈', '🍕', '🍺', '💡', '🎵', '📍', '💎', '🎁', '🎈', '⭐'
+  '🌈', '🍕', '🍺', '💡', '🎵', '📍', '💎', '🎁', '🎈', '⭐',
+  '🤣', '😅', '😊', '😍', '😘', '😋', '😜', '🤨', '🙄', '🤤',
+  '😴', '🤮', '🤯', '🥳', '🥺', '💩', '👻', '💀', '👽', '👾',
+  '🤖', '🎃', '😺', '🤲', '💪', '🧠', '👑', '💄', '💍', '💼',
+  '📱', '💻', '🎥', '⚽', '🏀', '🎮', '🚗', '🛸', '🚀', '🌌',
+  '🌍', '🌈', '☀️', '🌙', '🌊', '🔥', '💧', '🥗', '🍩', '🥤'
 ];
 
 export function ConversationView({ conversationId }: { conversationId: string }) {
@@ -377,7 +381,44 @@ export function ConversationView({ conversationId }: { conversationId: string })
     <div className="flex-1 flex flex-col min-w-0 bg-[#050505] overflow-hidden relative">
       <header className="flex-none h-20 px-4 border-b border-white/5 flex items-center justify-between z-[60] bg-black/80 backdrop-blur-3xl">
         <AnimatePresence mode="wait">
-          {isSearchMode ? (
+          {selectedMessage ? (
+            <motion.div key="selection-header" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex items-center justify-between w-full h-full px-2">
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" onClick={() => setSelectedMessage(null)} className="text-primary hover:bg-primary/10 rounded-full"><X className="w-5 h-5" /></Button>
+                <span className="text-[11px] font-black uppercase tracking-widest text-primary">Message Selected</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => { setReplyingTo(selectedMessage); setSelectedMessage(null); }} className="text-white hover:text-primary rounded-xl"><Reply className="w-5 h-5" /></Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-[#111] border-white/10 text-[10px] font-bold uppercase text-primary">Reply</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => { setForwardingMessage(selectedMessage); setSelectedMessage(null); }} className="text-white hover:text-primary rounded-xl"><Forward className="w-5 h-5" /></Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-[#111] border-white/10 text-[10px] font-bold uppercase text-primary">Share</TooltipContent>
+                  </Tooltip>
+                  {selectedMessage.senderId === user?.uid && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingMessage(selectedMessage); setInputText(selectedMessage.text); setSelectedMessage(null); }} className="text-white hover:text-primary rounded-xl"><Pencil className="w-5 h-5" /></Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="bg-[#111] border-white/10 text-[10px] font-bold uppercase text-primary">Edit</TooltipContent>
+                    </Tooltip>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => { setDeletingMessage(selectedMessage); }} className="text-destructive hover:bg-destructive/10 rounded-xl"><Trash2 className="w-5 h-5" /></Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-[#111] border-white/10 text-[10px] font-bold uppercase text-destructive">Delete</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            </motion.div>
+          ) : isSearchMode ? (
             <motion.div key="search-header" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-3 w-full">
               <Button variant="ghost" size="icon" onClick={() => { setIsSearchMode(false); setSearchQuery(''); }} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
               <div className="flex-1 relative min-w-0">
@@ -419,15 +460,10 @@ export function ConversationView({ conversationId }: { conversationId: string })
           {filteredMessages.map((msg) => (
             <MessageRow 
               key={msg.id} msg={msg} user={user} isMobile={isMobile}
-              onDelete={() => setDeletingMessage(msg)}
-              onReply={() => setReplyingTo(msg)}
-              onEdit={() => { setEditingMessage(msg); setInputText(msg.text); }}
-              onForward={() => setForwardingMessage(msg)}
               onSelect={(m: any) => setSelectedMessage(m)}
               onReact={(emoji: string) => handleReact(msg, emoji)}
               isSelected={selectedMessage?.id === msg.id}
               highlight={searchQuery}
-              mainName={mainName}
             />
           ))}
           <div ref={scrollRef} className="h-4" />
@@ -509,7 +545,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   );
 }
 
-function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward, onSelect, onReact, isSelected, highlight, mainName }: any) {
+function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highlight }: any) {
   const db = useFirestore();
   const isOwn = msg.senderId === user?.uid;
   const isSystem = msg.isDeleted;
@@ -524,8 +560,7 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
     holdTimerRef.current = setTimeout(() => { onSelect(msg); if (window.navigator.vibrate) window.navigator.vibrate(50); }, 600); 
   };
   const handlePointerUp = () => { if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null; } };
-  const handleDragEnd = (_: any, info: any) => { if (info.offset.x > 60) onReply(); };
-
+  
   const renderText = (text: string) => {
     if (!highlight || !highlight.trim()) return text;
     const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
@@ -560,16 +595,7 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
 
   return (
     <div className="flex w-full group relative mb-1 min-w-0 items-center overflow-visible">
-      {isMobile && (
-        <div className="absolute left-0 flex items-center justify-center w-14 h-full pointer-events-none z-0">
-          <motion.div style={{ opacity: swipeOpacity, scale: swipeScale }} className="flex items-center justify-center w-8 h-8 bg-primary/20 rounded-full border border-primary/30 shadow-[0_0_15px_rgba(0,200,83,0.2)]">
-            <Reply className="w-4 h-4 text-primary" />
-          </motion.div>
-        </div>
-      )}
-
       <motion.div 
-        drag={isMobile ? "x" : false} dragConstraints={{ left: 0, right: 100 }} dragElastic={0.15} dragSnapToOrigin onDragEnd={handleDragEnd} style={{ x: dragX }}
         onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp} 
         className={cn("w-full flex z-10 items-center gap-2 overflow-visible", isOwn ? "justify-end flex-row" : "justify-start flex-row")}
       >
@@ -600,14 +626,12 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
                           );
                         })}
                     </div>
-                    <p className="text-[7px] font-black uppercase tracking-widest text-center text-muted-foreground opacity-50">{totalVotes} Votes</p>
                   </div>
                 )}
                 {msg.sharedContact && (
                   <div className="mb-2 p-3 bg-[#0d0d0d] rounded-xl border border-white/10 flex items-center gap-3 shadow-2xl max-w-full">
                       <div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary font-black text-sm shrink-0">{msg.sharedContact.name.charAt(0)}</div>
                       <div className="flex-1 min-w-0"><p className="text-[11px] font-black uppercase tracking-tight truncate text-white">{msg.sharedContact.name}</p><p className="text-[8px] uppercase font-bold text-muted-foreground tracking-widest truncate">@{msg.sharedContact.username}</p></div>
-                      <Button size="sm" className="h-7 px-3 rounded-lg text-[8px] font-black uppercase tracking-widest bg-primary text-primary-foreground hover:glow-green transition-all shadow-lg shrink-0">View</Button>
                   </div>
                 )}
                 {msg.text && <p className="leading-relaxed whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
@@ -616,72 +640,47 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
                   <span className="opacity-60">{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
                   {isOwn && !isSystem && (
                     <div className="flex items-center ml-1">
-                      {msg.status === 'read' ? (
-                        <CheckCheck 
-                          strokeWidth={5} 
-                          className="w-3.5 h-3.5 text-white drop-shadow-[0_0_8px_rgba(255,255,255,1)]" 
-                        /> 
-                      ) : (
-                        <Check 
-                          strokeWidth={4} 
-                          className="w-3.5 h-3.5 text-white" 
-                        />
-                      )}
+                      {msg.status === 'read' ? <CheckCheck strokeWidth={5} className="w-3.5 h-3.5 text-white drop-shadow-[0_0_8px_rgba(255,255,255,1)]" /> : <Check strokeWidth={4} className="w-3.5 h-3.5 text-white" />}
                     </div>
                   )}
                 </div>
               </div>
             </PopoverTrigger>
             <PopoverContent 
-              side={isOwn ? "bottom" : "bottom"} 
+              side={isMobile ? "bottom" : "bottom"} 
               align={isOwn ? "end" : "start"} 
               sideOffset={8}
-              className="p-1.5 bg-[#0a0a0a]/95 backdrop-blur-3xl border-white/10 rounded-[1.5rem] shadow-2xl flex flex-col gap-2 w-auto max-w-[calc(100vw-2rem)] z-[120]"
+              className="p-1 bg-[#0a0a0a]/95 backdrop-blur-3xl border-white/10 rounded-2xl shadow-2xl flex items-center gap-1.5 w-auto z-[120]"
             >
-              {/* Reaction Patti */}
-              <div className="flex items-center gap-1.5 px-1 py-1">
-                {QUICK_EMOJIS.map(emoji => (
-                  <button 
-                    key={emoji} 
-                    onClick={() => { onReact(emoji); onSelect(null); }} 
-                    className="w-9 h-9 flex items-center justify-center hover:bg-white/10 rounded-full transition-all text-xl active:scale-125"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-                <Popover>
-                   <PopoverTrigger asChild>
-                     <button className="w-9 h-9 flex items-center justify-center hover:bg-primary/20 hover:text-primary rounded-full transition-all bg-white/5 border border-white/5">
-                       <Plus className="w-4 h-4" />
-                     </button>
-                   </PopoverTrigger>
-                   <PopoverContent className="w-64 bg-[#0d0d0d] border-white/10 p-3 rounded-2xl shadow-2xl mb-2" side="top" align="center">
-                     <div className="grid grid-cols-6 gap-2">
-                       {EXTENDED_EMOJIS.map(emoji => (
-                         <button 
-                           key={emoji} 
-                           onClick={() => { onReact(emoji); onSelect(null); }} 
-                           className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg text-lg transition-transform active:scale-150"
-                         >
-                           {emoji}
-                         </button>
-                       ))}
-                     </div>
-                   </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="h-px bg-white/5 mx-2" />
-              
-              {/* Action Zone */}
-              <div className="flex items-center gap-1 p-1">
-                <Button variant="ghost" size="sm" onClick={() => { onReply(); onSelect(null); }} className="h-9 px-3 gap-2 text-white hover:text-primary rounded-xl font-bold uppercase text-[9px] tracking-widest"><Reply className="w-3.5 h-3.5" /> Reply</Button>
-                <Button variant="ghost" size="sm" onClick={() => { onForward(); onSelect(null); }} className="h-9 px-3 gap-2 text-white hover:text-primary rounded-xl font-bold uppercase text-[9px] tracking-widest"><Forward className="w-3.5 h-3.5" /> Share</Button>
-                {isOwn && (
-                  <Button variant="ghost" size="sm" onClick={() => { onEdit(); onSelect(null); }} className="h-9 px-3 gap-2 text-white hover:text-primary rounded-xl font-bold uppercase text-[9px] tracking-widest"><Pencil className="w-3.5 h-3.5" /> Edit</Button>
-                )}
-                <Button variant="ghost" size="sm" onClick={() => { onDelete(); onSelect(null); }} className="h-9 px-3 gap-2 text-destructive hover:bg-destructive/10 rounded-xl font-bold uppercase text-[9px] tracking-widest"><Trash2 className="w-3.5 h-3.5" /> Delete</Button>
-              </div>
+              {QUICK_EMOJIS.map(emoji => (
+                <button 
+                  key={emoji} 
+                  onClick={() => { onReact(emoji); }} 
+                  className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-full transition-all text-lg active:scale-125"
+                >
+                  {emoji}
+                </button>
+              ))}
+              <Popover>
+                 <PopoverTrigger asChild>
+                   <button className="w-8 h-8 flex items-center justify-center hover:bg-primary/20 hover:text-primary rounded-full transition-all bg-white/5 border border-white/5 ml-1">
+                     <Plus className="w-4 h-4" />
+                   </button>
+                 </PopoverTrigger>
+                 <PopoverContent className="w-64 bg-[#0d0d0d] border-white/10 p-3 rounded-2xl shadow-2xl mb-2" side="top" align="center">
+                   <div className="grid grid-cols-6 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-1">
+                     {EXTENDED_EMOJIS.map(emoji => (
+                       <button 
+                         key={emoji} 
+                         onClick={() => { onReact(emoji); }} 
+                         className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg text-lg transition-transform active:scale-150"
+                       >
+                         {emoji}
+                       </button>
+                     ))}
+                   </div>
+                 </PopoverContent>
+              </Popover>
             </PopoverContent>
           </Popover>
 
@@ -691,10 +690,7 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
               isOwn ? "justify-end" : "justify-start"
             )}>
               {reactionSummary.map(([emoji, count]) => (
-                <div 
-                  key={emoji} 
-                  className="inline-flex items-center gap-1 bg-[#111] border border-white/10 rounded-full px-2 py-0.5 shadow-lg group/reaction transition-all hover:scale-110"
-                >
+                <div key={emoji} className="inline-flex items-center gap-1 bg-[#111] border border-white/10 rounded-full px-2 py-0.5 shadow-lg transition-all hover:scale-110">
                   <span className="text-xs">{emoji}</span>
                   {count > 1 && <span className="text-[8px] font-black text-primary uppercase">{count}</span>}
                 </div>
@@ -703,18 +699,9 @@ function MessageRow({ msg, user, isMobile, onDelete, onReply, onEdit, onForward,
           )}
         </div>
 
-        {/* Desktop invisible (present but transparent) trigger */}
         {!isMobile && !msg.isDeleted && (
           <div className="opacity-0 group-hover/bubble:opacity-100 transition-opacity flex items-center shrink-0">
-             <Button 
-               variant="ghost" 
-               size="icon" 
-               onClick={() => onSelect(msg)} 
-               className={cn(
-                 "h-8 w-8 rounded-full text-muted-foreground hover:text-white bg-white/5", 
-                 isSelected && "opacity-100 text-primary ring-2 ring-primary/20"
-               )}
-             >
+             <Button variant="ghost" size="icon" onClick={() => onSelect(msg)} className="h-8 w-8 rounded-full text-muted-foreground hover:text-white bg-white/5">
                <MoreVertical className="w-4 h-4" />
              </Button>
           </div>
