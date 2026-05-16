@@ -40,13 +40,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { 
   doc, query, collection, serverTimestamp, 
   getDocs, where, addDoc, updateDoc, increment, onSnapshot, writeBatch,
   arrayUnion, arrayRemove, deleteField, setDoc
 } from 'firebase/firestore';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -119,15 +127,15 @@ type Conversation = {
 const QUICK_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥'];
 
 const EXTENDED_EMOJIS = [
-  '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '🥲', '☺️', 
+  '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '🥲', '☺️', 
   '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', 
   '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', 
   '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', 
-  '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', 
+  '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😭', '😤', 
   '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', 
   '😥', '😓', '🤗', '🤔', '🫣', '🤭', '🫢', '🫡', '🤫', '🫠', 
   '🤥', '😶', '🫥', '😐', '😑', '😬', '🫨', '🙄', '😯', '😦', 
-  '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '😵‍💫', '🤐', 
+  '😧', '😲', '🥱', '😴', '🤤', '😪', '😵', '😵‍💫', '🤐', 
   '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', 
   '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', 
   '🤖', '🎃', '😺', '😸', '😻', '😼', '😽', '😾', '😿', '🙀',
@@ -175,6 +183,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [showPollCreator, setShowPollCreator] = useState(false);
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -422,10 +431,51 @@ export function ConversationView({ conversationId }: { conversationId: string })
     return conversation.typing[otherProfile.id] === true;
   }, [conversation?.typing, otherProfile]);
 
-  const mainName = contactRecord?.customName || otherProfile?.displayName || otherProfile?.fullName || 'User';
+  const mainName = contactRecord?.customName ? `${contactRecord.customName} ~ ${otherProfile?.fullName || ''}` : (otherProfile?.displayName || otherProfile?.fullName || 'User');
   const initial = (otherProfile?.fullName || otherProfile?.username || 'U').charAt(0).toUpperCase();
 
   if (isUserLoading) return null;
+
+  const HeaderMenuContent = () => (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary px-2">Chat Themes</h4>
+        <div className="grid grid-cols-2 gap-2">
+          {THEMES.map(theme => (
+            <button 
+              key={theme.id} 
+              onClick={() => { updatePreference('preferredTheme', theme.id); !isMobile && setIsHeaderMenuOpen(false); }} 
+              className={cn(
+                "flex items-center gap-3 p-3 rounded-xl border transition-all text-left group",
+                activeTheme.id === theme.id ? "bg-primary/20 border-primary/40" : "bg-white/5 border-white/5 hover:bg-white/10"
+              )}
+            >
+              <div className="w-5 h-5 rounded-full border-2 border-white/10 shrink-0" style={{ backgroundColor: theme.preview }} />
+              <span className={cn("text-[9px] font-black uppercase tracking-widest", activeTheme.id === theme.id ? "text-white" : "text-white/40 group-hover:text-white")}>{theme.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-4">
+        <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary px-2">Bubble Color</h4>
+        <div className="grid grid-cols-4 gap-3">
+          {BUBBLE_COLORS.map(color => (
+            <button 
+              key={color.id} 
+              onClick={() => { updatePreference('preferredBubbleColor', color.id); !isMobile && setIsHeaderMenuOpen(false); }} 
+              className={cn(
+                "flex flex-col items-center gap-2 p-2 rounded-xl border transition-all group",
+                activeBubbleColor.id === color.id ? "bg-white/10 border-primary/40" : "bg-white/5 border-white/5 hover:bg-white/10"
+              )}
+            >
+              <div className="w-6 h-6 rounded-full shadow-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: color.hex }} />
+              <span className={cn("text-[7px] font-black uppercase tracking-tighter truncate w-full text-center", activeBubbleColor.id === color.id ? "text-white" : "text-white/30")}>{color.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className={cn("flex-1 flex flex-row min-w-0 overflow-hidden relative transition-all duration-1000", activeTheme.bg)}>
@@ -498,43 +548,34 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 </div>
                 <div className="flex items-center gap-1 shrink-0 ml-2">
                   <Button variant="ghost" size="icon" onClick={() => setIsSearchMode(true)} className="text-muted-foreground hover:text-primary"><Search className="w-5 h-5" /></Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-[#0d0d0d] border-white/10 p-1.5 rounded-xl min-w-[200px] shadow-2xl z-[120]">
-                      <DropdownMenuItem onSelect={() => setShowProfile(true)} className="gap-3 p-2.5 rounded-lg uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
-                        <Info className="w-4 h-4" /> View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator className="bg-white/5" />
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger className="gap-3 p-2.5 rounded-lg uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
-                          <Palette className="w-4 h-4" /> Chat Themes
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="bg-[#0d0d0d] border-white/10 p-2 rounded-xl min-w-[180px] shadow-2xl">
-                          {THEMES.map(theme => (
-                            <DropdownMenuItem key={theme.id} onSelect={() => updatePreference('preferredTheme', theme.id)} className="gap-3 p-2 rounded-lg cursor-pointer hover:bg-white/5">
-                              <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: theme.preview }} />
-                              <span className={cn("text-[9px] font-black uppercase tracking-widest", activeTheme.id === theme.id ? "text-primary" : "text-white/60")}>{theme.name}</span>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger className="gap-3 p-2.5 rounded-lg uppercase font-bold text-[10px] tracking-widest text-white/80 hover:text-primary cursor-pointer">
-                          <Paintbrush className="w-4 h-4" /> Bubble Color
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="bg-[#0d0d0d] border-white/10 p-2 rounded-xl min-w-[180px] shadow-2xl">
-                          {BUBBLE_COLORS.map(color => (
-                            <DropdownMenuItem key={color.id} onSelect={() => updatePreference('preferredBubbleColor', color.id)} className="gap-3 p-2 rounded-lg cursor-pointer hover:bg-white/5">
-                              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: color.hex }} />
-                              <span className={cn("text-[9px] font-black uppercase tracking-widest", activeBubbleColor.id === color.id ? "text-primary" : "text-white/60")}>{color.name}</span>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  
+                  {isMobile ? (
+                    <Sheet open={isHeaderMenuOpen} onOpenChange={setIsHeaderMenuOpen}>
+                      <SheetTrigger asChild>
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button>
+                      </SheetTrigger>
+                      <SheetContent side="bottom" className="bg-[#0a0a0a] border-white/5 rounded-t-[2.5rem] p-8 max-h-[85vh] overflow-y-auto outline-none">
+                        <SheetHeader className="mb-8">
+                          <SheetTitle className="text-2xl font-black font-headline uppercase italic text-gradient tracking-tight">Chat Options</SheetTitle>
+                          <SheetDescription className="text-[10px] font-bold uppercase tracking-[0.3em]">Personalize your connection</SheetDescription>
+                        </SheetHeader>
+                        <HeaderMenuContent />
+                      </SheetContent>
+                    </Sheet>
+                  ) : (
+                    <DropdownMenu open={isHeaderMenuOpen} onOpenChange={setIsHeaderMenuOpen}>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-[#0d0d0d] border-white/10 p-6 rounded-[2rem] min-w-[320px] shadow-2xl z-[120] space-y-6">
+                        <DropdownMenuItem onSelect={() => setShowProfile(true)} className="gap-3 p-3 rounded-xl uppercase font-black text-[11px] tracking-widest text-primary bg-primary/10 hover:bg-primary/20 cursor-pointer border border-primary/20">
+                          <Info className="w-4 h-4" /> View User Details
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-white/5" />
+                        <HeaderMenuContent />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -548,6 +589,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 key={msg.id} msg={msg} user={user} isMobile={isMobile}
                 bubbleClass={activeBubbleColor.class}
                 onSelect={(m: any) => setSelectedMessage(m)}
+                onReply={() => { setReplyingTo(msg); setSelectedMessage(null); }}
                 onReact={(emoji: string) => handleReact(msg, emoji)}
                 isSelected={selectedMessage?.id === msg.id}
                 highlight={searchQuery}
@@ -589,7 +631,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
             {replyingTo && (
               <div className="px-4 py-2 bg-white/5 border-l-2 border-primary mb-3 flex justify-between items-center rounded-r-xl shadow-lg animate-in slide-in-from-bottom-1">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[9px] font-black text-primary uppercase tracking-widest">Reply to {replyingTo.senderId === user?.uid ? 'You' : mainName}</p>
+                  <p className="text-[9px] font-black text-primary uppercase tracking-widest">Reply to {replyingTo.senderId === user?.uid ? 'You' : otherProfile?.fullName || 'User'}</p>
                   <p className="text-xs text-muted-foreground truncate">{replyingTo.text}</p>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => setReplyingTo(null)} className="h-8 w-8 shrink-0 text-white/40 hover:text-white"><X className="w-4 h-4" /></Button>
@@ -638,17 +680,28 @@ export function ConversationView({ conversationId }: { conversationId: string })
   );
 }
 
-function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highlight, bubbleClass }: any) {
+function MessageRow({ msg, user, isMobile, onSelect, onReply, onReact, isSelected, highlight, bubbleClass }: any) {
   const db = useFirestore();
   const isOwn = msg.senderId === user?.uid;
   const isSystem = msg.isDeleted;
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const x = useMotionValue(0);
+  const swipeOpacity = useTransform(x, [0, 80], [0, 1]);
+  const swipeScale = useTransform(x, [0, 80], [0.8, 1.2]);
 
   const handlePointerDown = () => {
     if (!isMobile) return;
     holdTimerRef.current = setTimeout(() => { onSelect(msg); if (window.navigator.vibrate) window.navigator.vibrate(50); }, 600); 
   };
   const handlePointerUp = () => { if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null; } };
+
+  const onDragEnd = (event: any, info: any) => {
+    if (info.offset.x > 80) {
+      onReply();
+      if (window.navigator.vibrate) window.navigator.vibrate(20);
+    }
+  };
   
   const renderText = (text: string) => {
     if (!highlight || !highlight.trim()) return text;
@@ -685,9 +738,18 @@ function MessageRow({ msg, user, isMobile, onSelect, onReact, isSelected, highli
   return (
     <div className={cn("flex w-full group relative mb-1 min-w-0 items-center overflow-visible", isOwn ? "justify-end" : "justify-start")}>
       <motion.div 
+        drag={isMobile ? "x" : false}
+        dragConstraints={{ left: 0, right: 100 }}
+        dragElastic={0.1}
+        style={{ x }}
+        onDragEnd={onDragEnd}
         onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp} 
         className={cn("max-w-[85%] flex z-10 items-center gap-2 overflow-visible group/row", isOwn ? "flex-row-reverse" : "flex-row")}
       >
+        <motion.div style={{ opacity: swipeOpacity, scale: swipeScale }} className="absolute -left-12 flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary">
+          <Reply className="w-4 h-4" />
+        </motion.div>
+
         <div className="relative overflow-visible">
           <Popover open={isSelected} onOpenChange={(open) => !open && onSelect(null)}>
             <PopoverTrigger asChild>
@@ -825,7 +887,7 @@ function UserProfileSidebar({ profile, contact, currentUserId, onClose }: { prof
     }
   };
 
-  const displayName = contact?.customName ? `${contact.customName} ~ ${profile.fullName}` : (profile.fullName || profile.username);
+  const displayName = contact?.customName ? `${contact.customName} ~ ${profile.fullName || ''}` : (profile.fullName || profile.username);
 
   return (
     <motion.aside 
