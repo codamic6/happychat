@@ -124,11 +124,7 @@ export function Navbar() {
                       <BrandLogo className="w-10 h-10" />
                       <span className="font-headline font-black text-2xl tracking-tighter text-white uppercase">HappyChat</span>
                     </Link>
-                    <SheetClose asChild>
-                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white h-10 w-10">
-                        <X className="w-6 h-6" />
-                      </Button>
-                    </SheetClose>
+                    {/* Manual close button removed to avoid duplication with standard SheetContent close button */}
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-8 space-y-12">
