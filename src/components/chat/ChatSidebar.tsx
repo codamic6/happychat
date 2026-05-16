@@ -463,6 +463,9 @@ export function ChatSidebar() {
             const isSelected = pathname === `/chat/${conv.id}`;
             const isInSelection = isSelectionMode && selectedConvId === conv.id;
             const isTyping = otherId ? conv.typing?.[otherId] === true : false;
+            
+            // Respect the other user's online visibility preference
+            const showOnline = profile.isOnline && profile.showOnlineStatus !== false;
 
             const rawLastMessage = conv.lastMessage || 'Connected...';
             const displayLastMessage = rawLastMessage.length > 20 
@@ -489,7 +492,7 @@ export function ChatSidebar() {
                     <div className="w-10 h-10 rounded-full border border-white/10 bg-[#111] flex items-center justify-center overflow-hidden z-0">
                       <span className="text-sm font-bold text-primary not-italic flex items-center justify-center leading-none h-full w-full">{displayName.charAt(0).toUpperCase()}</span>
                     </div>
-                    {profile.showOnlineStatus !== false && profile.isOnline && (
+                    {showOnline && (
                       <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full border-2 border-[#0d0d0d] z-20 shadow-lg" />
                     )}
                   </div>

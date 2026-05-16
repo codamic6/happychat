@@ -17,9 +17,6 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { 
   Dialog, 
@@ -28,7 +25,6 @@ import {
   DialogTitle, 
   DialogTrigger,
   DialogDescription,
-  DialogFooter
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -105,6 +101,7 @@ type UserProfile = {
   about?: string;
   isOnline?: boolean;
   showOnlineStatus?: boolean;
+  showTypingStatus?: boolean;
   preferredTheme?: string;
   preferredBubbleColor?: string;
 };
@@ -138,8 +135,7 @@ const EXTENDED_EMOJIS = [
   '😧', '😲', '🥱', '😴', '🤤', '😪', '😵', '😵‍💫', '🤐', 
   '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', 
   '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', 
-  '🤖', '🎃', '😺', '😸', '😻', '😼', '😽', '😾', '😿', '🙀',
-  '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '❣️'
+  '🤖', '🎃', '😺', '😸', '😻', '😼', '😽', '😾', '😿', '🙀'
 ];
 
 const THEMES = [
@@ -233,7 +229,10 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [contactRecord, setContactRecord] = useState<ContactRecord | null>(null);
 
   useEffect(() => {
-    if (!user?.uid || !db || isNewChat || !conversationId) return;
+    if (!user?.uid || !db || isNewChat || !conversationId || !currentUserProfile) return;
+
+    // Respect typing privacy setting
+    if (currentUserProfile.showTypingStatus === false) return;
 
     const setTyping = (isTyping: boolean) => {
       updateDoc(doc(db, 'conversations', conversationId), {
@@ -252,7 +251,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     return () => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
-  }, [inputText, user?.uid, db, conversationId, isNewChat]);
+  }, [inputText, user?.uid, db, conversationId, isNewChat, currentUserProfile]);
 
   useEffect(() => {
     if (!db || isNewChat || !user?.uid || !rawMessages) return;
@@ -428,8 +427,15 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   const isOtherTyping = useMemo(() => {
     if (!conversation?.typing || !otherProfile) return false;
-    return conversation.typing[otherProfile.id] === true;
+    // Respect the other user's typing privacy preference
+    return conversation.typing[otherProfile.id] === true && otherProfile.showTypingStatus !== false;
   }, [conversation?.typing, otherProfile]);
+
+  const isOtherOnline = useMemo(() => {
+    if (!otherProfile) return false;
+    // Respect the other user's online visibility preference
+    return otherProfile.isOnline === true && otherProfile.showOnlineStatus !== false;
+  }, [otherProfile]);
 
   const mainName = contactRecord?.customName || otherProfile?.displayName || otherProfile?.fullName || 'User';
   const initial = (otherProfile?.fullName || otherProfile?.username || 'U').charAt(0).toUpperCase();
@@ -539,8 +545,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
                         {mainName}
                       </h3>
                       <div className="flex items-center gap-2 overflow-hidden">
-                        <p className={cn("text-[10px] uppercase font-bold tracking-widest truncate", isOtherTyping ? "text-primary animate-pulse" : otherProfile?.isOnline ? "text-primary" : "text-muted-foreground")}>
-                          {isOtherTyping ? 'Typing...' : otherProfile?.isOnline ? 'Online' : 'Offline'}
+                        <p className={cn("text-[10px] uppercase font-bold tracking-widest truncate", isOtherTyping ? "text-primary animate-pulse" : isOtherOnline ? "text-primary" : "text-muted-foreground")}>
+                          {isOtherTyping ? 'Typing...' : isOtherOnline ? 'Online' : 'Offline'}
                         </p>
                       </div>
                     </div>
@@ -889,6 +895,7 @@ function UserProfileSidebar({ profile, contact, currentUserId, onClose }: { prof
 
   const mainTitle = contact?.customName || profile.fullName || profile.username;
   const subTitle = contact?.customName ? `~ ${profile.fullName}` : null;
+  const isOnline = profile.isOnline && profile.showOnlineStatus !== false;
 
   return (
     <motion.aside 
@@ -914,7 +921,7 @@ function UserProfileSidebar({ profile, contact, currentUserId, onClose }: { prof
                 <User className="w-8 h-8 text-white" />
               </div>
             </div>
-            {profile.showOnlineStatus !== false && profile.isOnline && (
+            {isOnline && (
               <div className="absolute bottom-3 right-3 w-7 h-7 bg-primary rounded-full border-4 border-[#0a0a0a] shadow-lg glow-green" />
             )}
           </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -22,6 +21,8 @@ type UserProfile = {
   fullName?: string;
   username: string;
   updatedAt?: any;
+  isOnline?: boolean;
+  showOnlineStatus?: boolean;
 };
 
 type StatusUpdate = {
@@ -259,6 +260,7 @@ export function StatusSidebar() {
                   if (!p) return null;
                   const name = p.displayName || p.fullName || 'User';
                   const latest = group.items[0];
+                  const showOnline = p.isOnline && p.showOnlineStatus !== false;
 
                   return (
                     <button 
@@ -271,6 +273,9 @@ export function StatusSidebar() {
                         <Avatar className="w-12 h-12 border border-[#0d0d0d]">
                           <AvatarFallback className="bg-primary/20 text-primary font-bold">{name.charAt(0)}</AvatarFallback>
                         </Avatar>
+                        {showOnline && (
+                          <div className="absolute bottom-1 right-1 w-3 h-3 bg-primary rounded-full border-2 border-[#0d0d0d] z-20" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-sm text-white truncate font-headline uppercase italic">{name}</p>
@@ -294,6 +299,7 @@ export function StatusSidebar() {
                   if (!p) return null;
                   const name = p.displayName || p.fullName || 'User';
                   const latest = group.items[0];
+                  const showOnline = p.isOnline && p.showOnlineStatus !== false;
 
                   return (
                     <button 
@@ -306,6 +312,9 @@ export function StatusSidebar() {
                         <Avatar className="w-12 h-12 border border-[#0d0d0d]">
                           <AvatarFallback className="bg-white/5 text-muted-foreground font-bold">{name.charAt(0)}</AvatarFallback>
                         </Avatar>
+                        {showOnline && (
+                          <div className="absolute bottom-1 right-1 w-3 h-3 bg-primary rounded-full border-2 border-[#0d0d0d] z-20" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-sm text-white truncate font-headline uppercase italic">{name}</p>
