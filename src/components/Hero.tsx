@@ -11,23 +11,23 @@ export function Hero() {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.2,
-        delayChildren: 0.3
+        staggerChildren: 0.1, // Faster stagger
+        delayChildren: 0.1
       }
     }
   };
 
   const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: { y: 15, opacity: 0 },
     visible: { y: 0, opacity: 1 }
   };
 
   return (
     <div className="relative min-h-[90vh] flex items-center justify-center pt-20 pb-12 overflow-hidden">
-      {/* Animated Background Mesh - Contained */}
+      {/* Animated Background Mesh - Optimized with lower opacity */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[80%] md:w-[40%] h-[40%] bg-primary/10 blur-[100px] md:blur-[150px] rounded-full animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[80%] md:w-[40%] h-[40%] bg-emerald-500/10 blur-[100px] md:blur-[150px] rounded-full animate-pulse delay-700" />
+        <div className="absolute top-[-10%] left-[-10%] w-[80%] md:w-[40%] h-[40%] bg-primary/5 blur-[100px] md:blur-[150px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[80%] md:w-[40%] h-[40%] bg-emerald-500/5 blur-[100px] md:blur-[150px] rounded-full" />
       </div>
 
       <div className="container mx-auto px-6 relative z-10 text-center">
@@ -65,13 +65,13 @@ export function Hero() {
 
           {/* Action Buttons */}
           <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center items-center px-4">
-            <Link href="/get-started" className="w-full sm:w-auto">
+            <Link href="/get-started" prefetch={true} className="w-full sm:w-auto">
               <Button size="lg" className="w-full sm:w-auto h-14 md:h-16 px-8 md:px-10 rounded-2xl bg-primary hover:glow-green-bright text-primary-foreground font-black uppercase tracking-widest text-sm md:text-base group transition-all">
                 Get Started 
                 <ArrowRight className="ml-2 w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            <Link href="/email-protocol" className="w-full sm:w-auto">
+            <Link href="/email-protocol" prefetch={true} className="w-full sm:w-auto">
               <Button variant="ghost" size="lg" className="w-full sm:w-auto h-14 md:h-16 px-8 md:px-10 rounded-2xl border border-white/10 text-white font-black uppercase tracking-widest text-sm md:text-base hover:bg-white/5 transition-all">
                 How it works
               </Button>
@@ -100,7 +100,7 @@ export function Hero() {
 
       {/* Decorative Sci-Fi Grid Elements */}
       <div className="absolute left-0 bottom-0 w-full h-32 bg-gradient-to-t from-black to-transparent z-20 pointer-events-none" />
-      <div className="absolute inset-0 z-[-1] opacity-[0.03] [background-image:linear-gradient(#fff_1px,transparent_1px),linear-gradient(90deg,#fff_1px,transparent_1px)] [background-size:40px_40px] md:[background-size:60px_60px] pointer-events-none" />
+      <div className="absolute inset-0 z-[-1] opacity-[0.02] [background-image:linear-gradient(#fff_1px,transparent_1px),linear-gradient(90deg,#fff_1px,transparent_1px)] [background-size:40px_40px] md:[background-size:60px_60px] pointer-events-none" />
     </div>
   );
 }

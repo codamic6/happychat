@@ -35,7 +35,6 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Global Presence Heartbeat
   useEffect(() => {
@@ -50,10 +49,8 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
       }).catch(() => {});
     };
 
-    // Set online on mount
     setOnlineStatus(true);
 
-    // Set offline on unmount/background
     const handleVisibilityChange = () => {
       setOnlineStatus(document.visibilityState === 'visible');
     };
@@ -89,18 +86,15 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
     if (!isUserLoading && !user) {
       router.push('/login');
     }
-    const timer = setTimeout(() => setIsInitialLoading(false), 800);
-    return () => clearTimeout(timer);
   }, [user, isUserLoading, router]);
 
-  if (isUserLoading || isInitialLoading) {
+  if (isUserLoading) {
     return (
       <main className="min-h-screen bg-[#050505] flex items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent opacity-50" />
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 1.1 }}
           className="relative z-10 text-center space-y-6"
         >
           <div className="w-24 h-24 flex items-center justify-center mx-auto">
@@ -164,7 +158,7 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
         {mobileTabs.map((tab, idx) => {
           const isActive = pathname === tab.href;
           return (
-            <Link key={idx} href={tab.href} className="flex flex-col items-center gap-1 group">
+            <Link key={idx} href={tab.href} prefetch={true} className="flex flex-col items-center gap-1 group">
               <div className={cn(
                 "p-2 rounded-xl transition-all duration-300",
                 isActive ? "bg-primary/20 text-primary glow-green" : "text-muted-foreground group-hover:text-white"
