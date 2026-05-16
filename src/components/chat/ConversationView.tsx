@@ -431,7 +431,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     return conversation.typing[otherProfile.id] === true;
   }, [conversation?.typing, otherProfile]);
 
-  const mainName = contactRecord?.customName ? `${contactRecord.customName} ~ ${otherProfile?.fullName || ''}` : (otherProfile?.displayName || otherProfile?.fullName || 'User');
+  const mainName = contactRecord?.customName || otherProfile?.displayName || otherProfile?.fullName || 'User';
   const initial = (otherProfile?.fullName || otherProfile?.username || 'U').charAt(0).toUpperCase();
 
   if (isUserLoading) return null;
@@ -887,7 +887,8 @@ function UserProfileSidebar({ profile, contact, currentUserId, onClose }: { prof
     }
   };
 
-  const displayName = contact?.customName ? `${contact.customName} ~ ${profile.fullName || ''}` : (profile.fullName || profile.username);
+  const mainTitle = contact?.customName || profile.fullName || profile.username;
+  const subTitle = contact?.customName ? `~ ${profile.fullName}` : null;
 
   return (
     <motion.aside 
@@ -918,10 +919,15 @@ function UserProfileSidebar({ profile, contact, currentUserId, onClose }: { prof
             )}
           </div>
 
-          <div className="w-full text-center space-y-2">
+          <div className="w-full text-center space-y-1">
             <h2 className="text-2xl font-black font-headline uppercase tracking-tighter text-white leading-tight">
-              {displayName}
+              {mainTitle}
             </h2>
+            {subTitle && (
+              <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest italic">
+                {subTitle}
+              </p>
+            )}
             <p className="text-[10px] text-primary font-black uppercase tracking-[0.3em] flex items-center justify-center gap-2">
               <AtSign className="w-3 h-3" /> {profile.username}
             </p>
