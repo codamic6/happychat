@@ -636,9 +636,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
                           <SheetDescription className="text-[10px] font-bold uppercase tracking-[0.3em]">Personalize your connection</SheetDescription>
                         </SheetHeader>
                         <div className="flex-1 overflow-y-auto px-8 pb-10 custom-scrollbar">
-                           <DropdownMenuItem onSelect={() => setShowProfile(true)} className="gap-3 p-4 rounded-xl uppercase font-black text-[11px] tracking-widest text-primary bg-primary/10 hover:bg-primary/20 cursor-pointer border border-primary/20 mb-6">
+                           <button onClick={() => { setShowProfile(true); setIsHeaderMenuOpen(false); }} className="w-full flex items-center gap-3 p-4 rounded-xl uppercase font-black text-[11px] tracking-widest text-primary bg-primary/10 hover:bg-primary/20 cursor-pointer border border-primary/20 mb-6 transition-all">
                             <Info className="w-4 h-4" /> User Details
-                          </DropdownMenuItem>
+                          </button>
                           <HeaderMenuContent />
                         </div>
                       </SheetContent>
@@ -650,9 +650,9 @@ export function ConversationView({ conversationId }: { conversationId: string })
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="bg-[#0d0d0d] border-white/10 p-0 rounded-[2rem] min-w-[320px] max-w-[380px] shadow-2xl z-[120] overflow-hidden flex flex-col max-h-[85vh]">
                         <div className="p-6 shrink-0">
-                          <DropdownMenuItem onSelect={() => setShowProfile(true)} className="gap-3 p-3 rounded-xl uppercase font-black text-[11px] tracking-widest text-primary bg-primary/10 hover:bg-primary/20 cursor-pointer border border-primary/20">
+                          <button onClick={() => { setShowProfile(true); setIsHeaderMenuOpen(false); }} className="w-full flex items-center gap-3 p-3 rounded-xl uppercase font-black text-[11px] tracking-widest text-primary bg-primary/10 hover:bg-primary/20 cursor-pointer border border-primary/20 transition-all">
                             <Info className="w-4 h-4" /> View User Details
-                          </DropdownMenuItem>
+                          </button>
                         </div>
                         <DropdownMenuSeparator className="bg-white/5 m-0" />
                         <div className="p-6 pt-4 flex-1 overflow-y-auto custom-scrollbar">
