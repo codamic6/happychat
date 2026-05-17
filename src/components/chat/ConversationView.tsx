@@ -6,7 +6,7 @@ import {
   Check, Reply, CheckCheck, Trash2, Pencil, Plus, Tag, Mail, AtSign,
   Share2, BarChart2, UserPlus, Forward, MessageSquare, User, UserCheck, 
   Smile, Palette, Paintbrush, Save, Pin, PinOff, Clock, Mic, StopCircle,
-  ImageIcon, Video, File
+  ImageIcon, Video, File, Play, Pause
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,7 +75,7 @@ type Message = {
   reactions?: Record<string, string>;
   selfDestructAt?: any;
   isAudio?: boolean;
-  audioUrl?: string;
+  audioData?: string;
   mediaType?: 'image' | 'video';
   mediaUrl?: string;
   replyTo?: {
@@ -201,6 +201,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const isNewChat = conversationId.startsWith('new-');
   const targetUid = isNewChat ? conversationId.replace('new-', '') : null;
@@ -352,7 +354,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
         const newConv = await addDoc(collection(db, 'conversations'), {
           participantIds: pIds,
           updatedAt: serverTimestamp(),
-          lastMessage: text || (payloadOverride?.poll ? 'Shared a Poll' : 'Shared a Contact'),
+          lastMessage: text || (payloadOverride?.poll ? 'Shared a Poll' : payloadOverride?.isAudio ? 'Sent a voice note' : 'Shared a Contact'),
           unreadCount: { [otherProfile.id]: 1, [user.uid]: 0 },
           hiddenFor: []
         });
@@ -383,7 +385,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     addDoc(collection(db, 'conversations', activeId, 'messages'), msg).catch(() => {});
 
     updateDoc(doc(db, 'conversations', activeId), {
-      lastMessage: text || (payloadOverride?.poll ? 'Shared a Poll' : payloadOverride?.sharedContact ? 'Shared a Contact' : 'Media attachment'),
+      lastMessage: text || (payloadOverride?.poll ? 'Shared a Poll' : payloadOverride?.sharedContact ? 'Shared a Contact' : payloadOverride?.isAudio ? 'Sent a voice note' : 'Media attachment'),
       updatedAt: serverTimestamp(),
       [`unreadCount.${otherProfile.id}`]: increment(1),
       [`typing.${user.uid}`]: false
@@ -465,20 +467,45 @@ export function ConversationView({ conversationId }: { conversationId: string })
     setSelectedMessage(null);
   };
 
-  const startVoiceRecording = () => {
-    setIsRecording(true);
-    setRecordingDuration(0);
-    recordingTimerRef.current = setInterval(() => {
-      setRecordingDuration(prev => prev + 1);
-    }, 1000);
+  const startVoiceRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = () => {
+          const base64Audio = reader.result as string;
+          handleSendMessage({ isAudio: true, audioData: base64Audio, text: 'Voice note' });
+        };
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      toast({ variant: 'destructive', title: "Microphone Access Denied" });
+    }
   };
 
   const stopVoiceRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+    }
     setIsRecording(false);
     if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-    if (recordingDuration > 0) {
-      handleSendMessage({ isAudio: true, text: 'Voice note' });
-    }
   };
 
   const isOtherTyping = useMemo(() => {
@@ -528,7 +555,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
           <Paintbrush className="w-4 h-4 text-primary" />
           <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Bubble Styles</h4>
         </div>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           {BUBBLE_COLORS.map(color => (
             <button 
               key={color.id} 
@@ -775,9 +802,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
               </div>
 
               {isRecording ? (
-                <Button onClick={stopVoiceRecording} className="bg-destructive hover:bg-destructive/80 text-white h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0 animate-pulse">
-                  <StopCircle className="w-5 h-5" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black text-primary animate-pulse">{Math.floor(recordingDuration / 60)}:{String(recordingDuration % 60).padStart(2, '0')}</span>
+                  <Button onClick={stopVoiceRecording} className="bg-destructive hover:bg-destructive/80 text-white h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0 animate-pulse">
+                    <StopCircle className="w-5 h-5" />
+                  </Button>
+                </div>
               ) : inputText.trim() ? (
                 <Button onClick={() => handleSendMessage()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0 transition-all active:scale-90"><Send className="w-5 h-5" /></Button>
               ) : (
@@ -909,16 +939,11 @@ function MessageRow({ msg, user, isMobile, onSelect, onReply, onReact, isSelecte
                 {msg.forwarded && <div className="flex items-center gap-1.5 mb-1 opacity-60 text-[8px] font-black uppercase italic tracking-widest"><Forward className="w-2 h-2" /> Forwarded</div>}
                 {msg.selfDestructAt && <div className="flex items-center gap-1 mb-1 text-[7px] font-black uppercase text-primary/70"><Clock className="w-2 h-2" /> Self-Destructing</div>}
                 {msg.replyTo && <div className="mb-2 p-1.5 bg-black/40 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate max-w-full"><p className="font-bold text-primary mb-0.5 uppercase tracking-widest text-[8px]">{msg.replyTo.senderName}</p><span className="block truncate">{msg.replyTo.text}</span></div>}
-                {msg.isAudio && (
-                  <div className="flex items-center gap-3 py-2 px-1">
-                    <Mic className="w-4 h-4 text-primary" />
-                    <div className="flex gap-0.5 items-center">
-                       {[...Array(12)].map((_, i) => (
-                         <motion.div key={i} animate={{ height: [8, 16, 8] }} transition={{ duration: 0.5 + Math.random(), repeat: Infinity }} className="w-0.5 bg-white/40 rounded-full" />
-                       ))}
-                    </div>
-                  </div>
+                
+                {msg.isAudio && msg.audioData && (
+                  <AudioPlayer data={msg.audioData} isOwn={isOwn} />
                 )}
+
                 {msg.mediaType === 'image' && <div className="mb-2 rounded-lg overflow-hidden border border-white/10 bg-black/40 aspect-square flex items-center justify-center"><ImageIcon className="w-8 h-8 text-white/20" /></div>}
                 {msg.mediaType === 'video' && <div className="mb-2 rounded-lg overflow-hidden border border-white/10 bg-black/40 aspect-video flex items-center justify-center"><Video className="w-8 h-8 text-white/20" /></div>}
                 {msg.poll && (
@@ -944,7 +969,7 @@ function MessageRow({ msg, user, isMobile, onSelect, onReply, onReact, isSelecte
                       <div className="flex-1 min-w-0"><p className="text-[11px] font-black uppercase tracking-tight truncate text-white">{msg.sharedContact.name}</p><p className="text-[8px] uppercase font-bold text-muted-foreground tracking-widest truncate">@{msg.sharedContact.username}</p></div>
                   </div>
                 )}
-                {msg.text && <p className="leading-relaxed whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
+                {msg.text && !msg.isAudio && <p className="leading-relaxed whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
                 <div className="flex justify-end gap-1.5 items-center mt-1 text-[7px] font-black uppercase tracking-widest">
                   {msg.isEdited && <span className="mr-1 italic-bold opacity-70">(edited)</span>}
                   <span className="opacity-60">{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>
@@ -1017,6 +1042,60 @@ function MessageRow({ msg, user, isMobile, onSelect, onReply, onReact, isSelecte
           </div>
         )}
       </motion.div>
+    </div>
+  );
+}
+
+function AudioPlayer({ data, isOwn }: { data: string, isOwn: boolean }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3 py-2 px-1 min-w-[150px]">
+      <audio 
+        ref={audioRef} 
+        src={data} 
+        onPlay={() => setIsPlaying(true)} 
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => setIsPlaying(false)}
+        className="hidden" 
+      />
+      <button 
+        onClick={togglePlay}
+        className={cn(
+          "w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90",
+          isOwn ? "bg-white/20 text-white" : "bg-primary/20 text-primary"
+        )}
+      >
+        {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+      </button>
+      <div className="flex-1 flex gap-0.5 items-center h-4">
+        {[...Array(15)].map((_, i) => (
+          <motion.div 
+            key={i} 
+            animate={{ 
+              height: isPlaying ? [6, 16, 6] : 6,
+              opacity: isPlaying ? [0.4, 1, 0.4] : 0.4
+            }} 
+            transition={{ 
+              duration: 0.5 + Math.random(), 
+              repeat: Infinity,
+              ease: "easeInOut"
+            }} 
+            className={cn("w-0.5 rounded-full", isOwn ? "bg-white" : "bg-primary")} 
+          />
+        ))}
+      </div>
     </div>
   );
 }
