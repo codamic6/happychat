@@ -198,6 +198,8 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [searchQuery, setSearchQuery] = useState('');
 
   const [selfDestructTimer, setSelfDestructTimer] = useState<number | null>(null);
+  
+  // Voice State
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -470,7 +472,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const startVoiceRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      
+      // Determine supported MIME types for cross-browser support
+      const types = ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/aac'];
+      const mimeType = types.find(type => MediaRecorder.isTypeSupported(type));
+      
+      const recorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
 
@@ -479,24 +486,27 @@ export function ConversationView({ conversationId }: { conversationId: string })
       };
 
       recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
         const reader = new FileReader();
         reader.readAsDataURL(audioBlob);
         reader.onloadend = () => {
           const base64Audio = reader.result as string;
           handleSendMessage({ isAudio: true, audioData: base64Audio, text: 'Voice note' });
         };
+        // Explicitly stop all tracks to release the mic
         stream.getTracks().forEach(track => track.stop());
       };
 
-      recorder.start();
+      // Start recording with timeslices for stability
+      recorder.start(100);
       setIsRecording(true);
       setRecordingDuration(0);
       recordingTimerRef.current = setInterval(() => {
         setRecordingDuration(prev => prev + 1);
       }, 1000);
     } catch (err) {
-      toast({ variant: 'destructive', title: "Microphone Access Denied" });
+      console.error('Recording error:', err);
+      toast({ variant: 'destructive', title: "Microphone Access Denied", description: "Ensure your browser has mic permissions." });
     }
   };
 
@@ -1048,6 +1058,8 @@ function MessageRow({ msg, user, isMobile, onSelect, onReply, onReact, isSelecte
 
 function AudioPlayer({ data, isOwn }: { data: string, isOwn: boolean }) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const togglePlay = (e: React.MouseEvent) => {
@@ -1060,41 +1072,61 @@ function AudioPlayer({ data, isOwn }: { data: string, isOwn: boolean }) {
     }
   };
 
+  const onTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const onLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
   return (
-    <div className="flex items-center gap-3 py-2 px-1 min-w-[150px]">
+    <div className="flex items-center gap-3 py-2 px-1 min-w-[180px]">
       <audio 
         ref={audioRef} 
         src={data} 
         onPlay={() => setIsPlaying(true)} 
         onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}
+        onTimeUpdate={onTimeUpdate}
+        onLoadedMetadata={onLoadedMetadata}
         className="hidden" 
       />
       <button 
         onClick={togglePlay}
         className={cn(
-          "w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90",
+          "w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 shrink-0 shadow-lg",
           isOwn ? "bg-white/20 text-white" : "bg-primary/20 text-primary"
         )}
       >
         {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
       </button>
-      <div className="flex-1 flex gap-0.5 items-center h-4">
-        {[...Array(15)].map((_, i) => (
-          <motion.div 
-            key={i} 
-            animate={{ 
-              height: isPlaying ? [6, 16, 6] : 6,
-              opacity: isPlaying ? [0.4, 1, 0.4] : 0.4
-            }} 
-            transition={{ 
-              duration: 0.5 + Math.random(), 
-              repeat: Infinity,
-              ease: "easeInOut"
-            }} 
-            className={cn("w-0.5 rounded-full", isOwn ? "bg-white" : "bg-primary")} 
-          />
-        ))}
+      <div className="flex-1 flex flex-col gap-1.5">
+        <div className="flex gap-0.5 items-center h-4">
+          {[...Array(20)].map((_, i) => (
+            <motion.div 
+              key={i} 
+              animate={{ 
+                height: isPlaying ? [6, 16, 6] : 6,
+                opacity: isPlaying ? [0.4, 1, 0.4] : 0.4
+              }} 
+              transition={{ 
+                duration: 0.5 + Math.random(), 
+                repeat: Infinity,
+                ease: "easeInOut"
+              }} 
+              className={cn("w-0.5 rounded-full", isOwn ? "bg-white" : "bg-primary")} 
+            />
+          ))}
+        </div>
+        <div className="flex justify-between items-center px-0.5">
+           <span className="text-[8px] font-black opacity-60 uppercase">{Math.floor(currentTime / 60)}:{String(Math.floor(currentTime % 60)).padStart(2, '0')}</span>
+           <span className="text-[8px] font-black opacity-60 uppercase">{Math.floor(duration / 60)}:{String(Math.floor(duration % 60)).padStart(2, '0')}</span>
+        </div>
       </div>
     </div>
   );
