@@ -6,7 +6,7 @@ import {
   Check, Reply, CheckCheck, Trash2, Pencil, Plus, Tag, Mail, AtSign,
   Share2, BarChart2, UserPlus, Forward, MessageSquare, User, UserCheck, 
   Smile, Palette, Paintbrush, Save, Pin, PinOff, Clock, Mic, StopCircle,
-  Image as ImageIcon, Video, File
+  ImageIcon, Video, File
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -197,8 +197,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Power Features States
-  const [selfDestructTimer, setSelfDestructTimer] = useState<number | null>(null); // null, 60, 3600, 86400
+  const [selfDestructTimer, setSelfDestructTimer] = useState<number | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -498,38 +497,48 @@ export function ConversationView({ conversationId }: { conversationId: string })
   if (isUserLoading) return null;
 
   const HeaderMenuContent = () => (
-    <div className="space-y-6">
+    <div className="space-y-8 pr-2">
       <div className="space-y-4">
-        <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary px-2">Chat Themes</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="flex items-center gap-2 px-2">
+          <Palette className="w-3.5 h-3.5 text-primary" />
+          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Chat Themes</h4>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
           {THEMES.map(theme => (
             <button 
               key={theme.id} 
               onClick={() => { updatePreference('preferredTheme', theme.id); !isMobile && setIsHeaderMenuOpen(false); }} 
               className={cn(
-                "flex flex-col items-center gap-2 p-2 rounded-xl border transition-all text-left group",
-                activeTheme.id === theme.id ? "bg-primary/20 border-primary/40" : "bg-white/5 border-white/5 hover:bg-white/10"
+                "flex flex-col items-center gap-2 p-2 rounded-xl border transition-all text-left group relative overflow-hidden",
+                activeTheme.id === theme.id ? "bg-primary/20 border-primary/40 ring-1 ring-primary/20" : "bg-white/5 border-white/5 hover:bg-white/10"
               )}
             >
-              <div className="w-8 h-8 rounded-full border-2 border-white/10 shrink-0" style={{ backgroundColor: theme.preview }} />
+              <div className="w-full aspect-square rounded-lg border border-white/10 shrink-0 shadow-inner" style={{ backgroundColor: theme.preview }} />
               <span className={cn("text-[8px] font-black uppercase tracking-widest text-center truncate w-full", activeTheme.id === theme.id ? "text-white" : "text-white/40 group-hover:text-white")}>{theme.name}</span>
+              {activeTheme.id === theme.id && <div className="absolute top-1 right-1"><Check className="w-2.5 h-2.5 text-primary" /></div>}
             </button>
           ))}
         </div>
       </div>
+      
       <div className="space-y-4">
-        <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary px-2">Bubble Color</h4>
+        <div className="flex items-center gap-2 px-2">
+          <Paintbrush className="w-3.5 h-3.5 text-primary" />
+          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Bubble Color</h4>
+        </div>
         <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
           {BUBBLE_COLORS.map(color => (
             <button 
               key={color.id} 
               onClick={() => { updatePreference('preferredBubbleColor', color.id); !isMobile && setIsHeaderMenuOpen(false); }} 
               className={cn(
-                "flex flex-col items-center gap-2 p-2 rounded-xl border transition-all group",
-                activeBubbleColor.id === color.id ? "bg-white/10 border-primary/40" : "bg-white/5 border-white/5 hover:bg-white/10"
+                "flex flex-col items-center gap-2 p-1.5 rounded-xl border transition-all group relative",
+                activeBubbleColor.id === color.id ? "bg-white/10 border-primary/40 ring-1 ring-primary/20" : "bg-white/5 border-white/5 hover:bg-white/10"
               )}
             >
-              <div className="w-6 h-6 rounded-full shadow-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: color.hex }} />
+              <div className="w-6 h-6 rounded-full shadow-lg group-hover:scale-110 transition-transform flex items-center justify-center" style={{ backgroundColor: color.hex }}>
+                {activeBubbleColor.id === color.id && <Check className={cn("w-3 h-3", color.id === 'white' ? "text-black" : "text-white")} />}
+              </div>
               <span className={cn("text-[7px] font-black uppercase tracking-tighter truncate w-full text-center", activeBubbleColor.id === color.id ? "text-white" : "text-white/30")}>{color.name}</span>
             </button>
           ))}
@@ -590,7 +599,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 <Button variant="ghost" size="icon" onClick={() => { setIsSearchMode(false); setSearchQuery(''); }} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
                 <div className="flex-1 relative min-w-0">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} autoFocus placeholder="Search messages..." className="bg-white/5 border-none h-11 pl-10 rounded-full w-full" />
+                  <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} autoFocus placeholder="Search messages..." className="bg-white/5 border-none h-11 pl-10 rounded-full w-full text-white" />
                 </div>
               </motion.div>
             ) : (
@@ -621,12 +630,17 @@ export function ConversationView({ conversationId }: { conversationId: string })
                       <SheetTrigger asChild>
                         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button>
                       </SheetTrigger>
-                      <SheetContent side="bottom" className="bg-[#0a0a0a] border-white/5 rounded-t-[2.5rem] p-8 max-h-[85vh] overflow-y-auto outline-none">
-                        <SheetHeader className="mb-8">
+                      <SheetContent side="bottom" className="bg-[#0a0a0a] border-white/5 rounded-t-[2.5rem] p-0 max-h-[85vh] flex flex-col outline-none overflow-hidden">
+                        <SheetHeader className="p-8 pb-4 shrink-0">
                           <SheetTitle className="text-2xl font-black font-headline uppercase italic text-gradient tracking-tight">Chat Options</SheetTitle>
                           <SheetDescription className="text-[10px] font-bold uppercase tracking-[0.3em]">Personalize your connection</SheetDescription>
                         </SheetHeader>
-                        <HeaderMenuContent />
+                        <div className="flex-1 overflow-y-auto px-8 pb-10 custom-scrollbar">
+                           <DropdownMenuItem onSelect={() => setShowProfile(true)} className="gap-3 p-4 rounded-xl uppercase font-black text-[11px] tracking-widest text-primary bg-primary/10 hover:bg-primary/20 cursor-pointer border border-primary/20 mb-6">
+                            <Info className="w-4 h-4" /> User Details
+                          </DropdownMenuItem>
+                          <HeaderMenuContent />
+                        </div>
                       </SheetContent>
                     </Sheet>
                   ) : (
@@ -634,12 +648,16 @@ export function ConversationView({ conversationId }: { conversationId: string })
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white"><MoreVertical className="w-5 h-5" /></Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-[#0d0d0d] border-white/10 p-6 rounded-[2rem] min-w-[320px] shadow-2xl z-[120] space-y-6">
-                        <DropdownMenuItem onSelect={() => setShowProfile(true)} className="gap-3 p-3 rounded-xl uppercase font-black text-[11px] tracking-widest text-primary bg-primary/10 hover:bg-primary/20 cursor-pointer border border-primary/20">
-                          <Info className="w-4 h-4" /> View User Details
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-white/5" />
-                        <HeaderMenuContent />
+                      <DropdownMenuContent align="end" className="bg-[#0d0d0d] border-white/10 p-0 rounded-[2rem] min-w-[320px] max-w-[380px] shadow-2xl z-[120] overflow-hidden flex flex-col max-h-[85vh]">
+                        <div className="p-6 shrink-0">
+                          <DropdownMenuItem onSelect={() => setShowProfile(true)} className="gap-3 p-3 rounded-xl uppercase font-black text-[11px] tracking-widest text-primary bg-primary/10 hover:bg-primary/20 cursor-pointer border border-primary/20">
+                            <Info className="w-4 h-4" /> View User Details
+                          </DropdownMenuItem>
+                        </div>
+                        <DropdownMenuSeparator className="bg-white/5 m-0" />
+                        <div className="p-6 pt-4 flex-1 overflow-y-auto custom-scrollbar">
+                          <HeaderMenuContent />
+                        </div>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
