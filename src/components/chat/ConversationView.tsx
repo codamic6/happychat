@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -6,7 +7,7 @@ import {
   Check, Reply, CheckCheck, Trash2, Pencil, Plus, Tag, Mail, AtSign,
   BarChart2, UserPlus, Forward, MessageSquare, User, 
   Smile, Palette, Paintbrush, Save, Pin, Clock, Mic, StopCircle,
-  Play, Pause, ChevronRight
+  Play, Pause, ChevronRight, MousePointer2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,10 +62,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 // STATIC CONSTANTS
 const QUICK_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥'];
-
-const FACIAL_EMOJIS = [
-  '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '☠️', '💩', '🤡', '👻', '👽', '👾', '🤖'
-];
 
 const THEMES = [
   { id: 'default', name: 'Midnight Pro', bg: 'bg-[#050505]', preview: '#050505' },
@@ -124,8 +121,6 @@ type Message = {
     text: string;
     senderId?: string;
     senderName: string;
-    isStatus?: boolean;
-    statusUid?: string;
   };
   poll?: {
     question: string;
@@ -181,7 +176,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Multi-Selection State
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
@@ -481,7 +475,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
     }
   };
 
-  // Interaction Handlers
   const handleToggleSelect = useCallback((msgId: string) => {
     setSelectedMessageIds(prev => 
       prev.includes(msgId) ? prev.filter(id => id !== msgId) : [...prev, msgId]
@@ -561,7 +554,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                  <div className={cn("absolute inset-0 opacity-40", theme.bg)} />
                  {activeTheme.id === theme.id && <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[2px]"><Check className="w-6 h-6 text-white" /></div>}
               </div>
-              <span className={cn("text-[10px] font-black uppercase tracking-[0.15em] px-1", activeTheme.id === theme.id ? "text-white" : "text-white/40 group-hover:text-white")}>{theme.name}</span>
+              <span className={cn("text-[10px] font-black uppercase tracking-[0.15em] px-1 truncate w-full text-left", activeTheme.id === theme.id ? "text-white" : "text-white/40 group-hover:text-white")}>{theme.name}</span>
             </button>
           ))}
         </div>
@@ -577,7 +570,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
               <div className="w-10 h-10 rounded-full shadow-2xl group-hover:scale-110 transition-transform flex items-center justify-center relative" style={{ backgroundColor: color.hex }}>
                 {activeBubbleColor.id === color.id && <Check className={cn("w-4 h-4", color.id === 'white' ? "text-black" : "text-white")} />}
               </div>
-              <span className={cn("text-[8px] font-bold uppercase tracking-widest text-center leading-tight", activeBubbleColor.id === color.id ? "text-white" : "text-white/30")}>{color.name}</span>
+              <span className={cn("text-[8px] font-bold uppercase tracking-widest text-center leading-tight truncate w-full", activeBubbleColor.id === color.id ? "text-white" : "text-white/30")}>{color.name}</span>
             </button>
           ))}
         </div>
@@ -596,7 +589,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
               <motion.div key="selection-header" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex items-center justify-between w-full h-full px-2">
                 <div className="flex items-center gap-4">
                   <Button variant="ghost" size="icon" onClick={() => setSelectedMessageIds([])} className="text-primary hover:bg-primary/10 rounded-full"><X className="w-5 h-5" /></Button>
-                  <span className="text-lg font-black font-headline text-white uppercase tracking-tighter">{selectedMessageIds.length} selected</span>
+                  <span className="text-3xl font-black font-headline text-white tracking-tighter">{selectedMessageIds.length}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <TooltipProvider>
@@ -724,6 +717,7 @@ const MessageRow = React.memo(({ msg, user, isMobile, onSelect, onReply, onReact
   const db = useFirestore();
   const isOwn = msg.senderId === user?.uid;
   const isSystem = msg.isDeleted;
+  const [isMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const x = useMotionValue(0);
@@ -792,14 +786,14 @@ const MessageRow = React.memo(({ msg, user, isMobile, onSelect, onReply, onReact
         onPointerDown={handlePointerDown} 
         onPointerUp={handlePointerUp} 
         onPointerLeave={handlePointerUp} 
-        onClick={() => { if (isSelectionMode || !isMobile) onSelect(); }}
+        onClick={() => { if (isSelectionMode) onSelect(); }}
         className={cn("max-w-full flex z-10 items-center gap-2 overflow-visible group/row flex-1", isOwn ? "flex-row-reverse" : "flex-row")}
       >
         <motion.div style={{ opacity: swipeOpacity, scale: swipeScale }} className="absolute -left-12 flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 text-primary z-[5] pointer-events-none">
           <Reply className="w-5 h-5" />
         </motion.div>
         
-        <div className={cn("relative overflow-visible max-w-[85%]", isOwn ? "flex justify-end" : "flex justify-start")}>
+        <div className={cn("relative overflow-visible max-w-[85%] flex items-center gap-2", isOwn ? "flex-row-reverse" : "flex-row")}>
           <div className={cn("p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0 shadow-sm cursor-pointer", isSelected ? "ring-2 ring-primary bg-primary/20 scale-[1.02]" : isSystem ? "bg-white/10 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/20 text-[11px]" : isOwn ? cn(bubbleClass || "bg-primary text-primary-foreground", "rounded-tr-none shadow-lg") : "bg-[#181818]/90 backdrop-blur-md text-white rounded-tl-none border border-white/10")}>
             {msg.forwarded && <div className="flex items-center gap-1.5 mb-1 opacity-60 text-[8px] font-black uppercase italic tracking-widest"><Forward className="w-2 h-2" /> Forwarded</div>}
             {msg.replyTo && <div className="mb-2 p-1.5 bg-black/40 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate max-w-full"><p className="font-bold text-primary mb-0.5 uppercase tracking-widest text-[8px]">{msg.replyTo.senderName}</p><span className="block truncate">{msg.replyTo.text}</span></div>}
@@ -809,8 +803,24 @@ const MessageRow = React.memo(({ msg, user, isMobile, onSelect, onReply, onReact
             {msg.text && !msg.isAudio && <p className="leading-relaxed whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
             <div className="flex justify-end gap-1.5 items-center mt-1 text-[7px] font-black uppercase tracking-widest">{msg.isEdited && <span className="mr-1 italic-bold opacity-70">(edited)</span>}<span className="opacity-60">{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>{isOwn && !isSystem && (<div className="flex items-center ml-1">{msg.status === 'read' ? <CheckCheck strokeWidth={5} className="w-3.5 h-3.5 text-white drop-shadow-[0_0_8px_rgba(255,255,255,1)]" /> : <Check strokeWidth={4} className="w-3.5 h-3.5 text-white" />}</div>)}</div>
           </div>
+
+          <div className="shrink-0 flex flex-col items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full bg-white/5 hover:bg-white/10 text-muted-foreground"><MoreVertical className="w-3.5 h-3.5" /></Button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align={isOwn ? "end" : "start"} className="w-fit p-1 bg-[#111] border-white/10 rounded-full flex items-center gap-1 shadow-2xl">
+                 <div className="flex items-center border-r border-white/5 pr-1 mr-1">
+                   {QUICK_EMOJIS.map(emoji => (
+                     <button key={emoji} onClick={() => onReact(msg, emoji)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-lg transition-transform active:scale-125">{emoji}</button>
+                   ))}
+                 </div>
+                 <button onClick={onSelect} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-primary/20 text-primary transition-all"><MousePointer2 className="w-4 h-4" /></button>
+              </PopoverContent>
+            </Popover>
+          </div>
           
-          {reactionSummary && reactionSummary.length > 0 && (<div className={cn("flex flex-wrap gap-1 mt-1", isOwn ? "justify-end" : "justify-start")}>{reactionSummary.map(([emoji, count]) => (<div key={emoji} className="inline-flex items-center gap-1 bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-2 py-0.5 shadow-lg transition-all hover:scale-110"><span className="text-xs">{emoji}</span>{count > 1 && <span className="text-[8px] font-black text-primary uppercase">{count}</span>}</div>))}</div>)}
+          {reactionSummary && reactionSummary.length > 0 && (<div className={cn("absolute -bottom-4 flex flex-wrap gap-1", isOwn ? "right-0" : "left-0")}>{reactionSummary.map(([emoji, count]) => (<div key={emoji} className="inline-flex items-center gap-1 bg-black/80 backdrop-blur-md border border-white/10 rounded-full px-2 py-0.5 shadow-lg"><span className="text-xs">{emoji}</span>{count > 1 && <span className="text-[8px] font-black text-primary uppercase">{count}</span>}</div>))}</div>)}
         </div>
         
         {isSelected && (<div className={cn("absolute inset-y-0 w-1 bg-primary rounded-full blur-[2px]", isOwn ? "-right-2" : "-left-2")} />)}
@@ -839,10 +849,7 @@ const AudioPlayer = React.memo(({ data, isOwn, isSystem }: { data: string, isOwn
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play().catch(err => {
-        console.error("Audio playback error:", err);
-        toast({ variant: 'destructive', title: "Playback Error", description: "Audio protocol link failed." });
-      });
+      audioRef.current.play().catch(() => {});
     }
   };
   
@@ -862,7 +869,7 @@ const AudioPlayer = React.memo(({ data, isOwn, isSystem }: { data: string, isOwn
   };
 
   return (
-    <div className="flex items-center gap-4 py-2 px-2 min-w-[220px] bg-black/20 rounded-2xl border border-white/5">
+    <div className="flex flex-col items-center gap-3 py-3 px-4 min-w-[240px] bg-black/20 rounded-2xl border border-white/5">
       <audio 
         ref={audioRef} 
         src={data} 
@@ -874,42 +881,46 @@ const AudioPlayer = React.memo(({ data, isOwn, isSystem }: { data: string, isOwn
         onLoadedMetadata={onLoadedMetadata} 
         className="hidden" 
       />
-      <button 
-        onClick={togglePlay} 
-        disabled={isSystem}
-        className={cn(
-          "w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 shrink-0 shadow-2xl", 
-          isOwn ? "bg-white text-black" : "bg-primary text-primary-foreground glow-green"
-        )}
-      >
-        {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-1" />}
-      </button>
-      <div className="flex-1 flex flex-col gap-2">
-        <div className="flex gap-[3px] items-center h-5">
-          {[...Array(24)].map((_, i) => {
-            const progress = (i / 24) * duration;
-            const isActive = currentTime >= progress;
-            return (
-              <motion.div 
-                key={i} 
-                animate={{ 
-                  height: isPlaying ? [8, 18, 8] : 8, 
-                  opacity: isActive ? 1 : 0.2 
-                }} 
-                transition={{ 
-                  duration: 0.5 + Math.random(), 
-                  repeat: Infinity, 
-                  ease: "easeInOut",
-                  delay: i * 0.05
-                }} 
-                className={cn("w-1 rounded-full", isOwn ? "bg-white" : "bg-primary")} 
-              />
-            );
-          })}
-        </div>
-        <div className="flex justify-between items-center px-1">
-          <span className="text-[9px] font-black opacity-80 uppercase tracking-tighter">{formatTime(currentTime)}</span>
-          <span className="text-[9px] font-black opacity-80 uppercase tracking-tighter">{formatTime(duration)}</span>
+      
+      <div className="flex items-center gap-4 w-full justify-center">
+        <button 
+          onClick={togglePlay} 
+          disabled={isSystem}
+          className={cn(
+            "w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 shrink-0 shadow-2xl", 
+            isOwn ? "bg-white text-black" : "bg-primary text-primary-foreground glow-green"
+          )}
+        >
+          {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-1" />}
+        </button>
+        
+        <div className="flex-1 flex flex-col gap-2">
+          <div className="flex gap-[3px] items-center h-6 justify-center">
+            {[...Array(28)].map((_, i) => {
+              const progress = (i / 28) * duration;
+              const isActive = currentTime >= progress;
+              return (
+                <motion.div 
+                  key={i} 
+                  animate={{ 
+                    height: isPlaying ? [10, 24, 10] : 10, 
+                    opacity: isActive ? 1 : 0.2 
+                  }} 
+                  transition={isPlaying ? { 
+                    duration: 0.5 + Math.random(), 
+                    repeat: Infinity, 
+                    ease: "easeInOut",
+                    delay: i * 0.05
+                  } : { duration: 0.3 }} 
+                  className={cn("w-1 rounded-full", isOwn ? "bg-white" : "bg-primary")} 
+                />
+              );
+            })}
+          </div>
+          <div className="flex justify-between items-center px-1">
+            <span className="text-[9px] font-black opacity-80 uppercase tracking-tighter">{formatTime(currentTime)}</span>
+            <span className="text-[9px] font-black opacity-80 uppercase tracking-tighter">{formatTime(duration)}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -1004,4 +1015,3 @@ function ForwardPicker({ open, onClose, onForward }: { open: boolean, onClose: (
   }, [user, db, open]);
   return (<Dialog open={open} onOpenChange={onClose}><DialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-[calc(100%-2rem)] md:max-w-sm shadow-2xl"><DialogHeader className="p-6 pb-4"><DialogTitle className="text-xl font-black font-headline uppercase italic text-gradient tracking-tight text-center md:text-left">Share Message</DialogTitle><DialogDescription className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center md:text-left">Send this to another chat</DialogDescription></DialogHeader><ScrollArea className="h-80 px-4 pb-6"><div className="space-y-1.5">{convs.map(c => { const otherId = c.participantIds.find((id: string) => id !== user?.uid); const p = profiles[otherId]; const name = p?.displayName || p?.fullName || 'User'; return (<Button key={`forward-${c.id}`} onClick={() => onForward(c.id)} variant="ghost" className="w-full justify-start h-14 bg-white/[0.02] border border-white/5 rounded-2xl px-4 gap-3 hover:bg-primary/10 group transition-all"><div className="w-9 h-9 rounded-full bg-[#111] border border-white/10 flex items-center justify-center font-bold text-primary group-hover:glow-green transition-all text-sm">{name[0].toUpperCase()}</div><div className="text-left min-w-0 flex-1"><p className="text-11px] font-black uppercase truncate group-hover:text-primary transition-colors text-white">{name}</p><p className="text-[9px] uppercase font-bold text-muted-foreground truncate tracking-widest">{c.lastMessage || 'Recent chat'}</p></div></Button>); })}</div></ScrollArea></DialogContent></Dialog>);
 }
-
