@@ -880,18 +880,23 @@ function MessageRow({ msg, user, isMobile, onSelect, onReply, onReact, isSelecte
     <div id={`msg-${msg.id}`} className={cn("flex w-full group relative mb-1 min-w-0 items-center overflow-visible", isOwn ? "justify-end" : "justify-start")}>
       <motion.div 
         drag={isMobile ? "x" : false}
-        dragConstraints={{ left: 0, right: 100 }}
+        dragDirectionLock
+        dragConstraints={{ left: 0, right: 150 }}
+        dragSnapToOrigin={true}
         dragElastic={0.1}
+        dragTransition={{ bounceStiffness: 500, bounceDamping: 30 }}
         style={{ x }}
         onDragEnd={onDragEnd}
-        onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp} 
-        className={cn("max-w-[85%] flex z-10 items-center gap-2 overflow-visible group/row", isOwn ? "flex-row-reverse" : "flex-row")}
+        onPointerDown={handlePointerDown} 
+        onPointerUp={handlePointerUp} 
+        onPointerLeave={handlePointerUp} 
+        className={cn("max-w-full flex z-10 items-center gap-2 overflow-visible group/row flex-1", isOwn ? "flex-row-reverse" : "flex-row")}
       >
-        <motion.div style={{ opacity: swipeOpacity, scale: swipeScale }} className="absolute -left-12 flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary">
-          <Reply className="w-4 h-4" />
+        <motion.div style={{ opacity: swipeOpacity, scale: swipeScale }} className="absolute -left-12 flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 text-primary z-[5] pointer-events-none">
+          <Reply className="w-5 h-5" />
         </motion.div>
 
-        <div className="relative overflow-visible">
+        <div className={cn("relative overflow-visible max-w-[85%]", isOwn ? "flex justify-end" : "flex justify-start")}>
           <Popover open={isSelected} onOpenChange={(open) => !open && onSelect(null)}>
             <PopoverTrigger asChild>
               <div 
