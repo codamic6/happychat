@@ -141,7 +141,6 @@ export function ChatSidebar() {
   const [manageChatId, setManageChatId] = useState<string | null>(null);
   const [isNewContactOpen, setIsNewContactOpen] = useState(false);
 
-  // SECURE QUERY
   const convQuery = useMemoFirebase(() => {
     if (!db || !user?.uid) return null;
     return query(
@@ -464,7 +463,6 @@ export function ChatSidebar() {
             const isInSelection = isSelectionMode && selectedConvId === conv.id;
             const isTyping = otherId ? conv.typing?.[otherId] === true : false;
             
-            // Respect the other user's online visibility preference
             const showOnline = profile.isOnline && profile.showOnlineStatus !== false;
 
             const rawLastMessage = conv.lastMessage || 'Connected...';

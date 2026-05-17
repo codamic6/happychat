@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -6,8 +5,7 @@ import {
   Send, Search, MoreVertical, X, Info, ArrowLeft, Loader2,
   Check, Reply, CheckCheck, Trash2, Pencil, Plus, Tag, Mail, AtSign,
   BarChart2, UserPlus, Forward, MessageSquare, User, 
-  Smile, Palette, Paintbrush, Save, Pin, Clock, Mic, StopCircle,
-  Play, Pause, ChevronRight, MousePointer2
+  Smile, Palette, Paintbrush, Save, Pin, Clock, ChevronRight, MousePointer2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,7 +53,6 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-mo
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -114,8 +111,6 @@ type Message = {
   updatedAt?: any;
   forwarded?: boolean;
   reactions?: Record<string, string>;
-  isAudio?: boolean;
-  audioData?: string;
   replyTo?: {
     id?: string;
     text: string;
@@ -189,13 +184,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Voice State
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
 
   const isNewChat = conversationId.startsWith('new-');
   const targetUid = isNewChat ? conversationId.replace('new-', '') : null;
@@ -349,7 +337,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
         const newConv = await addDoc(collection(db, 'conversations'), {
           participantIds: pIds,
           updatedAt: serverTimestamp(),
-          lastMessage: text || (payloadOverride?.poll ? 'Shared a Poll' : payloadOverride?.isAudio ? 'Sent a voice note' : 'Shared a Contact'),
+          lastMessage: text || (payloadOverride?.poll ? 'Shared a Poll' : 'Shared a Contact'),
           unreadCount: { [otherProfile.id]: 1, [user.uid]: 0 },
           hiddenFor: []
         });
@@ -379,7 +367,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     addDoc(collection(db, 'conversations', activeId, 'messages'), msg).catch(() => {});
 
     updateDoc(doc(db, 'conversations', activeId), {
-      lastMessage: text || (payloadOverride?.poll ? 'Shared a Poll' : payloadOverride?.sharedContact ? 'Shared a Contact' : payloadOverride?.isAudio ? 'Sent a voice note' : 'Message'),
+      lastMessage: text || (payloadOverride?.poll ? 'Shared a Poll' : payloadOverride?.sharedContact ? 'Shared a Contact' : 'Message'),
       updatedAt: serverTimestamp(),
       [`unreadCount.${otherProfile.id}`]: increment(1),
       [`typing.${user.uid}`]: false
@@ -452,9 +440,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
           conversationId: targetConvId,
           createdAt: serverTimestamp(),
           status: 'sent',
-          forwarded: true,
-          isAudio: msg.isAudio || false,
-          audioData: msg.audioData || null
+          forwarded: true
         });
       }
 
@@ -490,42 +476,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
       await updateDoc(msgRef, { [`reactions.${user.uid}`]: emoji });
     }
   }, [user, db]);
-
-  const startVoiceRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const types = ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/aac'];
-      const mimeType = types.find(type => MediaRecorder.isTypeSupported(type));
-      const recorder = new MediaRecorder(stream, { mimeType });
-      mediaRecorderRef.current = recorder;
-      audioChunksRef.current = [];
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
-        const reader = new FileReader();
-        reader.readAsDataURL(audioBlob);
-        reader.onloadend = () => {
-          const base64Audio = reader.result as string;
-          handleSendMessage({ isAudio: true, audioData: base64Audio, text: 'Voice note' });
-        };
-        stream.getTracks().forEach(track => track.stop());
-      };
-      recorder.start(100);
-      setIsRecording(true);
-      setRecordingDuration(0);
-      recordingTimerRef.current = setInterval(() => { setRecordingDuration(prev => prev + 1); }, 1000);
-      if (window.navigator.vibrate) window.navigator.vibrate(20);
-    } catch (err) {
-      toast({ variant: 'destructive', title: "Microphone Access Denied" });
-    }
-  };
-
-  const stopVoiceRecording = () => {
-    if (mediaRecorderRef.current && isRecording) mediaRecorderRef.current.stop();
-    setIsRecording(false);
-    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-    if (window.navigator.vibrate) window.navigator.vibrate(10);
-  };
 
   const isOtherTyping = useMemo(() => {
     if (!conversation?.typing || !otherProfile) return false;
@@ -699,7 +649,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
             <div className="flex items-center gap-3">
               <Button size="icon" variant="ghost" onClick={() => { if (showPollCreator || showContactPicker) { setShowPollCreator(false); setShowContactPicker(false); } else { setShowActionMenu(!showActionMenu); } }} className={cn("rounded-xl h-11 w-11 md:h-12 md:w-12 shrink-0 bg-white/5 hover:bg-white/10 transition-all", (showActionMenu || showPollCreator || showContactPicker) && "bg-primary/20 text-primary rotate-45")}>{(showActionMenu || showPollCreator || showContactPicker) ? <X className="w-6 h-6" /> : <MoreVertical className="w-6 h-6" />}</Button>
               <div className="flex-1 relative min-w-0"><Input value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} placeholder={editingMessage ? "Update message..." : "Type message..."} className="bg-white/10 border-white/10 h-11 md:h-12 rounded-xl focus:ring-primary focus-visible:ring-offset-0 text-sm w-full text-white" /></div>
-              {isRecording ? (<div className="flex items-center gap-2"><span className="text-[10px] font-black text-primary animate-pulse">{Math.floor(recordingDuration / 60)}:{String(recordingDuration % 60).padStart(2, '0')}</span><Button onClick={stopVoiceRecording} className="bg-destructive hover:bg-destructive/80 text-white h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0 animate-pulse"><StopCircle className="w-5 h-5" /></Button></div>) : inputText.trim() ? (<Button onClick={() => handleSendMessage()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0 transition-all active:scale-90"><Send className="w-5 h-5" /></Button>) : (<Button onClick={startVoiceRecording} className="bg-white/5 hover:bg-white/10 text-white h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0"><Mic className="w-5 h-5" /></Button>)}
+              <Button onClick={() => handleSendMessage()} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0 transition-all active:scale-90"><Send className="w-5 h-5" /></Button>
             </div>
           </div>
         </footer>
@@ -717,14 +667,13 @@ const MessageRow = React.memo(({ msg, user, isMobile, onSelect, onReply, onReact
   const db = useFirestore();
   const isOwn = msg.senderId === user?.uid;
   const isSystem = msg.isDeleted;
-  const [isMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const x = useMotionValue(0);
   const swipeOpacity = useTransform(x, [0, 80], [0, 1]);
   const swipeScale = useTransform(x, [0, 80], [0.8, 1.2]);
 
-  const handlePointerDown = (e: any) => {
+  const handlePointerDown = () => {
     if (!isMobile) return;
     holdTimerRef.current = setTimeout(() => { 
       if (!isSelectionMode) onSelect(); 
@@ -797,28 +746,29 @@ const MessageRow = React.memo(({ msg, user, isMobile, onSelect, onReply, onReact
           <div className={cn("p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0 shadow-sm cursor-pointer", isSelected ? "ring-2 ring-primary bg-primary/20 scale-[1.02]" : isSystem ? "bg-white/10 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/20 text-[11px]" : isOwn ? cn(bubbleClass || "bg-primary text-primary-foreground", "rounded-tr-none shadow-lg") : "bg-[#181818]/90 backdrop-blur-md text-white rounded-tl-none border border-white/10")}>
             {msg.forwarded && <div className="flex items-center gap-1.5 mb-1 opacity-60 text-[8px] font-black uppercase italic tracking-widest"><Forward className="w-2 h-2" /> Forwarded</div>}
             {msg.replyTo && <div className="mb-2 p-1.5 bg-black/40 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate max-w-full"><p className="font-bold text-primary mb-0.5 uppercase tracking-widest text-[8px]">{msg.replyTo.senderName}</p><span className="block truncate">{msg.replyTo.text}</span></div>}
-            {msg.isAudio && msg.audioData && (<AudioPlayer data={msg.audioData} isOwn={isOwn} isSystem={isSystem} />)}
             {msg.poll && (<div className="mb-2 p-3 bg-black/60 rounded-xl border border-white/10 space-y-2.5 shadow-2xl min-w-[180px] max-w-full"><div className="flex items-center gap-2 text-primary"><BarChart2 className="w-3 h-3 shrink-0" /><span className="font-black uppercase tracking-tight text-[10px] truncate">{msg.poll.question}</span></div><div className="space-y-1">{msg.poll.options.map((opt: string, i: number) => { const pct = pollResults[i] || 0; const isMyVote = myVote === i; return (<button key={i} onClick={(e) => { e.stopPropagation(); handleVote(i); }} disabled={isSystem || isSelectionMode} className={cn("w-full relative h-8 bg-white/5 border rounded-lg px-3 overflow-hidden group transition-all", isMyVote ? "border-primary/50" : "border-white/5 hover:border-primary/20")}><motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} className={cn("absolute inset-y-0 left-0", isMyVote ? "bg-primary/20" : "bg-primary/10")} /><div className="relative flex justify-between items-center w-full z-10 gap-2"><span className={cn("text-[10px] font-bold truncate", isMyVote ? "text-primary" : "text-white/70 group-hover:text-white")}>{opt}</span><span className="text-[8px] font-black opacity-50 shrink-0">{pct}%</span></div></button>); })}</div></div>)}
             {msg.sharedContact && (<div className="mb-2 p-3 bg-[#0d0d0d] rounded-xl border border-white/10 flex items-center gap-3 shadow-2xl max-w-full"><div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary font-black text-sm shrink-0">{msg.sharedContact.name.charAt(0)}</div><div className="flex-1 min-w-0"><p className="text-[11px] font-black uppercase tracking-tight truncate text-white">{msg.sharedContact.name}</p><p className="text-[8px] uppercase font-bold text-muted-foreground tracking-widest truncate">@{msg.sharedContact.username}</p></div></div>)}
-            {msg.text && !msg.isAudio && <p className="leading-relaxed whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
+            {msg.text && <p className="leading-relaxed whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
             <div className="flex justify-end gap-1.5 items-center mt-1 text-[7px] font-black uppercase tracking-widest">{msg.isEdited && <span className="mr-1 italic-bold opacity-70">(edited)</span>}<span className="opacity-60">{msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'h:mm a') : ''}</span>{isOwn && !isSystem && (<div className="flex items-center ml-1">{msg.status === 'read' ? <CheckCheck strokeWidth={5} className="w-3.5 h-3.5 text-white drop-shadow-[0_0_8px_rgba(255,255,255,1)]" /> : <Check strokeWidth={4} className="w-3.5 h-3.5 text-white" />}</div>)}</div>
           </div>
 
-          <div className="shrink-0 flex flex-col items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full bg-white/5 hover:bg-white/10 text-muted-foreground"><MoreVertical className="w-3.5 h-3.5" /></Button>
-              </PopoverTrigger>
-              <PopoverContent side="top" align={isOwn ? "end" : "start"} className="w-fit p-1 bg-[#111] border-white/10 rounded-full flex items-center gap-1 shadow-2xl">
-                 <div className="flex items-center border-r border-white/5 pr-1 mr-1">
-                   {QUICK_EMOJIS.map(emoji => (
-                     <button key={emoji} onClick={() => onReact(msg, emoji)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-lg transition-transform active:scale-125">{emoji}</button>
-                   ))}
-                 </div>
-                 <button onClick={onSelect} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-primary/20 text-primary transition-all"><MousePointer2 className="w-4 h-4" /></button>
-              </PopoverContent>
-            </Popover>
-          </div>
+          {!isMobile && (
+            <div className="shrink-0 flex flex-col items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full bg-white/5 hover:bg-white/10 text-muted-foreground"><MoreVertical className="w-3.5 h-3.5" /></Button>
+                </PopoverTrigger>
+                <PopoverContent side="top" align={isOwn ? "end" : "start"} className="w-fit p-1 bg-[#111] border-white/10 rounded-full flex items-center gap-1 shadow-2xl">
+                   <div className="flex items-center border-r border-white/5 pr-1 mr-1">
+                     {QUICK_EMOJIS.map(emoji => (
+                       <button key={emoji} onClick={() => onReact(msg, emoji)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-lg transition-transform active:scale-125">{emoji}</button>
+                     ))}
+                   </div>
+                   <button onClick={onSelect} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-primary/20 text-primary transition-all"><MousePointer2 className="w-4 h-4" /></button>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
           
           {reactionSummary && reactionSummary.length > 0 && (<div className={cn("absolute -bottom-4 flex flex-wrap gap-1", isOwn ? "right-0" : "left-0")}>{reactionSummary.map(([emoji, count]) => (<div key={emoji} className="inline-flex items-center gap-1 bg-black/80 backdrop-blur-md border border-white/10 rounded-full px-2 py-0.5 shadow-lg"><span className="text-xs">{emoji}</span>{count > 1 && <span className="text-[8px] font-black text-primary uppercase">{count}</span>}</div>))}</div>)}
         </div>
@@ -829,104 +779,6 @@ const MessageRow = React.memo(({ msg, user, isMobile, onSelect, onReply, onReact
   );
 });
 MessageRow.displayName = 'MessageRow';
-
-const AudioPlayer = React.memo(({ data, isOwn, isSystem }: { data: string, isOwn: boolean, isSystem?: boolean }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.load();
-    }
-  }, [data]);
-
-  const togglePlay = (e: React.MouseEvent) => { 
-    e.stopPropagation(); 
-    if (!audioRef.current || isSystem) return; 
-    
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play().catch(() => {});
-    }
-  };
-  
-  const onTimeUpdate = () => { if (audioRef.current) setCurrentTime(audioRef.current.currentTime); };
-  const onLoadedMetadata = () => { 
-    if (audioRef.current) {
-      const d = audioRef.current.duration;
-      if (isFinite(d)) setDuration(d);
-    } 
-  };
-
-  const formatTime = (time: number) => {
-    if (!isFinite(time)) return "0:00";
-    const mins = Math.floor(time / 60);
-    const secs = Math.floor(time % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  return (
-    <div className="flex flex-col items-center gap-3 py-3 px-4 min-w-[240px] bg-black/20 rounded-2xl border border-white/5">
-      <audio 
-        ref={audioRef} 
-        src={data} 
-        preload="auto"
-        onPlay={() => setIsPlaying(true)} 
-        onPause={() => setIsPlaying(false)} 
-        onEnded={() => { setIsPlaying(false); setCurrentTime(0); }} 
-        onTimeUpdate={onTimeUpdate} 
-        onLoadedMetadata={onLoadedMetadata} 
-        className="hidden" 
-      />
-      
-      <div className="flex items-center gap-4 w-full justify-center">
-        <button 
-          onClick={togglePlay} 
-          disabled={isSystem}
-          className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 shrink-0 shadow-2xl", 
-            isOwn ? "bg-white text-black" : "bg-primary text-primary-foreground glow-green"
-          )}
-        >
-          {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-1" />}
-        </button>
-        
-        <div className="flex-1 flex flex-col gap-2">
-          <div className="flex gap-[3px] items-center h-6 justify-center">
-            {[...Array(28)].map((_, i) => {
-              const progress = (i / 28) * duration;
-              const isActive = currentTime >= progress;
-              return (
-                <motion.div 
-                  key={i} 
-                  animate={{ 
-                    height: isPlaying ? [10, 24, 10] : 10, 
-                    opacity: isActive ? 1 : 0.2 
-                  }} 
-                  transition={isPlaying ? { 
-                    duration: 0.5 + Math.random(), 
-                    repeat: Infinity, 
-                    ease: "easeInOut",
-                    delay: i * 0.05
-                  } : { duration: 0.3 }} 
-                  className={cn("w-1 rounded-full", isOwn ? "bg-white" : "bg-primary")} 
-                />
-              );
-            })}
-          </div>
-          <div className="flex justify-between items-center px-1">
-            <span className="text-[9px] font-black opacity-80 uppercase tracking-tighter">{formatTime(currentTime)}</span>
-            <span className="text-[9px] font-black opacity-80 uppercase tracking-tighter">{formatTime(duration)}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-});
-AudioPlayer.displayName = 'AudioPlayer';
 
 function UserProfileSidebar({ profile, contact, currentUserId, onClose }: { profile: UserProfile, contact: ContactRecord | null, currentUserId?: string, onClose: () => void }) {
   const db = useFirestore();
