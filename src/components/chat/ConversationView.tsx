@@ -4,9 +4,9 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { 
   Send, Search, MoreVertical, X, Info, ArrowLeft, Loader2,
   Check, Reply, CheckCheck, Trash2, Pencil, Plus, Tag, Mail, AtSign,
-  Share2, BarChart2, UserPlus, Forward, MessageSquare, User, UserCheck, 
-  Smile, Palette, Paintbrush, Save, Pin, PinOff, Clock, Mic, StopCircle,
-  ImageIcon, Video, File, Play, Pause
+  BarChart2, UserPlus, Forward, MessageSquare, User, 
+  Smile, Palette, Paintbrush, Save, Pin, Clock, Mic, StopCircle,
+  Play, Pause
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,8 +24,6 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogTrigger,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -49,7 +47,7 @@ import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@
 import { 
   doc, query, collection, serverTimestamp, 
   getDocs, where, addDoc, updateDoc, increment, onSnapshot, writeBatch,
-  arrayUnion, arrayRemove, deleteField, setDoc, deleteDoc
+  arrayUnion, arrayRemove, deleteField, setDoc
 } from 'firebase/firestore';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -60,11 +58,11 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-// STATIC CONSTANTS (Outside component to prevent re-creation)
+// STATIC CONSTANTS
 const QUICK_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥'];
 
 const FACIAL_EMOJIS = [
-  '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '☠️', '💩', '🤡', '👻', '👽', '👾', '🤖'
+  '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '☠️', '💩', '🤡', '👻', '👽', '👾', '🤖'
 ];
 
 const THEMES = [
@@ -118,11 +116,8 @@ type Message = {
   updatedAt?: any;
   forwarded?: boolean;
   reactions?: Record<string, string>;
-  selfDestructAt?: any;
   isAudio?: boolean;
   audioData?: string;
-  mediaType?: 'image' | 'video';
-  mediaUrl?: string;
   replyTo?: {
     id?: string;
     text: string;
@@ -197,8 +192,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
   
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-  const [selfDestructTimer, setSelfDestructTimer] = useState<number | null>(null);
   
   // Voice State
   const [isRecording, setIsRecording] = useState(false);
@@ -381,14 +374,13 @@ export function ConversationView({ conversationId }: { conversationId: string })
       createdAt: serverTimestamp(),
       status: 'sent',
       replyTo: replyData,
-      selfDestructAt: selfDestructTimer ? new Date(Date.now() + selfDestructTimer * 1000) : null,
       ...payloadOverride
     };
 
     addDoc(collection(db, 'conversations', activeId, 'messages'), msg).catch(() => {});
 
     updateDoc(doc(db, 'conversations', activeId), {
-      lastMessage: text || (payloadOverride?.poll ? 'Shared a Poll' : payloadOverride?.sharedContact ? 'Shared a Contact' : payloadOverride?.isAudio ? 'Sent a voice note' : 'Media attachment'),
+      lastMessage: text || (payloadOverride?.poll ? 'Shared a Poll' : payloadOverride?.sharedContact ? 'Shared a Contact' : payloadOverride?.isAudio ? 'Sent a voice note' : 'Message'),
       updatedAt: serverTimestamp(),
       [`unreadCount.${otherProfile.id}`]: increment(1),
       [`typing.${user.uid}`]: false
@@ -661,18 +653,15 @@ export function ConversationView({ conversationId }: { conversationId: string })
           <AnimatePresence>
             {showPollCreator && (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute bottom-full left-0 right-0 p-4 md:p-8 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,200,83,0.5)] overflow-hidden"><PollCreatorInline onClose={() => setShowPollCreator(false)} onSend={(poll) => handleSendMessage({ poll })} /></motion.div>)}
             {showContactPicker && (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute bottom-full left-0 right-0 p-4 md:p-8 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,200,83,0.5)] overflow-hidden"><ContactPickerInline onClose={() => setShowContactPicker(false)} onSend={(contact) => handleSendMessage({ sharedContact: contact })} /></motion.div>)}
-            {showActionMenu && !showPollCreator && !showContactPicker && (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute bottom-full left-0 right-0 p-4 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,200,83,0.5)]"><div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
+            {showActionMenu && !showPollCreator && !showContactPicker && (<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute bottom-full left-0 right-0 p-4 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,200,83,0.5)]"><div className="max-w-4xl mx-auto grid grid-cols-2 gap-4">
                   <button onClick={() => setShowPollCreator(true)} className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group"><div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mb-3 group-hover:glow-green transition-all"><BarChart2 className="w-5 h-5 text-primary" /></div><span className="text-[9px] font-black uppercase tracking-widest text-white">Poll</span></button>
                   <button onClick={() => setShowContactPicker(true)} className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group"><div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mb-3 group-hover:glow-green transition-all"><UserPlus className="w-5 h-5 text-primary" /></div><span className="text-[9px] font-black uppercase tracking-widest text-white">Contact</span></button>
-                  <button onClick={() => handleSendMessage({ mediaType: 'image', text: 'Media attached' })} className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group"><div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mb-3 group-hover:glow-green transition-all"><ImageIcon className="w-5 h-5 text-primary" /></div><span className="text-[9px] font-black uppercase tracking-widest text-white">Photos</span></button>
-                  <button onClick={() => handleSendMessage({ mediaType: 'video', text: 'Video attached' })} className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group"><div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mb-3 group-hover:glow-green transition-all"><Video className="w-5 h-5 text-primary" /></div><span className="text-[9px] font-black uppercase tracking-widest text-white">Video</span></button>
                 </div></motion.div>)}
           </AnimatePresence>
           <div className="max-w-4xl mx-auto space-y-4">
             {replyingTo && (<div className="px-4 py-2 bg-white/5 border-l-2 border-primary mb-3 flex justify-between items-center rounded-r-xl shadow-lg animate-in slide-in-from-bottom-1"><div className="min-w-0 flex-1"><p className="text-[9px] font-black text-primary uppercase tracking-widest">Reply to {replyingTo.senderId === user?.uid ? 'You' : otherProfile?.fullName || 'User'}</p><p className="text-xs text-muted-foreground truncate">{replyingTo.text}</p></div><Button variant="ghost" size="icon" onClick={() => setReplyingTo(null)} className="h-8 w-8 shrink-0 text-white/40 hover:text-white"><X className="w-4 h-4" /></Button></div>)}
             <div className="flex items-center gap-3">
               <Button size="icon" variant="ghost" onClick={() => { if (showPollCreator || showContactPicker) { setShowPollCreator(false); setShowContactPicker(false); } else { setShowActionMenu(!showActionMenu); } }} className={cn("rounded-xl h-11 w-11 md:h-12 md:w-12 shrink-0 bg-white/5 hover:bg-white/10 transition-all", (showActionMenu || showPollCreator || showContactPicker) && "bg-primary/20 text-primary rotate-45")}>{(showActionMenu || showPollCreator || showContactPicker) ? <X className="w-6 h-6" /> : <MoreVertical className="w-6 h-6" />}</Button>
-              <Popover><PopoverTrigger asChild><Button size="icon" variant="ghost" className={cn("rounded-xl h-11 w-11 md:h-12 md:w-12 shrink-0 bg-white/5 hover:bg-white/10 transition-all", selfDestructTimer && "text-primary glow-green")}><Clock className="w-5 h-5" /></Button></PopoverTrigger><PopoverContent className="w-48 bg-[#0a0a0a] border-white/10 p-2 rounded-2xl shadow-2xl mb-2"><div className="space-y-1"><p className="text-[8px] font-black uppercase tracking-widest text-primary px-3 py-1">Atomic Self-Destruct</p><button onClick={() => setSelfDestructTimer(null)} className={cn("w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold uppercase transition-all", !selfDestructTimer ? "bg-primary/20 text-primary" : "text-white/60 hover:bg-white/5")}>Disabled</button><button onClick={() => setSelfDestructTimer(60)} className={cn("w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold uppercase transition-all", selfDestructTimer === 60 ? "bg-primary/20 text-primary" : "text-white/60 hover:bg-white/5")}>1 Minute</button><button onClick={() => setSelfDestructTimer(3600)} className={cn("w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold uppercase transition-all", selfDestructTimer === 3600 ? "bg-primary/20 text-primary" : "text-white/60 hover:bg-white/5")}>1 Hour</button><button onClick={() => setSelfDestructTimer(86400)} className={cn("w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold uppercase transition-all", selfDestructTimer === 86400 ? "bg-primary/20 text-primary" : "text-white/60 hover:bg-white/5")}>1 Day</button></div></PopoverContent></Popover>
               <div className="flex-1 relative min-w-0"><Input value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} placeholder={editingMessage ? "Update message..." : "Type message..."} className="bg-white/10 border-white/10 h-11 md:h-12 rounded-xl focus:ring-primary focus-visible:ring-offset-0 text-sm w-full text-white" /></div>
               {isRecording ? (<div className="flex items-center gap-2"><span className="text-[10px] font-black text-primary animate-pulse">{Math.floor(recordingDuration / 60)}:{String(recordingDuration % 60).padStart(2, '0')}</span><Button onClick={stopVoiceRecording} className="bg-destructive hover:bg-destructive/80 text-white h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0 animate-pulse"><StopCircle className="w-5 h-5" /></Button></div>) : inputText.trim() ? (<Button onClick={() => handleSendMessage()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0 transition-all active:scale-90"><Send className="w-5 h-5" /></Button>) : (<Button onClick={startVoiceRecording} className="bg-white/5 hover:bg-white/10 text-white h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0"><Mic className="w-5 h-5" /></Button>)}
             </div>
@@ -680,7 +669,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
         </footer>
       </div>
 
-      <AnimatePresence>{showProfile && otherProfile && (<UserProfileSidebar profile={otherProfile} contact={contactRecord} currentUserId={user?.uid} onClose={() => setShowProfile(false)} messages={messages} />)}</AnimatePresence>
+      <AnimatePresence>{showProfile && otherProfile && (<UserProfileSidebar profile={otherProfile} contact={contactRecord} currentUserId={user?.uid} onClose={() => setShowProfile(false)} />)}</AnimatePresence>
       <AlertDialog open={!!deletingMessage} onOpenChange={() => setDeletingMessage(null)}><AlertDialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] shadow-2xl max-w-[calc(100%-2rem)] md:max-w-sm"><AlertDialogHeader><AlertDialogTitle className="font-headline uppercase tracking-tight text-gradient">Delete Message?</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">How would you like to delete this?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="flex flex-col gap-2"><Button onClick={() => deleteMessage('me')} className="h-12 bg-white/5 border border-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest">Delete for Me</Button>{deletingMessage?.senderId === user?.uid && <Button onClick={() => deleteMessage('everyone')} variant="destructive" className="h-12 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl">Delete for Everyone</Button>}<AlertDialogCancel className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white h-10">Cancel</AlertDialogCancel></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <ForwardPicker open={!!forwardingMessage} onClose={() => setForwardingMessage(null)} onForward={handleForwardMessage} />
     </div>
@@ -767,11 +756,8 @@ const MessageRow = React.memo(({ msg, user, isMobile, onSelect, onReply, onReact
             <PopoverTrigger asChild>
               <div className={cn("p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0 shadow-sm cursor-pointer", isSelected && "ring-2 ring-primary shadow-[0_0_20px_rgba(0,200,83,0.3)] scale-[1.02]", isSystem ? "bg-white/10 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/20 text-[11px]" : isOwn ? cn(bubbleClass || "bg-primary text-primary-foreground", "rounded-tr-none shadow-lg") : "bg-[#181818]/90 backdrop-blur-md text-white rounded-tl-none border border-white/10")}>
                 {msg.forwarded && <div className="flex items-center gap-1.5 mb-1 opacity-60 text-[8px] font-black uppercase italic tracking-widest"><Forward className="w-2 h-2" /> Forwarded</div>}
-                {msg.selfDestructAt && <div className="flex items-center gap-1 mb-1 text-[7px] font-black uppercase text-primary/70"><Clock className="w-2 h-2" /> Self-Destructing</div>}
                 {msg.replyTo && <div className="mb-2 p-1.5 bg-black/40 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate max-w-full"><p className="font-bold text-primary mb-0.5 uppercase tracking-widest text-[8px]">{msg.replyTo.senderName}</p><span className="block truncate">{msg.replyTo.text}</span></div>}
                 {msg.isAudio && msg.audioData && (<AudioPlayer data={msg.audioData} isOwn={isOwn} />)}
-                {msg.mediaType === 'image' && <div className="mb-2 rounded-lg overflow-hidden border border-white/10 bg-black/40 aspect-square flex items-center justify-center"><ImageIcon className="w-8 h-8 text-white/20" /></div>}
-                {msg.mediaType === 'video' && <div className="mb-2 rounded-lg overflow-hidden border border-white/10 bg-black/40 aspect-video flex items-center justify-center"><Video className="w-8 h-8 text-white/20" /></div>}
                 {msg.poll && (<div className="mb-2 p-3 bg-black/60 rounded-xl border border-white/10 space-y-2.5 shadow-2xl min-w-[180px] max-w-full"><div className="flex items-center gap-2 text-primary"><BarChart2 className="w-3 h-3 shrink-0" /><span className="font-black uppercase tracking-tight text-[10px] truncate">{msg.poll.question}</span></div><div className="space-y-1">{msg.poll.options.map((opt: string, i: number) => { const pct = pollResults[i] || 0; const isMyVote = myVote === i; return (<button key={i} onClick={(e) => { e.stopPropagation(); handleVote(i); }} disabled={isSystem} className={cn("w-full relative h-8 bg-white/5 border rounded-lg px-3 overflow-hidden group transition-all", isMyVote ? "border-primary/50" : "border-white/5 hover:border-primary/20")}><motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} className={cn("absolute inset-y-0 left-0", isMyVote ? "bg-primary/20" : "bg-primary/10")} /><div className="relative flex justify-between items-center w-full z-10 gap-2"><span className={cn("text-[10px] font-bold truncate", isMyVote ? "text-primary" : "text-white/70 group-hover:text-white")}>{opt}</span><span className="text-[8px] font-black opacity-50 shrink-0">{pct}%</span></div></button>); })}</div></div>)}
                 {msg.sharedContact && (<div className="mb-2 p-3 bg-[#0d0d0d] rounded-xl border border-white/10 flex items-center gap-3 shadow-2xl max-w-full"><div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary font-black text-sm shrink-0">{msg.sharedContact.name.charAt(0)}</div><div className="flex-1 min-w-0"><p className="text-[11px] font-black uppercase tracking-tight truncate text-white">{msg.sharedContact.name}</p><p className="text-[8px] uppercase font-bold text-muted-foreground tracking-widest truncate">@{msg.sharedContact.username}</p></div></div>)}
                 {msg.text && !msg.isAudio && <p className="leading-relaxed whitespace-pre-wrap font-medium">{renderText(msg.text)}</p>}
@@ -815,13 +801,11 @@ const AudioPlayer = React.memo(({ data, isOwn }: { data: string, isOwn: boolean 
 });
 AudioPlayer.displayName = 'AudioPlayer';
 
-function UserProfileSidebar({ profile, contact, currentUserId, onClose, messages }: { profile: UserProfile, contact: ContactRecord | null, currentUserId?: string, onClose: () => void, messages: Message[] }) {
+function UserProfileSidebar({ profile, contact, currentUserId, onClose }: { profile: UserProfile, contact: ContactRecord | null, currentUserId?: string, onClose: () => void }) {
   const db = useFirestore();
   const [isEditingNickname, setIsEditingNickname] = useState(false);
   const [nicknameInput, setNicknameInput] = useState(contact?.customName || '');
   const [isSaving, setIsSaving] = useState(false);
-
-  const sharedMedia = useMemo(() => messages.filter(m => m.mediaType === 'image' || m.mediaType === 'video'), [messages]);
 
   const handleSaveNickname = async () => {
     if (!currentUserId || !db || isSaving) return;
@@ -850,7 +834,6 @@ function UserProfileSidebar({ profile, contact, currentUserId, onClose, messages
           <div className="relative group"><div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-primary/20 bg-[#111] flex items-center justify-center overflow-hidden shadow-2xl relative"><span className="text-4xl md:text-5xl font-bold text-primary not-italic">{(contact?.customName || profile.fullName || profile.username)[0].toUpperCase()}</span><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><User className="w-8 h-8 text-white" /></div></div>{isOnline && (<div className="absolute bottom-3 right-3 w-7 h-7 bg-primary rounded-full border-4 border-[#0a0a0a] shadow-lg glow-green" />)}</div>
           <div className="w-full text-center space-y-1"><h2 className="text-2xl font-black font-headline uppercase tracking-tighter text-white leading-tight">{mainTitle}</h2>{subTitle && (<p className="text-[10px] text-white/40 font-bold uppercase tracking-widest italic">{subTitle}</p>)}<p className="text-[10px] text-primary font-black uppercase tracking-[0.3em] flex items-center justify-center gap-2"><AtSign className="w-3 h-3" /> {profile.username}</p></div>
           <div className="w-full space-y-6 pt-4">
-            {sharedMedia.length > 0 && (<div className="space-y-4"><Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground px-1">Media Mesh</Label><div className="grid grid-cols-3 gap-2">{sharedMedia.slice(0, 6).map((m, i) => (<div key={i} className="aspect-square bg-white/5 border border-white/5 rounded-xl flex items-center justify-center hover:bg-primary/10 transition-all cursor-pointer">{m.mediaType === 'image' ? <ImageIcon className="w-4 h-4 text-white/20" /> : <Video className="w-4 h-4 text-white/20" />}</div>))}</div></div>)}
             <div className="space-y-4"><div className="flex items-center justify-between px-1"><Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">About User</Label></div><div className="bg-white/[0.03] p-5 rounded-[2rem] border border-white/5 text-left shadow-inner"><p className="text-sm text-white/80 leading-relaxed font-medium">{profile.about || "Secure communication active on the HappyChat mesh protocol."}</p></div></div>
             <div className="space-y-4"><div className="flex items-center justify-between px-1"><Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Personalize</Label></div><div className="bg-white/[0.03] p-5 rounded-[2rem] border border-white/5 space-y-4 shadow-inner"><div className="flex items-center gap-3 mb-2"><Tag className="w-4 h-4 text-primary" /><span className="text-[10px] font-bold uppercase tracking-widest text-white/60">Contact Nickname</span></div>{isEditingNickname ? (<div className="flex gap-2"><Input value={nicknameInput} onChange={(e) => setNicknameInput(e.target.value)} placeholder="e.g. Bestie" className="bg-black/40 border-white/10 h-11 rounded-xl text-xs focus:ring-primary" autoFocus /><Button size="icon" onClick={handleSaveNickname} disabled={isSaving} className="h-11 w-11 rounded-xl bg-primary hover:glow-green shrink-0">{isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}</Button><Button size="icon" variant="ghost" onClick={() => setIsEditingNickname(false)} className="h-11 w-11 rounded-xl text-white/40 hover:text-white hover:bg-white/5 shrink-0"><X className="w-4 h-4" /></Button></div>) : (<Button variant="ghost" onClick={() => setIsEditingNickname(true)} className="w-full h-12 bg-white/5 border border-white/5 hover:bg-primary/10 hover:text-primary transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-between px-5"><span>{contact?.customName || "Add Nickname"}</span><Pencil className="w-3 h-3 opacity-40" /></Button>)}</div></div>
           </div>
