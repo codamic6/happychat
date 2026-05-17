@@ -4,8 +4,9 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Send, Search, MoreVertical, X, Info, ArrowLeft, Loader2,
   Check, Reply, CheckCheck, Trash2, Pencil, Plus, Tag, Mail, AtSign,
-  Share2, BarChart2, UserPlus, Forward, MessageSquare, User, UserCheck, Smile, Palette, Paintbrush,
-  Save
+  Share2, BarChart2, UserPlus, Forward, MessageSquare, User, UserCheck, 
+  Smile, Palette, Paintbrush, Save, Pin, PinOff, Clock, Mic, StopCircle,
+  Image as ImageIcon, Video, File
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,7 +49,7 @@ import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@
 import { 
   doc, query, collection, serverTimestamp, 
   getDocs, where, addDoc, updateDoc, increment, onSnapshot, writeBatch,
-  arrayUnion, arrayRemove, deleteField, setDoc
+  arrayUnion, arrayRemove, deleteField, setDoc, deleteDoc
 } from 'firebase/firestore';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -72,6 +73,11 @@ type Message = {
   updatedAt?: any;
   forwarded?: boolean;
   reactions?: Record<string, string>;
+  selfDestructAt?: any;
+  isAudio?: boolean;
+  audioUrl?: string;
+  mediaType?: 'image' | 'video';
+  mediaUrl?: string;
   replyTo?: {
     id?: string;
     text: string;
@@ -119,23 +125,14 @@ type Conversation = {
   typing?: Record<string, boolean>;
   hiddenFor?: string[];
   unreadCount?: Record<string, number>;
+  pinnedMessageId?: string;
+  pinnedMessageText?: string;
 };
 
 const QUICK_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥'];
 
-const EXTENDED_EMOJIS = [
-  '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '🥲', '☺️', 
-  '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', 
-  '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', 
-  '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', 
-  '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😭', '😤', 
-  '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', 
-  '😥', '😓', '🤗', '🤔', '🫣', '🤭', '🫢', '🫡', '🤫', '🫠', 
-  '🤥', '😶', '🫥', '😐', '😑', '😬', '🫨', '🙄', '😯', '😦', 
-  '😧', '😲', '🥱', '😴', '🤤', '😪', '😵', '😵‍💫', '🤐', 
-  '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', 
-  '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', 
-  '🤖', '🎃', '😺', '😸', '😻', '😼', '😽', '😾', '😿', '🙀'
+const FACIAL_EMOJIS = [
+  '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '☠️', '💩', '🤡', '👻', '👽', '👾', '🤖'
 ];
 
 const THEMES = [
@@ -147,6 +144,14 @@ const THEMES = [
   { id: 'sunset', name: 'Sunset Violet', bg: 'bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#4c1d95]', preview: '#312e81' },
   { id: 'crimson', name: 'Crimson Edge', bg: 'bg-gradient-to-tr from-[#000] via-[#450a0a] to-[#000]', preview: '#450a0a' },
   { id: 'emerald', name: 'Emerald Peak', bg: 'bg-[#050505] bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.06)_0%,transparent_70%)]', preview: '#064e3b' },
+  { id: 'matrix', name: 'Matrix Code', bg: 'bg-[#000] bg-[linear-gradient(rgba(0,255,70,0.05)_1px,transparent_1px)] [background-size:100%_4px]', preview: '#003300' },
+  { id: 'rose', name: 'Midnight Rose', bg: 'bg-gradient-to-br from-[#1a0510] via-[#3d0a24] to-[#1a0510]', preview: '#3d0a24' },
+  { id: 'gold', name: 'Golden Noir', bg: 'bg-[#050505] bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.08),transparent_50%)]', preview: '#d4af37' },
+  { id: 'aurora', name: 'Aurora Borealis', bg: 'bg-[#050505] bg-[radial-gradient(circle_at_50%_-20%,rgba(0,255,255,0.15),transparent_60%),radial-gradient(circle_at_50%_120%,rgba(126,34,206,0.15),transparent_60%)]', preview: '#0d9488' },
+  { id: 'volcano', name: 'Volcanic Ash', bg: 'bg-gradient-to-t from-[#000] via-[#1a1a1a] to-[#2b1004]', preview: '#431407' },
+  { id: 'amethyst', name: 'Deep Amethyst', bg: 'bg-[#020005] bg-[radial-gradient(circle_at_center,rgba(147,51,234,0.1),transparent_70%)]', preview: '#581c87' },
+  { id: 'solar', name: 'Solar Flare', bg: 'bg-gradient-to-tr from-[#000] via-[#2d1a01] to-[#633200]', preview: '#92400e' },
+  { id: 'onyx', name: 'Onyx Stealth', bg: 'bg-[#080808] bg-[url("https://grainy-gradients.vercel.app/noise.svg")] opacity-90', preview: '#1a1a1a' },
 ];
 
 const BUBBLE_COLORS = [
@@ -158,6 +163,14 @@ const BUBBLE_COLORS = [
   { id: 'pink', name: 'Rose Pink', class: 'bg-pink-600 text-white', hex: '#db2777' },
   { id: 'teal', name: 'Teal Ocean', class: 'bg-teal-600 text-white', hex: '#0d9488' },
   { id: 'indigo', name: 'Indigo Night', class: 'bg-indigo-600 text-white', hex: '#4f46e5' },
+  { id: 'orange', name: 'Electric Orange', class: 'bg-orange-600 text-white', hex: '#ea580c' },
+  { id: 'cyan', name: 'Cyber Cyan', class: 'bg-cyan-600 text-black', hex: '#0891b2' },
+  { id: 'lime', name: 'Lime Burst', class: 'bg-lime-600 text-black', hex: '#65a30d' },
+  { id: 'fuchsia', name: 'Neon Fuchsia', class: 'bg-fuchsia-600 text-white', hex: '#c026d3' },
+  { id: 'violet', name: 'Vivid Violet', class: 'bg-violet-700 text-white', hex: '#7c3aed' },
+  { id: 'rose_deep', name: 'Crimson Rose', class: 'bg-rose-700 text-white', hex: '#be123c' },
+  { id: 'slate', name: 'Slate Stealth', class: 'bg-slate-700 text-white', hex: '#334155' },
+  { id: 'white', name: 'Classic White', class: 'bg-white text-black', hex: '#ffffff' },
 ];
 
 export function ConversationView({ conversationId }: { conversationId: string }) {
@@ -183,6 +196,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
   
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Power Features States
+  const [selfDestructTimer, setSelfDestructTimer] = useState<number | null>(null); // null, 60, 3600, 86400
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const isNewChat = conversationId.startsWith('new-');
   const targetUid = isNewChat ? conversationId.replace('new-', '') : null;
@@ -230,8 +249,6 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   useEffect(() => {
     if (!user?.uid || !db || isNewChat || !conversationId || !currentUserProfile) return;
-
-    // Respect typing privacy setting
     if (currentUserProfile.showTypingStatus === false) return;
 
     const setTyping = (isTyping: boolean) => {
@@ -360,17 +377,41 @@ export function ConversationView({ conversationId }: { conversationId: string })
       createdAt: serverTimestamp(),
       status: 'sent',
       replyTo: replyData,
+      selfDestructAt: selfDestructTimer ? new Date(Date.now() + selfDestructTimer * 1000) : null,
       ...payloadOverride
     };
 
     addDoc(collection(db, 'conversations', activeId, 'messages'), msg).catch(() => {});
 
     updateDoc(doc(db, 'conversations', activeId), {
-      lastMessage: text || (payloadOverride?.poll ? 'Shared a Poll' : 'Shared a Contact'),
+      lastMessage: text || (payloadOverride?.poll ? 'Shared a Poll' : payloadOverride?.sharedContact ? 'Shared a Contact' : 'Media attachment'),
       updatedAt: serverTimestamp(),
       [`unreadCount.${otherProfile.id}`]: increment(1),
       [`typing.${user.uid}`]: false
     }).catch(() => {});
+  };
+
+  const handleTogglePin = async () => {
+    if (!user || !db || !selectedMessage || isNewChat) return;
+    try {
+      await updateDoc(doc(db, 'conversations', conversationId), {
+        pinnedMessageId: selectedMessage.id,
+        pinnedMessageText: selectedMessage.text.substring(0, 100)
+      });
+      setSelectedMessage(null);
+      toast({ title: "Message Pinned" });
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Pin failed." });
+    }
+  };
+
+  const handleUnpin = async () => {
+    if (!user || !db || isNewChat) return;
+    await updateDoc(doc(db, 'conversations', conversationId), {
+      pinnedMessageId: deleteField(),
+      pinnedMessageText: deleteField()
+    });
+    toast({ title: "Message Unpinned" });
   };
 
   const updatePreference = async (key: string, value: string) => {
@@ -425,15 +466,29 @@ export function ConversationView({ conversationId }: { conversationId: string })
     setSelectedMessage(null);
   };
 
+  const startVoiceRecording = () => {
+    setIsRecording(true);
+    setRecordingDuration(0);
+    recordingTimerRef.current = setInterval(() => {
+      setRecordingDuration(prev => prev + 1);
+    }, 1000);
+  };
+
+  const stopVoiceRecording = () => {
+    setIsRecording(false);
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    if (recordingDuration > 0) {
+      handleSendMessage({ isAudio: true, text: 'Voice note' });
+    }
+  };
+
   const isOtherTyping = useMemo(() => {
     if (!conversation?.typing || !otherProfile) return false;
-    // Respect the other user's typing privacy preference
     return conversation.typing[otherProfile.id] === true && otherProfile.showTypingStatus !== false;
   }, [conversation?.typing, otherProfile]);
 
   const isOtherOnline = useMemo(() => {
     if (!otherProfile) return false;
-    // Respect the other user's online visibility preference
     return otherProfile.isOnline === true && otherProfile.showOnlineStatus !== false;
   }, [otherProfile]);
 
@@ -446,25 +501,25 @@ export function ConversationView({ conversationId }: { conversationId: string })
     <div className="space-y-6">
       <div className="space-y-4">
         <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary px-2">Chat Themes</h4>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {THEMES.map(theme => (
             <button 
               key={theme.id} 
               onClick={() => { updatePreference('preferredTheme', theme.id); !isMobile && setIsHeaderMenuOpen(false); }} 
               className={cn(
-                "flex items-center gap-3 p-3 rounded-xl border transition-all text-left group",
+                "flex flex-col items-center gap-2 p-2 rounded-xl border transition-all text-left group",
                 activeTheme.id === theme.id ? "bg-primary/20 border-primary/40" : "bg-white/5 border-white/5 hover:bg-white/10"
               )}
             >
-              <div className="w-5 h-5 rounded-full border-2 border-white/10 shrink-0" style={{ backgroundColor: theme.preview }} />
-              <span className={cn("text-[9px] font-black uppercase tracking-widest", activeTheme.id === theme.id ? "text-white" : "text-white/40 group-hover:text-white")}>{theme.name}</span>
+              <div className="w-8 h-8 rounded-full border-2 border-white/10 shrink-0" style={{ backgroundColor: theme.preview }} />
+              <span className={cn("text-[8px] font-black uppercase tracking-widest text-center truncate w-full", activeTheme.id === theme.id ? "text-white" : "text-white/40 group-hover:text-white")}>{theme.name}</span>
             </button>
           ))}
         </div>
       </div>
       <div className="space-y-4">
         <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary px-2">Bubble Color</h4>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
           {BUBBLE_COLORS.map(color => (
             <button 
               key={color.id} 
@@ -486,7 +541,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
   return (
     <div className={cn("flex-1 flex flex-row min-w-0 overflow-hidden relative transition-all duration-1000", activeTheme.bg)}>
       <div className="flex-1 flex flex-col min-w-0 h-full relative">
-        <header className="flex-none h-20 px-4 border-b border-white/5 flex items-center justify-between z-[60] bg-black/80 backdrop-blur-3xl">
+        <header className="flex-none h-20 px-4 border-b border-white/5 flex flex-col justify-center z-[60] bg-black/80 backdrop-blur-3xl">
           <AnimatePresence mode="wait">
             {selectedMessage ? (
               <motion.div key="selection-header" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex items-center justify-between w-full h-full px-2">
@@ -500,6 +555,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
                         <Button variant="ghost" size="icon" onClick={() => { setReplyingTo(selectedMessage); setSelectedMessage(null); }} className="text-white hover:text-primary rounded-xl"><Reply className="w-5 h-5" /></Button>
                       </TooltipTrigger>
                       <TooltipContent className="bg-[#111] border-white/10 text-[10px] font-bold uppercase text-primary">Reply</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={handleTogglePin} className="text-white hover:text-primary rounded-xl"><Pin className="w-5 h-5" /></Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="bg-[#111] border-white/10 text-[10px] font-bold uppercase text-primary">Pin</TooltipContent>
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -525,7 +586,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 </div>
               </motion.div>
             ) : isSearchMode ? (
-              <motion.div key="search-header" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-3 w-full">
+              <motion.div key="search-header" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-3 w-full h-full">
                 <Button variant="ghost" size="icon" onClick={() => { setIsSearchMode(false); setSearchQuery(''); }} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
                 <div className="flex-1 relative min-w-0">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -533,7 +594,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 </div>
               </motion.div>
             ) : (
-              <motion.div key="normal-header" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center justify-between w-full min-w-0">
+              <motion.div key="normal-header" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center justify-between w-full min-w-0 h-full">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} className="md:hidden text-muted-foreground shrink-0"><ArrowLeft className="w-6 h-6" /></Button>
                   <div className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0" onClick={() => setShowProfile(true)}>
@@ -588,6 +649,22 @@ export function ConversationView({ conversationId }: { conversationId: string })
           </AnimatePresence>
         </header>
 
+        {conversation?.pinnedMessageId && (
+          <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 flex items-center justify-between z-50 backdrop-blur-md">
+             <div className="flex items-center gap-3 overflow-hidden cursor-pointer" onClick={() => {
+                const el = document.getElementById(`msg-${conversation.pinnedMessageId}`);
+                el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+             }}>
+                <Pin className="w-3.5 h-3.5 text-primary shrink-0 rotate-45" />
+                <div className="min-w-0">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-primary">Pinned Message</p>
+                  <p className="text-[10px] text-white truncate italic font-medium">{conversation.pinnedMessageText}</p>
+                </div>
+             </div>
+             <Button variant="ghost" size="icon" onClick={handleUnpin} className="h-7 w-7 text-white/40 hover:text-white"><X className="w-3 h-3" /></Button>
+          </div>
+        )}
+
         <ScrollArea className="flex-1 w-full overflow-x-hidden">
           <div className="max-w-4xl mx-auto px-4 py-6 space-y-4 pb-12">
             {filteredMessages.map((msg) => (
@@ -619,21 +696,29 @@ export function ConversationView({ conversationId }: { conversationId: string })
             )}
             {showActionMenu && !showPollCreator && !showContactPicker && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute bottom-full left-0 right-0 p-4 bg-[#0a0a0a]/95 backdrop-blur-3xl border-t border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,200,83,0.5)]">
-                <div className="max-w-4xl mx-auto grid grid-cols-2 gap-4">
-                  <button onClick={() => setShowPollCreator(true)} className="flex flex-col items-center justify-center p-6 md:p-10 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group">
-                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4 group-hover:glow-green transition-all"><BarChart2 className="w-5 h-5 md:w-7 md:h-7 text-primary" /></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white">Quick Poll</span>
+                <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <button onClick={() => setShowPollCreator(true)} className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mb-3 group-hover:glow-green transition-all"><BarChart2 className="w-5 h-5 text-primary" /></div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-white">Poll</span>
                   </button>
-                  <button onClick={() => setShowContactPicker(true)} className="flex flex-col items-center justify-center p-6 md:p-10 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group">
-                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4 group-hover:glow-green transition-all"><UserPlus className="w-5 h-5 md:w-7 md:h-7 text-primary" /></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white">Share Contact</span>
+                  <button onClick={() => setShowContactPicker(true)} className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mb-3 group-hover:glow-green transition-all"><UserPlus className="w-5 h-5 text-primary" /></div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-white">Contact</span>
+                  </button>
+                  <button onClick={() => handleSendMessage({ mediaType: 'image', text: 'Media attached' })} className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mb-3 group-hover:glow-green transition-all"><ImageIcon className="w-5 h-5 text-primary" /></div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-white">Photos</span>
+                  </button>
+                  <button onClick={() => handleSendMessage({ mediaType: 'video', text: 'Video attached' })} className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-primary/10 hover:border-primary/20 transition-all group">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mb-3 group-hover:glow-green transition-all"><Video className="w-5 h-5 text-primary" /></div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-white">Video</span>
                   </button>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto space-y-4">
             {replyingTo && (
               <div className="px-4 py-2 bg-white/5 border-l-2 border-primary mb-3 flex justify-between items-center rounded-r-xl shadow-lg animate-in slide-in-from-bottom-1">
                 <div className="min-w-0 flex-1">
@@ -647,10 +732,39 @@ export function ConversationView({ conversationId }: { conversationId: string })
               <Button size="icon" variant="ghost" onClick={() => { if (showPollCreator || showContactPicker) { setShowPollCreator(false); setShowContactPicker(false); } else { setShowActionMenu(!showActionMenu); } }} className={cn("rounded-xl h-11 w-11 md:h-12 md:w-12 shrink-0 bg-white/5 hover:bg-white/10 transition-all", (showActionMenu || showPollCreator || showContactPicker) && "bg-primary/20 text-primary rotate-45")}>
                 {(showActionMenu || showPollCreator || showContactPicker) ? <X className="w-6 h-6" /> : <MoreVertical className="w-6 h-6" />}
               </Button>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="icon" variant="ghost" className={cn("rounded-xl h-11 w-11 md:h-12 md:w-12 shrink-0 bg-white/5 hover:bg-white/10 transition-all", selfDestructTimer && "text-primary glow-green")}>
+                    <Clock className="w-5 h-5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 bg-[#0a0a0a] border-white/10 p-2 rounded-2xl shadow-2xl mb-2">
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-primary px-3 py-1">Atomic Self-Destruct</p>
+                    <button onClick={() => setSelfDestructTimer(null)} className={cn("w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold uppercase transition-all", !selfDestructTimer ? "bg-primary/20 text-primary" : "text-white/60 hover:bg-white/5")}>Disabled</button>
+                    <button onClick={() => setSelfDestructTimer(60)} className={cn("w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold uppercase transition-all", selfDestructTimer === 60 ? "bg-primary/20 text-primary" : "text-white/60 hover:bg-white/5")}>1 Minute</button>
+                    <button onClick={() => setSelfDestructTimer(3600)} className={cn("w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold uppercase transition-all", selfDestructTimer === 3600 ? "bg-primary/20 text-primary" : "text-white/60 hover:bg-white/5")}>1 Hour</button>
+                    <button onClick={() => setSelfDestructTimer(86400)} className={cn("w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold uppercase transition-all", selfDestructTimer === 86400 ? "bg-primary/20 text-primary" : "text-white/60 hover:bg-white/5")}>1 Day</button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
               <div className="flex-1 relative min-w-0">
                 <Input value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} placeholder={editingMessage ? "Update message..." : "Type message..."} className="bg-white/10 border-white/10 h-11 md:h-12 rounded-xl focus:ring-primary focus-visible:ring-offset-0 text-sm w-full text-white" />
               </div>
-              <Button onClick={() => handleSendMessage()} disabled={!inputText.trim()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0 transition-all active:scale-90"><Send className="w-5 h-5" /></Button>
+
+              {isRecording ? (
+                <Button onClick={stopVoiceRecording} className="bg-destructive hover:bg-destructive/80 text-white h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0 animate-pulse">
+                  <StopCircle className="w-5 h-5" />
+                </Button>
+              ) : inputText.trim() ? (
+                <Button onClick={() => handleSendMessage()} className="bg-primary hover:glow-green text-primary-foreground h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0 transition-all active:scale-90"><Send className="w-5 h-5" /></Button>
+              ) : (
+                <Button onClick={startVoiceRecording} className="bg-white/5 hover:bg-white/10 text-white h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0">
+                  <Mic className="w-5 h-5" />
+                </Button>
+              )}
             </div>
           </div>
         </footer>
@@ -663,6 +777,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
             contact={contactRecord} 
             currentUserId={user?.uid}
             onClose={() => setShowProfile(false)} 
+            messages={messages}
           />
         )}
       </AnimatePresence>
@@ -742,7 +857,7 @@ function MessageRow({ msg, user, isMobile, onSelect, onReply, onReact, isSelecte
   }, [msg.reactions]);
 
   return (
-    <div className={cn("flex w-full group relative mb-1 min-w-0 items-center overflow-visible", isOwn ? "justify-end" : "justify-start")}>
+    <div id={`msg-${msg.id}`} className={cn("flex w-full group relative mb-1 min-w-0 items-center overflow-visible", isOwn ? "justify-end" : "justify-start")}>
       <motion.div 
         drag={isMobile ? "x" : false}
         dragConstraints={{ left: 0, right: 100 }}
@@ -767,7 +882,20 @@ function MessageRow({ msg, user, isMobile, onSelect, onReply, onReact, isSelecte
                 )}
               >
                 {msg.forwarded && <div className="flex items-center gap-1.5 mb-1 opacity-60 text-[8px] font-black uppercase italic tracking-widest"><Forward className="w-2 h-2" /> Forwarded</div>}
+                {msg.selfDestructAt && <div className="flex items-center gap-1 mb-1 text-[7px] font-black uppercase text-primary/70"><Clock className="w-2 h-2" /> Self-Destructing</div>}
                 {msg.replyTo && <div className="mb-2 p-1.5 bg-black/40 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate max-w-full"><p className="font-bold text-primary mb-0.5 uppercase tracking-widest text-[8px]">{msg.replyTo.senderName}</p><span className="block truncate">{msg.replyTo.text}</span></div>}
+                {msg.isAudio && (
+                  <div className="flex items-center gap-3 py-2 px-1">
+                    <Mic className="w-4 h-4 text-primary" />
+                    <div className="flex gap-0.5 items-center">
+                       {[...Array(12)].map((_, i) => (
+                         <motion.div key={i} animate={{ height: [8, 16, 8] }} transition={{ duration: 0.5 + Math.random(), repeat: Infinity }} className="w-0.5 bg-white/40 rounded-full" />
+                       ))}
+                    </div>
+                  </div>
+                )}
+                {msg.mediaType === 'image' && <div className="mb-2 rounded-lg overflow-hidden border border-white/10 bg-black/40 aspect-square flex items-center justify-center"><ImageIcon className="w-8 h-8 text-white/20" /></div>}
+                {msg.mediaType === 'video' && <div className="mb-2 rounded-lg overflow-hidden border border-white/10 bg-black/40 aspect-video flex items-center justify-center"><Video className="w-8 h-8 text-white/20" /></div>}
                 {msg.poll && (
                   <div className="mb-2 p-3 bg-black/60 rounded-xl border border-white/10 space-y-2.5 shadow-2xl min-w-[180px] max-w-full">
                     <div className="flex items-center gap-2 text-primary"><BarChart2 className="w-3 h-3 shrink-0" /><span className="font-black uppercase tracking-tight text-[10px] truncate">{msg.poll.question}</span></div>
@@ -826,7 +954,7 @@ function MessageRow({ msg, user, isMobile, onSelect, onReply, onReact, isSelecte
                  </PopoverTrigger>
                  <PopoverContent className="w-64 bg-[#0d0d0d] border-white/10 p-3 rounded-2xl shadow-2xl mb-2 z-[130]" side="top" align="center">
                    <div className="grid grid-cols-6 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-1">
-                     {EXTENDED_EMOJIS.map((emoji, idx) => (
+                     {FACIAL_EMOJIS.map((emoji, idx) => (
                        <button 
                          key={`ext-${emoji}-${idx}`} 
                          onClick={() => { onReact(emoji); }} 
@@ -868,11 +996,15 @@ function MessageRow({ msg, user, isMobile, onSelect, onReply, onReact, isSelecte
   );
 }
 
-function UserProfileSidebar({ profile, contact, currentUserId, onClose }: { profile: UserProfile, contact: ContactRecord | null, currentUserId?: string, onClose: () => void }) {
+function UserProfileSidebar({ profile, contact, currentUserId, onClose, messages }: { profile: UserProfile, contact: ContactRecord | null, currentUserId?: string, onClose: () => void, messages: Message[] }) {
   const db = useFirestore();
   const [isEditingNickname, setIsEditingNickname] = useState(false);
   const [nicknameInput, setNicknameInput] = useState(contact?.customName || '');
   const [isSaving, setIsSaving] = useState(false);
+
+  const sharedMedia = useMemo(() => {
+    return messages.filter(m => m.mediaType === 'image' || m.mediaType === 'video');
+  }, [messages]);
 
   const handleSaveNickname = async () => {
     if (!currentUserId || !db || isSaving) return;
@@ -941,6 +1073,19 @@ function UserProfileSidebar({ profile, contact, currentUserId, onClose }: { prof
           </div>
 
           <div className="w-full space-y-6 pt-4">
+            {sharedMedia.length > 0 && (
+              <div className="space-y-4">
+                <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground px-1">Media Mesh</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {sharedMedia.slice(0, 6).map((m, i) => (
+                    <div key={i} className="aspect-square bg-white/5 border border-white/5 rounded-xl flex items-center justify-center hover:bg-primary/10 transition-all cursor-pointer">
+                      {m.mediaType === 'image' ? <ImageIcon className="w-4 h-4 text-white/20" /> : <Video className="w-4 h-4 text-white/20" />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4">
                <div className="flex items-center justify-between px-1">
                   <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">About User</Label>
@@ -987,33 +1132,9 @@ function UserProfileSidebar({ profile, contact, currentUserId, onClose }: { prof
                   )}
                </div>
             </div>
-
-            <div className="space-y-4">
-               <div className="flex items-center justify-between px-1">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">System Metadata</Label>
-               </div>
-               <div className="bg-white/[0.03] p-5 rounded-[2rem] border border-white/5 space-y-3 shadow-inner">
-                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
-                    <span className="text-muted-foreground">ID</span>
-                    <span className="text-white font-mono opacity-60">USR_{profile.id.substring(0, 8)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
-                    <span className="text-muted-foreground">Signal</span>
-                    <span className="text-primary flex items-center gap-1"><UserCheck className="w-3 h-3" /> Verified</span>
-                  </div>
-                  <div className="pt-2">
-                    <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">Email Hash</p>
-                    <p className="text-[10px] text-white/40 truncate font-mono">{profile.email}</p>
-                  </div>
-               </div>
-            </div>
           </div>
         </div>
       </ScrollArea>
-
-      <footer className="p-6 border-t border-white/5 bg-black/40 text-center">
-        <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20">End-to-End Encrypted Identity</p>
-      </footer>
     </motion.aside>
   );
 }
