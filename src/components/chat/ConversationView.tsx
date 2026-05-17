@@ -24,6 +24,7 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -670,7 +671,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
       </div>
 
       <AnimatePresence>{showProfile && otherProfile && (<UserProfileSidebar profile={otherProfile} contact={contactRecord} currentUserId={user?.uid} onClose={() => setShowProfile(false)} />)}</AnimatePresence>
-      <AlertDialog open={!!deletingMessage} onOpenChange={() => setDeletingMessage(null)}><AlertDialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] shadow-2xl max-w-[calc(100%-2rem)] md:max-w-sm"><AlertDialogHeader><AlertDialogTitle className="font-headline uppercase tracking-tight text-gradient">Delete Message?</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">How would you like to delete this?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="flex flex-col gap-2"><Button onClick={() => deleteMessage('me')} className="h-12 bg-white/5 border border-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest">Delete for Me</Button>{deletingMessage?.senderId === user?.uid && <Button onClick={() => deleteMessage('everyone')} variant="destructive" className="h-12 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl">Delete for Everyone</Button>}<AlertDialogCancel className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white h-10">Cancel</AlertDialogCancel></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <AlertDialog open={!!deletingMessage} onOpenChange={() => setDeletingMessage(null)}><AlertDialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-[calc(100%-2rem)] md:max-w-sm shadow-2xl"><AlertDialogHeader className="p-8 pb-4 shrink-0"><AlertDialogTitle className="font-headline uppercase tracking-tight text-gradient">Delete Message?</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">How would you like to delete this?</AlertDialogDescription></AlertDialogHeader><div className="px-8 pb-8 flex flex-col gap-2"><Button onClick={() => deleteMessage('me')} className="h-12 bg-white/5 border border-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest">Delete for Me</Button>{deletingMessage?.senderId === user?.uid && <Button onClick={() => deleteMessage('everyone')} variant="destructive" className="h-12 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl">Delete for Everyone</Button>}<AlertDialogCancel className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white h-10">Cancel</AlertDialogCancel></div></AlertDialogContent></AlertDialog>
       <ForwardPicker open={!!forwardingMessage} onClose={() => setForwardingMessage(null)} onForward={handleForwardMessage} />
     </div>
   );
