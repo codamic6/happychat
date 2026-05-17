@@ -113,7 +113,7 @@ export function Navbar() {
                     <Menu className="w-6 h-6" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-full bg-[#050505] border-l border-white/5 p-0 flex flex-col">
+                <SheetContent side="right" className="w-full bg-[#050505] border-l border-white/5 p-0 flex flex-col [&>button]:hidden">
                   <SheetHeader className="sr-only">
                     <SheetTitle>Navigation Menu</SheetTitle>
                     <SheetDescription>Access sections and account management.</SheetDescription>
@@ -124,7 +124,16 @@ export function Navbar() {
                       <BrandLogo className="w-10 h-10" />
                       <span className="font-headline font-black text-2xl tracking-tighter text-white uppercase">HappyChat</span>
                     </Link>
-                    {/* Manual close button removed to avoid duplication with standard SheetContent close button */}
+                    
+                    <SheetClose asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 text-white hover:text-primary hover:bg-primary/10 transition-all group focus-visible:ring-primary"
+                      >
+                        <X className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
+                      </Button>
+                    </SheetClose>
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-8 space-y-12">
