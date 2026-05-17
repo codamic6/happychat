@@ -489,6 +489,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
       setIsRecording(true);
       setRecordingDuration(0);
       recordingTimerRef.current = setInterval(() => { setRecordingDuration(prev => prev + 1); }, 1000);
+      if (window.navigator.vibrate) window.navigator.vibrate(20);
     } catch (err) {
       toast({ variant: 'destructive', title: "Microphone Access Denied" });
     }
@@ -498,6 +499,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
     if (mediaRecorderRef.current && isRecording) mediaRecorderRef.current.stop();
     setIsRecording(false);
     if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    if (window.navigator.vibrate) window.navigator.vibrate(10);
   };
 
   const isOtherTyping = useMemo(() => {
@@ -785,17 +787,58 @@ const AudioPlayer = React.memo(({ data, isOwn }: { data: string, isOwn: boolean 
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const togglePlay = (e: React.MouseEvent) => { e.stopPropagation(); if (!audioRef.current) return; if (isPlaying) audioRef.current.pause(); else audioRef.current.play(); };
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.load();
+    }
+  }, [data]);
+
+  const togglePlay = (e: React.MouseEvent) => { 
+    e.stopPropagation(); 
+    if (!audioRef.current) return; 
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().catch(err => {
+        console.error("Audio playback error:", err);
+        toast({ variant: 'destructive', title: "Playback Error", description: "Audio protocol link failed." });
+      });
+    }
+  };
+  
   const onTimeUpdate = () => { if (audioRef.current) setCurrentTime(audioRef.current.currentTime); };
-  const onLoadedMetadata = () => { if (audioRef.current) setDuration(audioRef.current.duration); };
+  const onLoadedMetadata = () => { 
+    if (audioRef.current) {
+      const d = audioRef.current.duration;
+      if (isFinite(d)) setDuration(d);
+    } 
+  };
+
+  const formatTime = (time: number) => {
+    if (!isFinite(time)) return "0:00";
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="flex items-center gap-3 py-2 px-1 min-w-[180px]">
-      <audio ref={audioRef} src={data} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={() => setIsPlaying(false)} onTimeUpdate={onTimeUpdate} onLoadedMetadata={onLoadedMetadata} className="hidden" />
+      <audio 
+        ref={audioRef} 
+        src={data} 
+        preload="auto"
+        onPlay={() => setIsPlaying(true)} 
+        onPause={() => setIsPlaying(false)} 
+        onEnded={() => { setIsPlaying(false); setCurrentTime(0); }} 
+        onTimeUpdate={onTimeUpdate} 
+        onLoadedMetadata={onLoadedMetadata} 
+        className="hidden" 
+      />
       <button onClick={togglePlay} className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 shrink-0 shadow-lg", isOwn ? "bg-white/20 text-white" : "bg-primary/20 text-primary")}>{isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}</button>
       <div className="flex-1 flex flex-col gap-1.5">
         <div className="flex gap-0.5 items-center h-4">{[...Array(20)].map((_, i) => (<motion.div key={i} animate={{ height: isPlaying ? [6, 16, 6] : 6, opacity: isPlaying ? [0.4, 1, 0.4] : 0.4 }} transition={{ duration: 0.5 + Math.random(), repeat: Infinity, ease: "easeInOut" }} className={cn("w-0.5 rounded-full", isOwn ? "bg-white" : "bg-primary")} />))}</div>
-        <div className="flex justify-between items-center px-0.5"><span className="text-[8px] font-black opacity-60 uppercase">{Math.floor(currentTime / 60)}:{String(Math.floor(currentTime % 60)).padStart(2, '0')}</span><span className="text-[8px] font-black opacity-60 uppercase">{Math.floor(duration / 60)}:{String(Math.floor(duration % 60)).padStart(2, '0')}</span></div>
+        <div className="flex justify-between items-center px-0.5"><span className="text-[8px] font-black opacity-60 uppercase">{formatTime(currentTime)}</span><span className="text-[8px] font-black opacity-60 uppercase">{formatTime(duration)}</span></div>
       </div>
     </div>
   );
