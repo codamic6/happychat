@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -488,6 +489,19 @@ export function ConversationView({ conversationId }: { conversationId: string })
     return otherProfile.isOnline === true && otherProfile.showOnlineStatus !== false;
   }, [otherProfile]);
 
+  const canDeleteForEveryone = useMemo(() => {
+    if (selectedMessageIds.length === 0) return false;
+    return selectedMessageIds.every(id => {
+      const msg = messages.find(m => m.id === id);
+      return msg?.senderId === user?.uid && !msg?.isDeleted;
+    });
+  }, [selectedMessageIds, messages, user?.uid]);
+
+  const selectedMsg = useMemo(() => {
+    if (selectedMessageIds.length !== 1) return null;
+    return messages.find(m => m.id === selectedMessageIds[0]);
+  }, [selectedMessageIds, messages]);
+
   const mainName = contactRecord?.customName || otherProfile?.displayName || otherProfile?.fullName || 'User';
   const initial = (otherProfile?.fullName || otherProfile?.username || 'U').charAt(0).toUpperCase();
 
@@ -544,12 +558,12 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 </div>
                 <div className="flex items-center gap-1">
                   <TooltipProvider>
-                    {selectedMessageIds.length === 1 && (
+                    {selectedMsg && !selectedMsg.isDeleted && (
                       <>
-                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => { const msg = messages.find(m => m.id === selectedMessageIds[0]); if (msg) { setReplyingTo(msg); setSelectedMessageIds([]); } }} className="text-white hover:text-primary rounded-xl"><Reply className="w-5 h-5" /></Button></TooltipTrigger><TooltipContent className="bg-[#111] border-white/10 text-[10px] font-bold uppercase text-primary">Reply</TooltipContent></Tooltip>
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => { setReplyingTo(selectedMsg); setSelectedMessageIds([]); }} className="text-white hover:text-primary rounded-xl"><Reply className="w-5 h-5" /></Button></TooltipTrigger><TooltipContent className="bg-[#111] border-white/10 text-[10px] font-bold uppercase text-primary">Reply</TooltipContent></Tooltip>
                         <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={handleTogglePin} className="text-white hover:text-primary rounded-xl"><Pin className="w-5 h-5" /></Button></TooltipTrigger><TooltipContent className="bg-[#111] border-white/10 text-[10px] font-bold uppercase text-primary">Pin</TooltipContent></Tooltip>
-                        {messages.find(m => m.id === selectedMessageIds[0])?.senderId === user?.uid && (
-                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => { const msg = messages.find(m => m.id === selectedMessageIds[0]); if (msg) { setEditingMessage(msg); setInputText(msg.text); setSelectedMessageIds([]); } }} className="text-white hover:text-primary rounded-xl"><Pencil className="w-5 h-5" /></Button></TooltipTrigger><TooltipContent className="bg-[#111] border-white/10 text-[10px] font-bold uppercase text-primary">Edit</TooltipContent></Tooltip>
+                        {selectedMsg.senderId === user?.uid && (
+                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => { setEditingMessage(selectedMsg); setInputText(selectedMsg.text); setSelectedMessageIds([]); }} className="text-white hover:text-primary rounded-xl"><Pencil className="w-5 h-5" /></Button></TooltipTrigger><TooltipContent className="bg-[#111] border-white/10 text-[10px] font-bold uppercase text-primary">Edit</TooltipContent></Tooltip>
                         )}
                       </>
                     )}
@@ -625,7 +639,7 @@ export function ConversationView({ conversationId }: { conversationId: string })
                 key={msg.id} msg={msg} user={user} isMobile={isMobile}
                 bubbleClass={activeBubbleColor.class}
                 onSelect={() => handleToggleSelect(msg.id)}
-                onReply={() => { setReplyingTo(msg); setSelectedMessageIds([]); }}
+                onReply={() => { if (!msg.isDeleted) { setReplyingTo(msg); setSelectedMessageIds([]); } }}
                 onReact={handleReact}
                 isSelected={selectedMessageIds.includes(msg.id)}
                 isSelectionMode={selectedMessageIds.length > 0}
@@ -657,7 +671,21 @@ export function ConversationView({ conversationId }: { conversationId: string })
       </div>
 
       <AnimatePresence>{showProfile && otherProfile && (<UserProfileSidebar profile={otherProfile} contact={contactRecord} currentUserId={user?.uid} onClose={() => setShowProfile(false)} />)}</AnimatePresence>
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}><AlertDialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-[calc(100%-2rem)] md:max-w-sm shadow-2xl"><AlertDialogHeader className="p-8 pb-4 shrink-0"><AlertDialogTitle className="font-headline uppercase tracking-tight text-gradient">Delete {selectedMessageIds.length} Messages?</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><div className="px-8 pb-8 flex flex-col gap-2"><Button onClick={() => deleteMessages('me')} className="h-12 bg-white/5 border border-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest">Delete for Me</Button><Button onClick={() => deleteMessages('everyone')} variant="destructive" className="h-12 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl">Delete for Everyone</Button><AlertDialogCancel className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white h-10">Cancel</AlertDialogCancel></div></AlertDialogContent></AlertDialog>
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="bg-[#0a0a0a] border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-[calc(100%-2rem)] md:max-w-sm shadow-2xl">
+          <AlertDialogHeader className="p-8 pb-4 shrink-0">
+            <AlertDialogTitle className="font-headline uppercase tracking-tight text-gradient">Delete {selectedMessageIds.length} Messages?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">Choose deletion scope.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="px-8 pb-8 flex flex-col gap-2">
+            <Button onClick={() => deleteMessages('me')} className="h-12 bg-white/5 border border-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest">Delete for Me</Button>
+            {canDeleteForEveryone && (
+              <Button onClick={() => deleteMessages('everyone')} variant="destructive" className="h-12 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl">Delete for Everyone</Button>
+            )}
+            <AlertDialogCancel className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white h-10">Cancel</AlertDialogCancel>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
       <ForwardPicker open={showForwardPicker} onClose={() => setShowForwardPicker(false)} onForward={handleForwardMessages} />
     </div>
   );
@@ -684,7 +712,7 @@ const MessageRow = React.memo(({ msg, user, isMobile, onSelect, onReply, onReact
   const handlePointerUp = () => { if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null; } };
 
   const onDragEnd = (event: any, info: any) => {
-    if (info.offset.x > 80 && !isSelectionMode) {
+    if (info.offset.x > 80 && !isSelectionMode && !msg.isDeleted) {
       onReply();
       if (window.navigator.vibrate) window.navigator.vibrate(20);
     }
@@ -725,7 +753,7 @@ const MessageRow = React.memo(({ msg, user, isMobile, onSelect, onReply, onReact
   return (
     <div id={`msg-${msg.id}`} className={cn("flex w-full group relative mb-1 min-w-0 items-center overflow-visible", isOwn ? "justify-end" : "justify-start")}>
       <motion.div 
-        drag={isMobile && !isSelectionMode ? "x" : false}
+        drag={isMobile && !isSelectionMode && !msg.isDeleted ? "x" : false}
         dragDirectionLock
         dragConstraints={{ left: 0, right: 150 }}
         dragSnapToOrigin={true}
@@ -739,13 +767,15 @@ const MessageRow = React.memo(({ msg, user, isMobile, onSelect, onReply, onReact
         onClick={() => { if (isSelectionMode) onSelect(); }}
         className={cn("max-w-full flex z-10 items-center gap-2 overflow-visible group/row flex-1", isOwn ? "flex-row-reverse" : "flex-row")}
       >
-        <motion.div style={{ opacity: swipeOpacity, scale: swipeScale }} className="absolute -left-12 flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 text-primary z-[5] pointer-events-none">
-          <Reply className="w-5 h-5" />
-        </motion.div>
+        {!msg.isDeleted && (
+          <motion.div style={{ opacity: swipeOpacity, scale: swipeScale }} className="absolute -left-12 flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 text-primary z-[5] pointer-events-none">
+            <Reply className="w-5 h-5" />
+          </motion.div>
+        )}
         
         <div className={cn("relative overflow-visible max-w-[85%] sm:max-w-[70%] flex items-center gap-2 min-w-0", isOwn ? "flex-row-reverse" : "flex-row")}>
-          <div className={cn("p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0 shadow-sm cursor-pointer", isSelected ? "ring-2 ring-primary scale-[1.02]" : isSystem ? "bg-white/10 text-muted-foreground italic text-center px-6 py-2 border border-dashed border-white/20 text-[11px]" : isOwn ? cn(bubbleClass || "bg-primary text-primary-foreground", "rounded-tr-none shadow-lg") : "bg-[#181818]/90 backdrop-blur-md text-white rounded-tl-none border border-white/10")}>
-            {msg.forwarded && <div className="flex items-center gap-1.5 mb-1 opacity-60 text-[8px] font-black uppercase italic tracking-widest"><Forward className="w-2 h-2" /> Forwarded</div>}
+          <div className={cn("p-2 px-3 rounded-2xl text-[13px] relative transition-all duration-300 break-words min-w-0 shadow-sm cursor-pointer", isSelected ? "ring-2 ring-primary scale-[1.02]" : isSystem ? "bg-white/10 text-muted-foreground italic text-center px-6 py-2 border border-white/20 text-[11px]" : isOwn ? cn(bubbleClass || "bg-primary text-primary-foreground", "rounded-tr-none shadow-lg") : "bg-[#181818]/90 backdrop-blur-md text-white rounded-tl-none border border-white/10")}>
+            {msg.forwarded && <div className="flex items-center gap-1.5 mb-1 opacity-60 text-[8px] font-black uppercase italic italic-bold tracking-widest"><Forward className="w-2 h-2" /> Forwarded</div>}
             {msg.replyTo && <div className="mb-2 p-1.5 bg-black/40 rounded-lg border-l-2 border-primary text-[10px] opacity-80 truncate max-w-full"><p className="font-bold text-primary mb-0.5 uppercase tracking-widest text-[8px]">{msg.replyTo.senderName}</p><span className="block truncate">{msg.replyTo.text}</span></div>}
             {msg.poll && (<div className="mb-2 p-3 bg-black/60 rounded-xl border border-white/10 space-y-2.5 shadow-2xl min-w-[180px] max-w-full"><div className="flex items-center gap-2 text-primary"><BarChart2 className="w-3 h-3 shrink-0" /><span className="font-black uppercase tracking-tight text-[10px] truncate">{msg.poll.question}</span></div><div className="space-y-1">{msg.poll.options.map((opt: string, i: number) => { const pct = pollResults[i] || 0; const isMyVote = myVote === i; return (<button key={i} onClick={(e) => { e.stopPropagation(); handleVote(i); }} disabled={isSystem || isSelectionMode} className={cn("w-full relative h-8 bg-white/5 border rounded-lg px-3 overflow-hidden group transition-all", isMyVote ? "border-primary/50" : "border-white/5 hover:border-primary/20")}><motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} className={cn("absolute inset-y-0 left-0", isMyVote ? "bg-primary/20" : "bg-primary/10")} /><div className="relative flex justify-between items-center w-full z-10 gap-2"><span className={cn("text-[10px] font-bold truncate", isMyVote ? "text-primary" : "text-white/70 group-hover:text-white")}>{opt}</span><span className="text-[8px] font-black opacity-50 shrink-0">{pct}%</span></div></button>); })}</div></div>)}
             {msg.sharedContact && (<div className="mb-2 p-3 bg-[#0d0d0d] rounded-xl border border-white/10 flex items-center gap-3 shadow-2xl max-w-full"><div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary font-black text-sm shrink-0">{msg.sharedContact.name.charAt(0)}</div><div className="flex-1 min-w-0"><p className="text-[11px] font-black uppercase tracking-tight truncate text-white">{msg.sharedContact.name}</p><p className="text-[8px] uppercase font-bold text-muted-foreground tracking-widest truncate">@{msg.sharedContact.username}</p></div></div>)}
@@ -760,11 +790,13 @@ const MessageRow = React.memo(({ msg, user, isMobile, onSelect, onReply, onReact
                   <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full bg-white/5 hover:bg-white/10 text-muted-foreground"><MoreVertical className="w-3.5 h-3.5" /></Button>
                 </PopoverTrigger>
                 <PopoverContent side="top" align={isOwn ? "end" : "start"} className="w-fit p-1 bg-[#111] border-white/10 rounded-full flex items-center gap-1 shadow-2xl">
-                   <div className="flex items-center border-r border-white/5 pr-1 mr-1">
-                     {QUICK_EMOJIS.map(emoji => (
-                       <button key={emoji} onClick={() => onReact(msg, emoji)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-lg transition-transform active:scale-125">{emoji}</button>
-                     ))}
-                   </div>
+                   {!msg.isDeleted && (
+                     <div className="flex items-center border-r border-white/5 pr-1 mr-1">
+                       {QUICK_EMOJIS.map(emoji => (
+                         <button key={emoji} onClick={() => onReact(msg, emoji)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-lg transition-transform active:scale-125">{emoji}</button>
+                       ))}
+                     </div>
+                   )}
                    <button onClick={onSelect} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-primary/20 text-primary transition-all"><MousePointer2 className="w-4 h-4" /></button>
                 </PopoverContent>
               </Popover>
